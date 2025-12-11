@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Questões - Concurso</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #2c3e50;
+      --secondary: #3498db;
+      --accent: #e74c3c; 
+      --light: #ecf0f1;
+      --success: #27ae60;
+      --text-muted: #95a5a6;
+    }
+    body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; background-color: #f4f4f9; color: #333; line-height: 1.6; }
+    
+    /* Layout */
+    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .flex { display: flex; justify-content: space-between; align-items: center; }
+    
+    /* Header */
+    header { background: var(--primary); color: white; padding: 1rem 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    header h4 { margin: 0; font-weight: 600; }
+    nav button {
+      background: transparent; border: 1px solid rgba(255,255,255,0.7); color: white;
+      padding: 6px 14px; margin-left: 8px; cursor: pointer; border-radius: 4px;
+      transition: all 0.3s ease; font-size: 0.85rem;
+    }
+    nav button:hover, nav button.ativa { background: var(--secondary); border-color: var(--secondary); }
+
+    /* Seções */
+    .secao { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-top: 20px; display: none; }
+    h2 { border-bottom: 3px solid var(--secondary); padding-bottom: 10px; color: var(--primary); margin-top: 0; font-size: 1.5em; }
+
+    /* Inputs */
+    label { font-weight: 600; font-size: 0.9em; margin-top: 10px; display: block; color: var(--primary); }
+    input[type="text"], input[type="number"], select, textarea { 
+        width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ced4da; 
+        border-radius: 4px; box-sizing: border-box; font-family: inherit; font-size: 0.95em;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--secondary); }
+    
+    /* Toolbar Formatação */
+    .toolbar {
+        display: flex; gap: 5px; margin-bottom: 0; background: #f1f1f1;
+        padding: 5px; border-radius: 6px 6px 0 0; border: 1px solid #ced4da; border-bottom: none;
+    }
+    .btn-tool {
+        background: white; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;
+        font-weight: bold; padding: 2px 8px; min-width: 30px; font-size: 0.9em;
+    }
+    .btn-tool:hover { background: #e0e0e0; }
+    .input-com-toolbar { margin-top: 0 !important; border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; }
+
+    /* Botões */
+    button.btn-acao {
+      background: var(--success); color: white; border: none; padding: 10px 20px;
+      font-size: 1em; font-weight: bold; cursor: pointer; border-radius: 6px; width: 100%; margin-top: 15px;
+    }
+    button.btn-acao:hover { background: #219150; }
+    
+    /* --- TABELA OTIMIZADA (1 Andar) --- */
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85em; table-layout: fixed; }
+    th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+    th { background-color: var(--primary); color: white; position: sticky; top: 0; cursor: pointer; user-select: none; font-weight: 600; }
+    th:hover { background-color: #34495e; }
+    tr:hover { background-color: #f8f9fa; }
+    
+    /* Ícones da Tabela */
+    .btn-icon {
+        background: none; border: none; cursor: pointer; font-size: 1.3em; padding: 0 5px;
+        transition: transform 0.2s; opacity: 0.7;
+    }
+    .btn-icon:hover { transform: scale(1.2); opacity: 1; }
+    .btn-editar { color: #f39c12; }
+    .btn-excluir { color: #e74c3c; } 
+
+    /* Bolinhas de Dificuldade */
+    .dots { letter-spacing: 2px; font-size: 1.2em; line-height: 1; }
+    .color-facil { color: #27ae60; }
+    .color-medio { color: #f39c12; }
+    .color-dificil { color: #e74c3c; }
+
+    /* Badge Gabarito */
+    .badge-gab { 
+        background: var(--primary); color: white; padding: 2px 8px; 
+        border-radius: 4px; font-weight: bold; font-size: 0.9em; 
+    }
+
+    /* Modal */
+    .modal {
+        display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.5); overflow-y: auto;
+    }
+    .modal-content {
+        background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888;
+        width: 95%; max-width: 800px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .close-modal { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .close-modal:hover { color: black; }
+
+    .filtro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 10px; }
+    
+    /* Alternativas Riscadas */
+    .alternativa-wrapper { display: flex; align-items: center; padding: 8px; border: 1px solid #eee; margin-bottom: 5px; border-radius: 4px; position: relative; cursor: pointer; }
+    .alternativa-wrapper:hover { background: #f9f9f9; }
+    .btn-riscar { position: absolute; left: 5px; opacity: 0; color: var(--accent); cursor: pointer; font-weight: bold; }
+    .alternativa-wrapper:hover .btn-riscar { opacity: 1; }
+    .riscado-ativo { text-decoration: line-through; opacity: 0.6; background: #eee; }
+
+    .render-html b { font-weight: 900; }
+    .render-html u { text-decoration: underline; text-decoration-thickness: 2px; }
+    .render-html i { font-style: italic; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="container flex">
+      <div class="logo">
+        <h4>Concurso Petrobras</h4>  
+      </div>
+      <nav>
+        <button onclick="navegar('cadastro')">Cadastrar</button>
+        <button onclick="navegar('banco')">Banco de Questões</button>
+        <button onclick="navegar('simulado')">Simulado</button>
+        <button onclick="navegar('estatisticas')">Estatísticas</button>
+      </nav>  
+    </div>
+  </header>
+  
+  <section id="secao-cadastro" class="secao">
+    <div class="container" style="max-width: 900px;">
+      <h2>Cadastrar Nova Questão</h2>
+      <form id="form-cadastro">
+         <label>Enunciado:</label>
+         <div class="toolbar"><button type="button" class="btn-tool" onclick="formatarTexto('cad-enunciado', 'b')">B</button><button type="button" class="btn-tool" onclick="formatarTexto('cad-enunciado', 'u')">U</button><button type="button" class="btn-tool" onclick="formatarTexto('cad-enunciado', 'i')">I</button></div>
+         <textarea id="cad-enunciado" class="input-com-toolbar" rows="4" required></textarea>
+         
+         <div class="filtro-grid">
+            <select id="cad-banca" required><option value="Cesgranrio">Cesgranrio</option><option value="Cebraspe">Cebraspe</option><option value="FGV">FGV</option><option value="Outra">Outra</option></select>
+            <select id="cad-disciplina" required><option value="Português">Português</option><option value="Inglês">Inglês</option><option value="Conhecimentos Específicos">Conhecimentos Específicos</option><option value="Contabilidade Gerencial">Contabilidade Gerencial</option><option value="Contabilidade de Custos">Contabilidade de Custos</option><option value="Matemática Financeira">Matemática Financeira</option><option value="Estatística">Estatística</option></select>
+            <input type="text" id="cad-assunto" placeholder="Assunto" required>
+            <select id="cad-dificuldade"><option value="Fácil">Fácil</option><option value="Médio">Médio</option><option value="Difícil">Difícil</option></select>
+         </div>
+
+         <select id="cad-tipo" onchange="alternarTipo('cad')"><option value="ME">Múltipla Escolha</option><option value="CE">Certo/Errado</option></select>
+         
+         <div id="cad-container-alt" style="margin-top:10px;">
+             <div class="toolbar"><button type="button" class="btn-tool" onclick="formatarTextoUltimo('b')">B</button><button type="button" class="btn-tool" onclick="formatarTextoUltimo('u')">U</button></div>
+             <input type="text" id="cad-alt-a" placeholder="A" onfocus="ultimoFoco = this">
+             <input type="text" id="cad-alt-b" placeholder="B" onfocus="ultimoFoco = this">
+             <input type="text" id="cad-alt-c" placeholder="C" onfocus="ultimoFoco = this">
+             <input type="text" id="cad-alt-d" placeholder="D" onfocus="ultimoFoco = this">
+             <input type="text" id="cad-alt-e" placeholder="E" onfocus="ultimoFoco = this">
+         </div>
+         
+         <label>Gabarito:</label>
+         <select id="cad-gabarito" required></select>
+         <button type="submit" class="btn-acao">Salvar</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="secao-banco" class="secao">
+    <div class="container">
+        <div class="flex">
+            <h2>Banco de Questões</h2>
+            <span style="font-size:0.9em; color:#777;" id="total-questoes-db"></span>
+        </div>
+        
+        <div class="filtro-grid" style="background: #f9f9f9; padding: 10px; border-radius: 6px; border: 1px solid #eee;">
+            <input type="text" id="busca-texto" placeholder="Buscar no enunciado..." onkeyup="filtrarTabela()">
+            <input type="text" id="busca-assunto" placeholder="Buscar Assunto..." onkeyup="filtrarTabela()">
+            <select id="busca-disciplina" onchange="filtrarTabela()"><option value="">Todas Disciplinas</option></select>
+            <select id="busca-banca" onchange="filtrarTabela()"><option value="">Todas Bancas</option></select>
+            <select id="busca-dificuldade" onchange="filtrarTabela()">
+                <option value="">Todas Dificuldades</option>
+                <option value="Fácil">Fácil</option>
+                <option value="Médio">Médio</option>
+                <option value="Difícil">Difícil</option>
+            </select>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table id="tabela-questoes">
+                <thead>
+                    <tr>
+                        <th width="5%" onclick="ordenar('id')">ID</th>
+                        <th width="10%" onclick="ordenar('banca')">Banca</th>
+                        <th width="12%" onclick="ordenar('disciplina')">Disciplina</th>
+                        <th width="40%" onclick="ordenar('enunciado')">Enunciado (Resumo)</th>
+                        <th width="13%" onclick="ordenar('assunto')">Assunto</th>
+                        <th width="8%" onclick="ordenar('dificuldade')" style="text-align:center;">Dif.</th>
+                        <th width="5%" onclick="ordenar('gabarito')" style="text-align:center;">Gab.</th>
+                        <th width="7%" style="text-align:center;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+  </section>
+
+  <section id="secao-simulado" class="secao">
+    <div class="container" style="max-width: 900px;">
+        <h2>Simulado</h2>
+        <div id="config-simulado">
+            <button class="btn-acao" onclick="iniciarSimulado()">Iniciar Simulado Aleatório (10)</button>
+        </div>
+        <div id="area-resolucao" style="display:none">
+            <h3 id="progresso"></h3>
+            <div class="questao-card">
+                <div class="info-questao" id="meta-questao"></div>
+                <div class="enunciado render-html" id="resp-enunciado"></div>
+                <div id="resp-alternativas"></div>
+            </div>
+            <button id="btn-confirma" class="btn-acao" onclick="confirmar()">Confirmar</button>
+            <button id="btn-prox" class="btn-acao" onclick="prox()" style="display:none">Próxima</button>
+            <div id="feedback"></div>
+        </div>
+    </div>
+  </section>
+
+  <section id="secao-estatisticas" class="secao">
+      <div class="container" style="max-width: 900px;">
+          <h2>Estatísticas</h2>
+          <canvas id="chart"></canvas>
+      </div>
+  </section>
+
+  <div id="modal-edicao" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="fecharModal()">&times;</span>
+        <h2>Editar Questão</h2>
+        <form id="form-edicao">
+            <input type="hidden" id="edit-id">
+            
+            <label>Enunciado:</label>
+            <div class="toolbar">
+                <button type="button" class="btn-tool" onclick="formatarTexto('edit-enunciado', 'b')">B</button>
+                <button type="button" class="btn-tool" onclick="formatarTexto('edit-enunciado', 'u')">U</button>
+            </div>
+            <textarea id="edit-enunciado" class="input-com-toolbar" rows="4" required onfocus="ultimoFoco = this"></textarea>
+
+            <div class="filtro-grid">
+                <select id="edit-banca"></select>
+                <select id="edit-disciplina"></select>
+                <input type="text" id="edit-assunto">
+                <select id="edit-dificuldade"><option value="Fácil">Fácil</option><option value="Médio">Médio</option><option value="Difícil">Difícil</option></select>
+            </div>
+
+            <select id="edit-tipo" onchange="alternarTipo('edit')"><option value="ME">Múltipla Escolha</option><option value="CE">Certo/Errado</option></select>
+
+            <div id="edit-container-alt" style="margin-top:10px;">
+                <div class="toolbar"><button type="button" class="btn-tool" onclick="formatarTextoUltimo('b')">B</button><button type="button" class="btn-tool" onclick="formatarTextoUltimo('u')">U</button></div>
+                <input type="text" id="edit-alt-a" placeholder="A" onfocus="ultimoFoco = this">
+                <input type="text" id="edit-alt-b" placeholder="B" onfocus="ultimoFoco = this">
+                <input type="text" id="edit-alt-c" placeholder="C" onfocus="ultimoFoco = this">
+                <input type="text" id="edit-alt-d" placeholder="D" onfocus="ultimoFoco = this">
+                <input type="text" id="edit-alt-e" placeholder="E" onfocus="ultimoFoco = this">
+            </div>
+
+            <label>Gabarito:</label>
+            <select id="edit-gabarito" required></select>
+
+            <button type="submit" class="btn-acao" style="background:#f39c12">Salvar Alterações</button>
+        </form>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:5000/questoes";
+    let db = [];
+    let dbFiltrado = []; 
+    let ultimoFoco = null;
+    let simuladoAtual = [], indice = 0, acertosSessao = 0;
+    let ordemAtual = { coluna: null, direcao: 'asc' };
+
+    function navegar(nome) {
+        document.querySelectorAll('.secao').forEach(s => s.style.display = 'none');
+        document.getElementById(`secao-${nome}`).style.display = 'block';
+        if(nome === 'banco') carregarTabela();
+        if(nome === 'estatisticas') gerarGrafico();
+        window.scrollTo(0,0);
+    }
+
+    async function carregarDB() {
+        try {
+            const r = await fetch(API_URL);
+            db = await r.json();
+            preencherSelectsIniciais();
+        } catch(e) { alert("Erro de conexão"); }
+    }
+
+    function formatarTexto(idCampo, tag) {
+        const campo = document.getElementById(idCampo);
+        inserirTag(campo, tag);
+    }
+    function formatarTextoUltimo(tag) {
+        if(ultimoFoco) inserirTag(ultimoFoco, tag);
+    }
+    function inserirTag(campo, tag) {
+        const start = campo.selectionStart;
+        const end = campo.selectionEnd;
+        if(start === end) return;
+        const txt = campo.value;
+        campo.value = txt.substring(0, start) + `<${tag}>` + txt.substring(start, end) + `</${tag}>` + txt.substring(end);
+    }
+
+    function alternarTipo(prefixo) {
+        const tipo = document.getElementById(`${prefixo}-tipo`).value;
+        const divAlt = document.getElementById(`${prefixo}-container-alt`);
+        const selGab = document.getElementById(`${prefixo}-gabarito`);
+        selGab.innerHTML = "";
+        
+        if(tipo === "ME") {
+            divAlt.style.display = "block";
+            ["A","B","C","D","E"].forEach(l => selGab.innerHTML += `<option value="${l}">Alternativa ${l}</option>`);
+        } else {
+            divAlt.style.display = "none";
+            selGab.innerHTML = `<option value="C">Certo</option><option value="E">Errado</option>`;
+        }
+    }
+
+    document.getElementById("form-cadastro").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const nova = montarObjeto("cad");
+        delete nova.id; 
+        
+        const res = await fetch(API_URL, {method: "POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(nova)});
+        const json = await res.json();
+        
+        if(res.ok) {
+            alert("Salvo!");
+            e.target.reset();
+            alternarTipo("cad");
+            carregarDB();
+        } else {
+            alert(json.erro || "Erro");
+        }
+    });
+
+    function carregarTabela() {
+        const bancas = [...new Set(db.map(q=>q.banca))].sort();
+        const disc = [...new Set(db.map(q=>q.disciplina))].sort();
+        
+        const selBanca = document.getElementById("busca-banca");
+        const selDisc = document.getElementById("busca-disciplina");
+        
+        selBanca.innerHTML = '<option value="">Todas Bancas</option>';
+        selDisc.innerHTML = '<option value="">Todas Disciplinas</option>';
+        
+        bancas.forEach(b => selBanca.innerHTML += `<option value="${b}">${b}</option>`);
+        disc.forEach(d => selDisc.innerHTML += `<option value="${d}">${d}</option>`);
+
+        document.getElementById("total-questoes-db").innerText = `${db.length} questões cadastradas`;
+        filtrarTabela();
+    }
+
+    function filtrarTabela() {
+        const texto = document.getElementById("busca-texto").value.toLowerCase();
+        const assunto = document.getElementById("busca-assunto").value.toLowerCase();
+        const banca = document.getElementById("busca-banca").value;
+        const disc = document.getElementById("busca-disciplina").value;
+        const dif = document.getElementById("busca-dificuldade").value;
+
+        dbFiltrado = db.filter(q => {
+            const matchTexto = q.enunciado.toLowerCase().includes(texto);
+            const matchAssunto = q.assunto.toLowerCase().includes(assunto);
+            const matchBanca = banca === "" || q.banca === banca;
+            const matchDisc = disc === "" || q.disciplina === disc;
+            const matchDif = dif === "" || q.dificuldade === dif;
+            return matchTexto && matchAssunto && matchBanca && matchDisc && matchDif;
+        });
+
+        if (ordemAtual.coluna) aplicarOrdenacao();
+        renderizarTabela();
+    }
+
+    function ordenar(coluna) {
+        if (ordemAtual.coluna === coluna) {
+            ordemAtual.direcao = ordemAtual.direcao === 'asc' ? 'desc' : 'asc';
+        } else {
+            ordemAtual.coluna = coluna;
+            ordemAtual.direcao = 'asc';
+        }
+        aplicarOrdenacao();
+        renderizarTabela();
+    }
+
+    function aplicarOrdenacao() {
+        const col = ordemAtual.coluna;
+        const dir = ordemAtual.direcao === 'asc' ? 1 : -1;
+
+        dbFiltrado.sort((a, b) => {
+            let valA = a[col] ? a[col].toString().toLowerCase() : "";
+            let valB = b[col] ? b[col].toString().toLowerCase() : "";
+            if (col === 'id') { valA = parseInt(a[col]); valB = parseInt(b[col]); }
+            if (valA < valB) return -1 * dir;
+            if (valA > valB) return 1 * dir;
+            return 0;
+        });
+    }
+
+    function gerarBolinhas(nivel) {
+        let dots = '';
+        let colorClass = '';
+        if(nivel === 'Fácil') {
+            colorClass = 'color-facil';
+            dots = '●';
+        } else if(nivel === 'Médio') {
+            colorClass = 'color-medio';
+            dots = '●●';
+        } else if(nivel === 'Difícil') {
+            colorClass = 'color-dificil';
+            dots = '●●●';
+        }
+        return `<span class="dots ${colorClass}">${dots}</span>`;
+    }
+
+    function renderizarTabela() {
+        const tbody = document.querySelector("#tabela-questoes tbody");
+        tbody.innerHTML = "";
+
+        dbFiltrado.forEach(q => {
+            const tr = document.createElement("tr");
+            const resumoEnunciado = q.enunciado.replace(/<[^>]*>?/gm, '').substring(0, 60) + (q.enunciado.length > 60 ? "..." : "");
+            
+            tr.innerHTML = `
+                <td>${q.id}</td>
+                <td>${q.banca}</td>
+                <td>${q.disciplina}</td>
+                <td title="${q.enunciado.replace(/"/g, '&quot;')}">${resumoEnunciado}</td>
+                <td>${q.assunto}</td>
+                <td style="text-align:center;">${gerarBolinhas(q.dificuldade)}</td>
+                <td style="text-align:center;"><span class="badge-gab">${q.gabarito}</span></td>
+                <td style="text-align:center;">
+                    <button class="btn-icon btn-editar" title="Editar" onclick="abrirModalEdicao('${q.id}')">✏️</button>
+                    <button class="btn-icon btn-excluir" title="Excluir" onclick="excluirQuestao('${q.id}')">🗑️</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function excluirQuestao(id) {
+        if(!confirm("Tem certeza que deseja excluir esta questão?")) return;
+        fetch(`${API_URL}/${id}`, {method: "DELETE"})
+            .then(() => { carregarDB().then(() => carregarTabela()); });
+    }
+
+    function abrirModalEdicao(id) {
+        const q = db.find(item => String(item.id) === String(id));
+        if(!q) return;
+
+        document.getElementById("edit-id").value = q.id;
+        document.getElementById("edit-enunciado").value = q.enunciado;
+        document.getElementById("edit-assunto").value = q.assunto;
+        document.getElementById("edit-dificuldade").value = q.dificuldade;
+        document.getElementById("edit-tipo").value = q.tipo;
+
+        populaSelectEdicao("edit-banca", ["Cesgranrio", "Cebraspe", "FGV", "Outra"], q.banca);
+        populaSelectEdicao("edit-disciplina", ["Português", "Inglês", "Conhecimentos Específicos", "Matemática Financeira", "Estatística"], q.disciplina);
+
+        alternarTipo("edit");
+
+        if(q.tipo === "ME") {
+            document.getElementById("edit-alt-a").value = q.alt_a || "";
+            document.getElementById("edit-alt-b").value = q.alt_b || "";
+            document.getElementById("edit-alt-c").value = q.alt_c || "";
+            document.getElementById("edit-alt-d").value = q.alt_d || "";
+            document.getElementById("edit-alt-e").value = q.alt_e || "";
+        }
+        
+        document.getElementById("edit-gabarito").value = q.gabarito;
+        document.getElementById("modal-edicao").style.display = "block";
+    }
+
+    function populaSelectEdicao(id, opcoes, valorAtual) {
+        const sel = document.getElementById(id);
+        sel.innerHTML = "";
+        opcoes.forEach(op => {
+            sel.innerHTML += `<option value="${op}" ${op === valorAtual ? 'selected' : ''}>${op}</option>`;
+        });
+        if(!opcoes.includes(valorAtual)) sel.innerHTML += `<option value="${valorAtual}" selected>${valorAtual}</option>`;
+    }
+
+    function fecharModal() { document.getElementById("modal-edicao").style.display = "none"; }
+
+    document.getElementById("form-edicao").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const editada = montarObjeto("edit");
+        editada.id = document.getElementById("edit-id").value; 
+
+        const res = await fetch(API_URL, {method: "PUT", headers:{"Content-Type":"application/json"}, body: JSON.stringify(editada)});
+        
+        if(res.ok) {
+            alert("Atualizado!");
+            fecharModal();
+            carregarDB().then(() => carregarTabela());
+        } else {
+            alert("Erro ao atualizar.");
+        }
+    });
+
+    function montarObjeto(prefixo) {
+        return {
+            banca: document.getElementById(`${prefixo}-banca`).value,
+            enunciado: document.getElementById(`${prefixo}-enunciado`).value,
+            disciplina: document.getElementById(`${prefixo}-disciplina`).value,
+            assunto: document.getElementById(`${prefixo}-assunto`).value,
+            dificuldade: document.getElementById(`${prefixo}-dificuldade`).value,
+            tipo: document.getElementById(`${prefixo}-tipo`).value,
+            gabarito: document.getElementById(`${prefixo}-gabarito`).value,
+            alt_a: document.getElementById(`${prefixo}-alt-a`) ? document.getElementById(`${prefixo}-alt-a`).value : "",
+            alt_b: document.getElementById(`${prefixo}-alt-b`) ? document.getElementById(`${prefixo}-alt-b`).value : "",
+            alt_c: document.getElementById(`${prefixo}-alt-c`) ? document.getElementById(`${prefixo}-alt-c`).value : "",
+            alt_d: document.getElementById(`${prefixo}-alt-d`) ? document.getElementById(`${prefixo}-alt-d`).value : "",
+            alt_e: document.getElementById(`${prefixo}-alt-e`) ? document.getElementById(`${prefixo}-alt-e`).value : ""
+        };
+    }
+
+    function iniciarSimulado() {
+        if(db.length === 0) return alert("Sem questões");
+        simuladoAtual = db.sort(() => 0.5 - Math.random()).slice(0, 10);
+        indice = 0; acertosSessao = 0;
+        document.getElementById("config-simulado").style.display = "none";
+        document.getElementById("area-resolucao").style.display = "block";
+        renderQuestao();
+    }
+    
+    function renderQuestao() {
+        const q = simuladoAtual[indice];
+        document.getElementById("progresso").innerText = `Questão ${indice+1}/${simuladoAtual.length}`;
+        document.getElementById("resp-enunciado").innerHTML = q.enunciado;
+        document.getElementById("meta-questao").innerHTML = `<b>${q.banca}</b> | ${q.disciplina} | <span class="badge-gab" style="background:#777">${q.dificuldade}</span>`;
+        
+        const div = document.getElementById("resp-alternativas");
+        div.innerHTML = "";
+        
+        if(q.tipo === "CE") {
+            criarRadio(div, "C", "Certo"); criarRadio(div, "E", "Errado");
+        } else {
+            ["A","B","C","D","E"].forEach(l => {
+                const txt = q[`alt_${l.toLowerCase()}`];
+                if(txt) criarRadio(div, l, txt);
+            });
+        }
+        document.getElementById("feedback").innerHTML = "";
+        document.getElementById("btn-confirma").style.display = "block";
+        document.getElementById("btn-prox").style.display = "none";
+    }
+
+    function criarRadio(div, val, txt) {
+        div.innerHTML += `
+        <div class="alternativa-wrapper" onclick="this.querySelector('input').checked=true">
+            <span class="btn-riscar" onclick="event.stopPropagation(); this.parentElement.classList.toggle('riscado-ativo')">✖</span>
+            <input type="radio" name="resp" value="${val}" style="margin:0 10px;">
+            <span class="render-html">${val}) ${txt}</span>
+        </div>`;
+    }
+
+    async function confirmar() {
+        const sel = document.querySelector('input[name="resp"]:checked');
+        if(!sel) return alert("Selecione uma opção");
+        const q = simuladoAtual[indice];
+        const acertou = sel.value === q.gabarito;
+        const feed = document.getElementById("feedback");
+        
+        if(acertou) {
+            feed.innerHTML = "<p style='color:green;font-weight:bold'>Correto!</p>";
+            q.acertos++; acertosSessao++;
+        } else {
+            feed.innerHTML = `<p style='color:red;font-weight:bold'>Errado! Gabarito: ${q.gabarito}</p>`;
+        }
+        q.respondidas++;
+        
+        const realQ = db.find(d => d.id === q.id);
+        if(realQ) { realQ.respondidas++; if(acertou) realQ.acertos++; }
+        await fetch(API_URL, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(realQ)});
+        
+        document.getElementById("btn-confirma").style.display = "none";
+        document.getElementById("btn-prox").style.display = "block";
+    }
+
+    function prox() {
+        indice++;
+        if(indice < simuladoAtual.length) renderQuestao();
+        else {
+            alert(`Fim! Acertos: ${acertosSessao}/${simuladoAtual.length}`);
+            navegar("simulado");
+            document.getElementById("config-simulado").style.display = "block";
+            document.getElementById("area-resolucao").style.display = "none";
+        }
+    }
+
+    function gerarGrafico() {
+        const ctx = document.getElementById("chart").getContext("2d");
+        if(window.myChart) window.myChart.destroy();
+        window.myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Geral'],
+                datasets: [{label: 'Acertos', data:[db.reduce((a,b)=>a+b.acertos,0)]}]
+            }
+        });
+    }
+
+    function preencherSelectsIniciais() { alternarTipo("cad"); }
+    window.onload = () => { carregarDB(); alternarTipo("cad"); navegar("cadastro"); };
+  </script>
+</body>
+</html>

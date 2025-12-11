@@ -1,0 +1,142 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container{
+  max-width: 1200px;
+}
+
+.centered{
+  margin: 0 auto;
+}
+
+.relative{
+  position: relative;;
+}
+
+.absolute{
+  position: absolute;
+}
+
+/* Tema claro */
+body.claro {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+/* Tema escuro */
+body.escuro {
+  background-color: #1c1c1c;
+  color: #eee;
+}
+
+header{
+  height: 80px;
+}
+
+header .container{
+  height: 100%;
+  justify-content: center;
+}
+
+.logo{
+  max-width: 200px;
+  background-color: #007bff;
+  padding: 1px 30px;
+}
+
+.logo h4{
+  text-transform: uppercase;
+  color: #fff;
+  font-size: .9rem;
+  line-height: 21px;
+}
+
+h1, h2, h4{
+  text-align: center;
+}
+
+nav {
+  text-align: center;
+  margin: 20px 0;
+}
+
+nav button, #botao-tema {
+  margin: 0 10px;
+  padding: 10px 20px;
+  cursor: pointer;
+  border: 2px solid #007bff;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #007bff;
+  font-weight: bold;
+  transition: .5s;
+  font-size: 1rem;
+}
+
+nav button.ativa {
+  background-color: #007bff;
+  color: #ffffff;
+  font-weight: bold;
+  border: 2px solid #007bff;
+}
+
+nav button:not(.ativa):hover {
+  background-color: #007bff;
+  color: #ffffff;
+  font-weight: bold;
+  border: 2px solid #007bff;
+}
+
+section {
+  max-width: 500px;
+  margin: 0 auto 30px auto;
+  padding: 20px;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+input, select, button[type="submit"] {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 10px;
+  font-size: 1rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+#grafico {
+  transform: scale(2);
+  translate: 0 100px;
+}
+
+.flex{
+  display: flex;
+}
+
+canvas {
+  display: block;
+}
+
+body.escuro nav button,
+body.escuro #botao-tema {
+  background-color: #444;
+  color: white;
+}
+
+body.escuro section {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+body.escuro input, 
+body.escuro select {
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #666;
+}
