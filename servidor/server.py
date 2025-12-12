@@ -144,8 +144,9 @@ def carregar_meta_dict():
 
 def gerenciar_assunto(acao, payload, nome_antigo=None):
     """
-    Lógica central de reordenação (Cascata).
-    acao: 'criar' ou 'editar'
+    Lógica Híbrida:
+    1. Se ordem for None/Vazio -> Encontra o menor índice disponível (preenche lacuna).
+    2. Se ordem for especificada -> Usa lógica de Cascata (empurra fila).
     """
     wb = load_workbook(ARQ_METADADOS)
     ws = wb["assuntos"]
@@ -162,36 +163,46 @@ def gerenciar_assunto(acao, payload, nome_antigo=None):
 
     novo_nome = payload["nome"]
     nova_disc = payload["disciplina"]
-    nova_ordem = int(payload["ordem"])
+    raw_ordem = payload.get("ordem")  # Pode vir None ou ""
 
     # 2. Se for edição, removemos o item antigo da lista temporária primeiro
+    # Isso é importante para liberar o "lugar" que o item ocupava antes de recalcular
     if acao == 'editar' and nome_antigo:
         todos_assuntos = [a for a in todos_assuntos if a["nome"] != nome_antigo]
 
-    # 3. Aplicar Efeito Cascata (Empurrar fila)
-    # Verifica se já existe algo nessa posição para essa disciplina
-    conflito = any(a for a in todos_assuntos if a["disciplina"] == nova_disc and a["ordem"] == nova_ordem)
+    # 3. Definição da Nova Ordem
+    if raw_ordem is None or raw_ordem == "":
+        # MODO AUTOMÁTICO: Encontrar o menor buraco disponível
+        ordens_existentes = {a["ordem"] for a in todos_assuntos if a["disciplina"] == nova_disc}
+        candidato = 1
+        while candidato in ordens_existentes:
+            candidato += 1
+        nova_ordem = candidato
+    else:
+        # MODO MANUAL: Usuário escolheu um número
+        nova_ordem = int(raw_ordem)
 
-    if conflito:
-        # Incrementa +1 em todos que estão na frente (ou no mesmo lugar)
-        for a in todos_assuntos:
-            if a["disciplina"] == nova_disc and a["ordem"] >= nova_ordem:
-                a["ordem"] += 1
+        # Verifica conflito para Efeito Cascata
+        conflito = any(a for a in todos_assuntos if a["disciplina"] == nova_disc and a["ordem"] == nova_ordem)
+        if conflito:
+            # Incrementa +1 em todos que estão na frente (ou no mesmo lugar)
+            for a in todos_assuntos:
+                if a["disciplina"] == nova_disc and a["ordem"] >= nova_ordem:
+                    a["ordem"] += 1
 
-    # 4. Adiciona o novo item (ou o item editado)
+    # 4. Adiciona o novo item (ou o item editado) com a ordem definida
     todos_assuntos.append({
         "nome": novo_nome,
         "disciplina": nova_disc,
         "ordem": nova_ordem
     })
 
-    # 5. Reescreve a planilha inteira do zero (mais seguro para manter a ordem)
-    # Limpa a aba
+    # 5. Reescreve a planilha
     wb.remove(wb["assuntos"])
     ws_new = wb.create_sheet("assuntos")
     ws_new.append(["nome", "disciplina", "ordem"])
 
-    # Ordena antes de salvar para ficar bonito no Excel
+    # Ordena para ficar bonito no Excel
     todos_assuntos.sort(key=lambda x: (x["disciplina"], x["ordem"]))
 
     for a in todos_assuntos:

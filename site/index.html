@@ -372,13 +372,13 @@ function iniciarEdicaoMeta(dado) {
 function cancelarEdicaoMeta() {
     editandoMeta = null;
     el("cfg-novo-nome").value = "";
-    el("cfg-ordem").value = "";
-    // A disciplina deve ser resetada apenas se for assunto, ou pode causar erro de filtro
+    el("cfg-ordem").value = ""; // Limpa o campo visualmente
+    
     if (catAtual === 'assuntos' && el("cfg-disc-select").options.length > 0) {
         el("cfg-disc-select").value = el("cfg-disc-select").options[0].value;
     }
     el("cfg-btn-acao").innerText = "Adicionar";
-    el("cfg-btn-acao").style.background = ""; // Volta ao padrão
+    el("cfg-btn-acao").style.background = ""; 
 }
 
 async function addMeta() {
@@ -390,14 +390,19 @@ async function addMeta() {
     if(catAtual === 'assuntos') {
         let disc = el("cfg-disc-select").value;
         let ord = el("cfg-ordem").value;
-        if(!disc || !ord) return alert("Para assuntos, selecione disciplina e ordem");
+        
+        // Validação alterada: Apenas DISCIPLINA é obrigatória agora.
+        // Ordem pode ser vazia (o backend calculará).
+        if(!disc) return alert("Para assuntos, selecione a disciplina.");
+        
         novoItem.disciplina = disc; 
-        novoItem.ordem = parseInt(ord);
+        // Se ord tiver valor, converte para int. Se for vazio, envia null.
+        novoItem.ordem = ord ? parseInt(ord) : null;
     }
 
     try {
         if(editandoMeta) {
-            // MODO EDIÇÃO (PUT)
+            // MODO EDIÇÃO
             const payload = { antigo: editandoMeta, novo: novoItem };
             await fetch(`${API}/metadados/${catAtual}`, {
                 method: "PUT", 
@@ -405,7 +410,7 @@ async function addMeta() {
                 body: JSON.stringify(payload)
             });
         } else {
-            // MODO CRIAÇÃO (POST)
+            // MODO CRIAÇÃO
             await fetch(`${API}/metadados/${catAtual}`, {
                 method: "POST", 
                 headers:{"Content-Type":"application/json"}, 
