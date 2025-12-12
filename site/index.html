@@ -7,7 +7,7 @@
   <style>
     :root { 
         --primary:#2c3e50; --sec:#3498db; --acc:#e74c3c; --succ:#27ae60; --bg:#f4f4f9; 
-        --light: #ecf0f1; --text-muted: #95a5a6;
+        --light: #ecf0f1; --text-muted: #95a5a6; --purple: #8e44ad;
     }
     body{font-family:'Segoe UI',sans-serif;margin:0;background:var(--bg);color:#333;line-height:1.5}
     .container{max-width:1300px;margin:0 auto;padding:20px} .flex{display:flex;justify-content:space-between;align-items:center}
@@ -17,11 +17,13 @@
     header h4{margin:0; font-weight:600; font-size:1.5rem; transition:.3s}
     header.sticky{position:fixed;top:0;width:100%;padding:.5rem 0;box-shadow:0 4px 10px rgba(0,0,0,.2)}
     header.sticky h4{font-size:1.2rem}
-    body.header-espaco { padding-top: 70px; } /* Espaço para o header fixo */
+    body.header-espaco { padding-top: 70px; } 
     
     /* Navegação */
     nav button{background:transparent;border:1px solid rgba(255,255,255,.5);color:#fff;padding:6px 12px;margin-left:5px;border-radius:4px;cursor:pointer;font-size:.85rem; transition:.3s}
     nav button:hover, nav button.ativa{background:var(--sec);border-color:var(--sec);color:#fff}
+    #nav-importar { background: var(--purple); border-color: var(--purple); }
+    #nav-importar:hover { background: #9b59b6; }
 
     /* Seções e Forms */
     .secao{background:#fff;padding:25px;border-radius:8px;margin-top:20px;display:none;box-shadow:0 2px 10px rgba(0,0,0,.05)}
@@ -61,6 +63,16 @@
     #barra-tempo-container { width: 100%; background: #e0e0e0; height: 10px; border-radius: 5px; margin-bottom: 15px; display: none; }
     #barra-tempo-fill { height: 100%; background: var(--succ); width: 100%; border-radius: 5px; transition: width 1s linear; }
 
+    /* Estilos Importação */
+    .imp-row { display: flex; gap: 10px; align-items: flex-start; background: #fff; padding: 10px; border: 1px solid #eee; margin-bottom: 10px; border-radius: 4px; }
+    .imp-meta { min-width: 150px; max-width: 150px; display: flex; flex-direction: column; gap: 5px; }
+    .imp-content { flex-grow: 1; }
+    .imp-gab { min-width: 60px; max-width: 60px; text-align: center; }
+    .imp-del { min-width: 30px; text-align: center; }
+    .imp-textarea { width: 100%; border: 1px solid #eee; resize: vertical; font-family: inherit; font-size: 0.9rem; padding: 5px; border-radius: 4px;}
+    .imp-textarea:focus { border-color: var(--sec); outline: none; }
+    .preview-header { display: flex; background: var(--primary); color: white; padding: 10px; border-radius: 4px 4px 0 0; font-weight: bold; font-size: 0.85rem;}
+    
     .render-html b{font-weight:900} .render-html u{text-decoration:underline;text-decoration-thickness:2px}
   </style>
 </head>
@@ -73,6 +85,7 @@
   <button id="nav-prova" onclick="nav('prova')" style="color:#f1c40f;border-color:#f1c40f">Simulado Real</button>
   <button id="nav-estatisticas" onclick="nav('estatisticas')">Estatísticas</button>
   <button id="nav-config" onclick="nav('config')">⚙️ Configurações</button>
+  <button id="nav-importar" onclick="nav('importar')">📂 Importar PDF</button>
 </nav></div></header>
 
 <section id="secao-cadastro" class="secao"><div class="container" style="max-width:900px">
@@ -101,6 +114,32 @@
   <label>Gabarito:</label><select id="cad-gabarito" required></select>
   <button type="submit" class="btn-acao">Salvar</button>
   </form>
+</div></section>
+
+<section id="secao-importar" class="secao"><div class="container">
+    <h2>Importar de PDF</h2>
+    <div class="filtro-grid" style="background:#f9f9f9; padding:15px; border-radius:6px; margin-bottom:20px;">
+        <div style="grid-column: span 2; display: flex; gap: 10px;">
+            <input type="file" id="imp-file" accept="application/pdf" style="background:#fff">
+            <button class="btn-acao" onclick="lerPDF()" style="margin:5px 0; width:150px; background:#27ae60">Ler PDF</button>
+        </div>
+        <select id="imp-disciplina" onchange="carregarAssuntos('imp')"></select>
+        <select id="imp-assunto"><option value="">Assunto Global...</option></select>
+    </div>
+
+    <div id="imp-preview-container" style="display:none">
+        <h3 id="imp-titulo-preview">Prévia</h3>
+        <button class="btn-acao" onclick="salvarLote()" style="margin-bottom:15px;">💾 Salvar Todas no Banco</button>
+        
+        <div class="preview-header">
+            <div style="width:40px">#</div>
+            <div style="width:150px; margin-right:10px">Banca/Ano</div>
+            <div style="flex-grow:1">Enunciado / Alternativas (Editável)</div>
+            <div style="width:60px; text-align:center">Gab</div>
+            <div style="width:30px">Del</div>
+        </div>
+        <div id="imp-lista-questoes" style="background:#f4f4f9; padding:10px; max-height:600px; overflow-y:auto; border:1px solid #ccc"></div>
+    </div>
 </div></section>
 
 <section id="secao-banco" class="secao"><div class="container">
@@ -265,8 +304,8 @@ async function init() {
     } catch(e) { alert("Erro ao carregar dados. Verifique o servidor."); }
 }
 function popSelGeral() {
-    ['cad','busca','edit','prat','prova'].forEach(p => {
-        pop(el(`${p}-banca`), meta.bancas, "Banca...");
+    ['cad','busca','edit','prat','prova','imp'].forEach(p => {
+        pop(el(`${p}-banca`), meta.bancas, p==='imp'?"Banca Padrão...":"Banca...");
         if(el(`${p}-instituicao`)) pop(el(`${p}-instituicao`), meta.instituicoes, "Instituição...");
         pop(el(`${p}-disciplina`), meta.disciplinas, "Disciplina...");
     });
@@ -280,10 +319,131 @@ function carregarAssuntos(prefixo) {
     let disc = el(`${prefixo}-disciplina`).value;
     let selAss = el(`${prefixo}-assunto`);
     selAss.innerHTML = '<option value="">Todos Assuntos</option>';
-    // Assuntos já vêm ordenados do backend (disciplina, ordem)
     let lista = meta.assuntos.filter(a => a.disciplina === disc);
     lista.forEach(a => { selAss.innerHTML += `<option value="${a.nome}">${a.ordem}. ${a.nome}</option>`; });
 }
+
+// --- IMPORTAÇÃO PDF ---
+async function lerPDF() {
+    let inp = el("imp-file");
+    if(inp.files.length === 0) return alert("Selecione um arquivo PDF");
+    let fd = new FormData();
+    fd.append("file", inp.files[0]);
+
+    el("imp-preview-container").style.display = "none";
+    el("imp-lista-questoes").innerHTML = "<div style='padding:20px; text-align:center'>Processando...</div>";
+    
+    try {
+        let r = await fetch(`${API}/upload-pdf`, { method:"POST", body:fd });
+        if(!r.ok) throw new Error();
+        let questoes = await r.json();
+        renderPreview(questoes);
+    } catch(e) {
+        alert("Erro ao ler PDF.");
+        el("imp-lista-questoes").innerHTML = "";
+    }
+}
+
+function renderPreview(lista) {
+    let div = el("imp-lista-questoes");
+    div.innerHTML = "";
+    el("imp-titulo-preview").innerText = `Prévia (${lista.length} encontradas)`;
+    el("imp-preview-container").style.display = "block";
+
+    lista.forEach((q, i) => {
+        div.innerHTML += `
+        <div class="imp-row" id="imp-row-${i}">
+            <div style="width:40px; font-weight:bold">${i+1}</div>
+            
+            <div class="imp-meta">
+                <input type="text" class="imp-banca" placeholder="Banca" value="CESGRANRIO">
+                <input type="number" class="imp-ano" placeholder="Ano" value="${new Date().getFullYear()}">
+                <select class="imp-dif">
+                    <option value="Médio">Médio</option><option value="Fácil">Fácil</option><option value="Difícil">Difícil</option>
+                </select>
+            </div>
+
+            <div class="imp-content">
+                <textarea class="imp-textarea imp-enunciado" rows="3" placeholder="Enunciado">${q.enunciado}</textarea>
+                <div style="margin-top:5px; display:grid; gap:5px">
+                    <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${q.alt_a}"></div>
+                    <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${q.alt_b}"></div>
+                    <div class="input-group"><span>C)</span><input type="text" class="imp-alt-c" value="${q.alt_c}"></div>
+                    <div class="input-group"><span>D)</span><input type="text" class="imp-alt-d" value="${q.alt_d}"></div>
+                    <div class="input-group"><span>E)</span><input type="text" class="imp-alt-e" value="${q.alt_e}"></div>
+                </div>
+            </div>
+
+            <div class="imp-gab">
+                <select class="imp-gabarito">
+                    <option value="">?</option>
+                    <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option>
+                </select>
+            </div>
+
+            <div class="imp-del">
+                <button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()">✖</button>
+            </div>
+        </div>
+        `;
+    });
+}
+
+async function salvarLote() {
+    let rows = document.querySelectorAll(".imp-row");
+    let disc = el("imp-disciplina").value;
+    let ass = el("imp-assunto").value;
+
+    if(!disc || !ass) return alert("Selecione a Disciplina e o Assunto Global (acima da lista) para aplicar a todas as questões.");
+
+    let lote = [];
+    rows.forEach(r => {
+        let obj = {
+            banca: r.querySelector(".imp-banca").value,
+            ano: r.querySelector(".imp-ano").value,
+            dificuldade: r.querySelector(".imp-dif").value,
+            enunciado: r.querySelector(".imp-enunciado").value,
+            alt_a: r.querySelector(".imp-alt-a").value,
+            alt_b: r.querySelector(".imp-alt-b").value,
+            alt_c: r.querySelector(".imp-alt-c").value,
+            alt_d: r.querySelector(".imp-alt-d").value,
+            alt_e: r.querySelector(".imp-alt-e").value,
+            gabarito: r.querySelector(".imp-gabarito").value,
+            tipo: "ME", // Assumindo ME para importação PDF padrão
+            disciplina: disc,
+            assunto: ass,
+            instituicao: "", // Opcional ou pegar de input global
+            respondidas: 0,
+            acertos: 0
+        };
+        // Gerar ID será feito no backend se mandarmos um por um, 
+        // mas para lote é melhor o backend cuidar. 
+        // Vou usar o endpoint POST individual num loop para aproveitar a lógica de ID existente.
+        if(obj.enunciado && obj.gabarito) lote.push(obj);
+    });
+
+    if(lote.length === 0) return alert("Nenhuma questão válida (verifique se preencheu o Gabarito).");
+
+    if(!confirm(`Salvar ${lote.length} questões na disciplina ${disc}?`)) return;
+
+    let salvos = 0;
+    for(let q of lote) {
+        try {
+            await fetch(`${API}/questoes`, {
+                method:"POST", 
+                headers:{"Content-Type":"application/json"}, 
+                body:JSON.stringify(q)
+            });
+            salvos++;
+        } catch(e) { console.error(e); }
+    }
+    
+    alert(`${salvos} questões salvas com sucesso!`);
+    el("imp-preview-container").style.display="none";
+    el("imp-lista-questoes").innerHTML="";
+    init(); // Recarrega banco
+}
+
 
 // --- HEADER FIXO ---
 window.onscroll = function() { fixHeader() };
@@ -304,11 +464,11 @@ window.onload=()=>{
 
 // --- CONFIGURAÇÕES ---
 let catAtual = ""; 
-let editandoMeta = null; // Armazena o nome do item sendo editado
+let editandoMeta = null; 
 
 function mostrarConfig(cat) {
     catAtual = cat;
-    cancelarEdicaoMeta(); // Reseta estado ao trocar de aba
+    cancelarEdicaoMeta(); 
     el("titulo-config").innerText = "Gerenciando: " + cat.toUpperCase();
     
     let isAssunto = cat === 'assuntos';
@@ -316,7 +476,6 @@ function mostrarConfig(cat) {
     el("cfg-ordem").style.display = isAssunto ? "block" : "none";
     
     if(isAssunto) { 
-        // Recarrega disciplinas para garantir lista atualizada
         pop(el("cfg-disc-select"), meta.disciplinas, "Escolha a Disciplina"); 
     }
     renderListaMeta();
@@ -328,7 +487,6 @@ function renderListaMeta() {
     
     if(catAtual === 'assuntos') {
         lista.forEach(item => {
-            // Botão Editar (passando objeto completo)
             let itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
             div.innerHTML += `
                 <div class="item-meta">
@@ -355,15 +513,15 @@ function renderListaMeta() {
 
 function iniciarEdicaoMeta(dado) {
     el("cfg-btn-acao").innerText = "Salvar Alteração";
-    el("cfg-btn-acao").style.background = "#f39c12"; // Cor laranja para indicar edição
+    el("cfg-btn-acao").style.background = "#f39c12"; 
     
     if(catAtual === 'assuntos') {
-        editandoMeta = dado.nome; // Salva o nome original (chave)
+        editandoMeta = dado.nome; 
         el("cfg-novo-nome").value = dado.nome;
         el("cfg-disc-select").value = dado.disciplina;
         el("cfg-ordem").value = dado.ordem;
     } else {
-        editandoMeta = dado; // Dado é apenas uma string aqui
+        editandoMeta = dado; 
         el("cfg-novo-nome").value = dado;
     }
     el("cfg-novo-nome").focus();
@@ -372,7 +530,7 @@ function iniciarEdicaoMeta(dado) {
 function cancelarEdicaoMeta() {
     editandoMeta = null;
     el("cfg-novo-nome").value = "";
-    el("cfg-ordem").value = ""; // Limpa o campo visualmente
+    el("cfg-ordem").value = ""; 
     
     if (catAtual === 'assuntos' && el("cfg-disc-select").options.length > 0) {
         el("cfg-disc-select").value = el("cfg-disc-select").options[0].value;
@@ -390,19 +548,14 @@ async function addMeta() {
     if(catAtual === 'assuntos') {
         let disc = el("cfg-disc-select").value;
         let ord = el("cfg-ordem").value;
-        
-        // Validação alterada: Apenas DISCIPLINA é obrigatória agora.
-        // Ordem pode ser vazia (o backend calculará).
         if(!disc) return alert("Para assuntos, selecione a disciplina.");
         
         novoItem.disciplina = disc; 
-        // Se ord tiver valor, converte para int. Se for vazio, envia null.
         novoItem.ordem = ord ? parseInt(ord) : null;
     }
 
     try {
         if(editandoMeta) {
-            // MODO EDIÇÃO
             const payload = { antigo: editandoMeta, novo: novoItem };
             await fetch(`${API}/metadados/${catAtual}`, {
                 method: "PUT", 
@@ -410,7 +563,6 @@ async function addMeta() {
                 body: JSON.stringify(payload)
             });
         } else {
-            // MODO CRIAÇÃO
             await fetch(`${API}/metadados/${catAtual}`, {
                 method: "POST", 
                 headers:{"Content-Type":"application/json"}, 
@@ -418,7 +570,6 @@ async function addMeta() {
             });
         }
 
-        // Recarrega tudo
         let r = await fetch(`${API}/metadados`); meta = await r.json();
         cancelarEdicaoMeta();
         renderListaMeta(); 
@@ -439,7 +590,6 @@ async function delMeta(nome) {
         alert("Erro ao excluir metadado.");
     }
 }
-
 
 // --- CRUD / BANCO ---
 function altTipo(p) {
@@ -512,11 +662,9 @@ el("form-edicao").onsubmit = async e => {
     el("modal-edicao").style.display="none"; init();
 };
 
-
-// --- PRATICAR ---
-function prepPratica() {
-    el("config-pratica").style.display="block"; el("area-pratica").style.display="none";
-}
+// --- PRATICAR e PROVA --- 
+// (Mantém-se igual ao código anterior, omitido aqui por brevidade pois já estava correto e funcional)
+function prepPratica() { el("config-pratica").style.display="block"; el("area-pratica").style.display="none"; }
 function iniciarPratica() {
     let dis=el("prat-disciplina").value, ban=el("prat-banca").value, ass=el("prat-assunto").value, qtd=el("prat-qtd").value;
     let pool = db.filter(q => (dis===""||q.disciplina===dis) && (ban===""||q.banca===ban) && (ass===""||q.assunto===ass));
@@ -549,7 +697,6 @@ function confirmaPratica() {
     f.innerHTML = acertou ? "Correto! ✅" : `Errado! ❌ Gabarito: ${q.gabarito}`;
     f.style.background = acertou ? "#d4edda" : "#f8d7da";
     if(acertou) { pratAcertos++; }
-    // Atualiza estatísticas no banco (usando o id para achar a questão original)
     let qOriginal = db.find(d => d.id === q.id);
     if (qOriginal) {
         qOriginal.respondidas = (qOriginal.respondidas || 0) + 1;
@@ -561,8 +708,6 @@ function confirmaPratica() {
 function proxPratica() { pratIdx++; if(pratIdx<pratPool.length) renPratica(); else { alert(`Fim! Acertos: ${pratAcertos}/${pratPool.length}`); nav('praticar'); } }
 function cancelarPratica() { if(confirm("Sair?")) nav('praticar'); }
 
-
-// --- PROVA ---
 function prepProva() {
     el("resultado-prova").style.display="none";
     let dis=meta.disciplinas, div=el("lista-distribuicao"); div.innerHTML="";
@@ -628,12 +773,9 @@ function finalizarProva() {
     provaPool.forEach((q, i) => {
         let resp = provaRespostas[i], correta = q.gabarito, isCorrect = resp === correta;
         if(isCorrect) acertos++;
-
-        // Atualizar estatísticas e coleta por disciplina
         if (!acertosPorDisc[q.disciplina]) acertosPorDisc[q.disciplina] = { total: 0, acertos: 0 };
         acertosPorDisc[q.disciplina].total++;
         if (isCorrect) acertosPorDisc[q.disciplina].acertos++;
-
         let realQ = db.find(d => d.id === q.id);
         if(realQ) { 
             realQ.respondidas = (realQ.respondidas || 0) + 1; 
@@ -643,7 +785,6 @@ function finalizarProva() {
         html += `<li style="margin-bottom:10px; border-bottom:1px solid #eee; padding:5px;"><b>Q${i+1} (${q.disciplina}):</b> Sua: <b style="color:${isCorrect?'green':'red'}">${resp||'-'}</b> | Gab: <b>${correta}</b></li>`;
     });
     
-    // Detalhes por disciplina
     let discHtml = '<h3>Desempenho por Disciplina</h3><ul style="list-style:none; padding:0;">';
     for (const disc in acertosPorDisc) {
         const stats = acertosPorDisc[disc];
@@ -655,10 +796,8 @@ function finalizarProva() {
     el("nota-prova").innerText = `${acertos}/${provaPool.length}`;
     el("msg-prova").innerText = acertos/provaPool.length >= 0.7 ? "Aprovado! 🚀" : "Continue Estudando 📚";
     el("detalhes-prova").innerHTML = discHtml + html;
-    init(); // Recarrega o banco após a prova
+    init(); 
 }
-
-// --- GRAFICO ---
 function graf() {
     let ctx=el("chart").getContext("2d"); if(window.myChart)window.myChart.destroy();
     let stats={}; db.forEach(q=>{ if(!stats[q.disciplina]) stats[q.disciplina]={r:0,a:0}; stats[q.disciplina].r+=q.respondidas; stats[q.disciplina].a+=q.acertos; });
