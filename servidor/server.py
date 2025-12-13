@@ -365,6 +365,14 @@ def deletar_meta_item(categoria, nome_item):
         return True
     return False
 
+def normalizar_para_comparacao(texto):
+    if not texto: return ""
+    # Remove tags HTML
+    texto_sem_tags = re.sub(r'<[^>]+>', '', str(texto))
+    # Remove tudo que não for letra ou número (pontuação, espaços extras)
+    texto_limpo = re.sub(r'[\W_]+', '', texto_sem_tags).lower()
+    return texto_limpo
+
 
 # --- ENDPOINTS ---
 @app.route("/questoes", methods=["GET"])
@@ -375,11 +383,20 @@ def get_q(): return jsonify(carregar_questoes())
 def post_q():
     nova = request.json
     dados = carregar_questoes()
-    ne = limpar(nova.get("enunciado")).lower()
-    na = limpar(nova.get("alt_a")).lower()
+
+    # Cria a "impressão digital" da nova questão (Enunciado + Alternativa A)
+    norm_enunciado_novo = normalizar_para_comparacao(nova.get("enunciado"))
+    norm_alta_novo = normalizar_para_comparacao(nova.get("alt_a"))
+
     for q in dados:
-        if limpar(q["enunciado"]).lower() == ne and limpar(q["alt_a"]).lower() == na:
+        # Compara com a versão normalizada das questões existentes
+        norm_enunciado_existente = normalizar_para_comparacao(q["enunciado"])
+        norm_alta_existente = normalizar_para_comparacao(q["alt_a"])
+
+        # Se o "esqueleto" do texto for igual, considera duplicada
+        if norm_enunciado_existente == norm_enunciado_novo and norm_alta_existente == norm_alta_novo:
             return jsonify({"erro": "Questão duplicada!"}), 409
+
     if not nova.get("id"):
         ids = sorted([int(q["id"]) for q in dados if str(q["id"]).isdigit()])
         nid = 1
@@ -389,10 +406,11 @@ def post_q():
             else:
                 break
         nova["id"] = nid
+
     nova.update({"respondidas": 0, "acertos": 0})
     dados.append(nova)
     salvar_questoes(dados)
-    return jsonify({"mensagem": "Salvo", "id": nova["id"]})
+    return jsonify({"mensagem": "Salvo", "id": nova["id"]}), 201
 
 
 @app.route("/questoes", methods=["PUT"])

@@ -477,7 +477,7 @@ async function salvarLote() {
 
         let obj = {
             banca: r.querySelector(".imp-banca").value,
-            instituicao: r.querySelector(".imp-inst").value, 
+            instituicao: r.querySelector(".imp-inst").value,
             ano: r.querySelector(".imp-ano").value,
             dificuldade: r.querySelector(".imp-dif").value,
             enunciado: r.querySelector(".imp-enunciado").value,
@@ -498,24 +498,39 @@ async function salvarLote() {
 
     if(lote.length === 0) return alert("Nenhuma questão válida (verifique se preencheu o Gabarito).");
 
-    if(!confirm(`Salvar ${lote.length} questões na disciplina ${disc}?`)) return;
+    if(!confirm(`Tentar salvar ${lote.length} questões na disciplina ${disc}?`)) return;
 
-    let salvos = 0;
+    let contadores = { salvos: 0, duplicados: 0, erros: 0 };
+
     for(let q of lote) {
         try {
-            await fetch(`${API}/questoes`, {
+            const response = await fetch(`${API}/questoes`, {
                 method:"POST", 
                 headers:{"Content-Type":"application/json"}, 
                 body:JSON.stringify(q)
             });
-            salvos++;
-        } catch(e) { console.error(e); }
+            
+            if (response.status === 200 || response.status === 201) {
+                contadores.salvos++;
+            } else if (response.status === 409) {
+                contadores.duplicados++;
+            } else {
+                contadores.erros++;
+            }
+        } catch(e) { 
+            console.error(e);
+            contadores.erros++;
+        }
     }
     
-    alert(`${salvos} questões salvas com sucesso!`);
-    el("imp-preview-container").style.display="none";
-    el("imp-lista-questoes").innerHTML="";
-    init(); 
+    alert(`Processo Finalizado!\n\n✅ Salvas: ${contadores.salvos}\n⚠️ Duplicadas (ignoradas): ${contadores.duplicados}\n❌ Erros: ${contadores.erros}`);
+    
+    // Só limpa a tela se salvou algo
+    if(contadores.salvos > 0) {
+        el("imp-preview-container").style.display="none";
+        el("imp-lista-questoes").innerHTML="";
+        init(); 
+    }
 }
 
 
