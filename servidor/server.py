@@ -14,6 +14,7 @@ ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
 ARQ_METADADOS = os.path.join(DB_DIR, "metadados.xlsx")
 
 # --- MAPA DE CORREÇÃO DE TÓPICOS QUEBRADOS ---
+# Corrige falhas de OCR onde a primeira letra (Capitular) é separada
 CORRECAO_ASSUNTOS = {
     "UBSTANTIVO": "Substantivo",
     "DJETIVO": "Adjetivo",
@@ -39,15 +40,19 @@ def limpar(texto):
     return str(texto).strip() if texto else ""
 
 
-# --- LÓGICA DE EXTRAÇÃO ---
+# --- LÓGICA DE EXTRAÇÃO E LIMPEZA ---
 
 def limpar_ruido(texto):
-    """Remove cabeçalhos, rodapés e artefatos."""
-    # Remove paginação (36 de 61)
+    """
+    Remove cabeçalhos, rodapés, paginação e artefatos visuais do PDF.
+    """
+    # Remove paginação solta (ex: "36" ou "36 de 61")
     texto = re.sub(r'\n\s*\d+(\s*de\s*\d+)?\s*\n', '\n', texto)
-    # Remove rodapé do aluno
+
+    # Remove o rodapé constante com CPF/Nome do aluno (Ricardo Aciole)
     texto = re.sub(r'\n\s*\d{11}\s*-\s*Ricardo Aciole.*?\n', '\n', texto, flags=re.IGNORECASE)
 
+    # Remove cabeçalhos repetitivos do material
     padroes = [
         r"PETROBRAS \(Nível Superior\) Português",
         r"www\.estrategiaconcursos\.com\.br",
@@ -57,18 +62,35 @@ def limpar_ruido(texto):
     for p in padroes:
         texto = re.sub(fr'\n\s*{p}.*?\n', '\n', texto, flags=re.IGNORECASE)
 
+    # Remove códigos de cores/artefatos (ex: ==2e5d94==)
     texto = re.sub(r'==[a-f0-9]+==', '', texto)
+
     return texto
+
+
+def extrair_gabarito_final(texto):
+    """
+    Cria um mapa {numero: letra} baseado na tabela de gabaritos no final do PDF.
+    """
+    gabaritos = {}
+    # Busca padrões como: "1. LETRA A" ou "1. GABARITO A"
+    matches = re.findall(r'(?:^|\n)\s*(\d+)\.\s*(?:LETRA|Gabarito)?\s*([A-E])(?=\s|$|\n)', texto, re.IGNORECASE)
+    for num, letra in matches:
+        gabaritos[num] = letra.upper()
+    return gabaritos
 
 
 def parsear_questoes(texto_bruto):
     texto = limpar_ruido(texto_bruto)
     questoes = []
 
-    # --- MAPEAMENTO DE ASSUNTOS ---
+    # Gera o mapa de gabaritos da lista final para uso posterior
+    gabaritos_lista = extrair_gabarito_final(texto)
+
+    # --- 1. MAPEAMENTO DE ASSUNTOS (CONTEXTO) ---
     mapa_assuntos = []
 
-    # 1. Títulos Normais
+    # Regex A: Títulos Normais (Caso o PDF venha limpo)
     regex_normal = re.compile(r'(?:QUESTÕES|LISTA DE).*?[-–—]\s*([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s]+?)\s*[-–—]\s*CESGRANRIO',
                               re.IGNORECASE)
     for match in regex_normal.finditer(texto):
@@ -76,22 +98,24 @@ def parsear_questoes(texto_bruto):
         if len(assunto) > 3:
             mapa_assuntos.append({"inicio": match.start(), "assunto": assunto})
 
-    # 2. Títulos Quebrados (Correção do PDF do Estratégia)
+    # Regex B: Títulos Quebrados (Específico deste PDF com capitulares)
     regex_quebrado = re.compile(r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES)\s+([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s]+)\s+ESGRANRIO',
                                 re.IGNORECASE)
     for match in regex_quebrado.finditer(texto):
         trecho_assunto = match.group(1).strip()
+        # Tenta corrigir usando o dicionário
         assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto)
         if not assunto_corrigido:
-            trecho_limpo = trecho_assunto.replace(" ", "")
-            assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_limpo)
+            # Tenta sem espaços (ex: "S U B S T A N T I V O" -> "SUBSTANTIVO")
+            assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto.replace(" ", ""))
 
         if assunto_corrigido:
             mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_corrigido})
 
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    # --- SCANNER DE QUESTÕES ---
+    # --- 2. SCANNER DE QUESTÕES ---
+    # Procura o padrão: Quebra de linha -> Número -> Ponto -> (Cabeçalho)
     regex_quest = re.compile(r'(?:^|\n)\s*(\d+)\.\s*\(?(.*?)\)\s*(.*?)(?=\n\s*\d+\.\s*\(|$)', re.DOTALL)
 
     for match in regex_quest.finditer(texto):
@@ -100,56 +124,60 @@ def parsear_questoes(texto_bruto):
         cabecalho_cru = match.group(2)
         conteudo_bruto = match.group(3)
 
+        # Filtro de Validade: Deve ser da banca CESGRANRIO ou ter estrutura de barras
         if 'CESGRANRIO' not in cabecalho_cru.upper() and '/' not in cabecalho_cru:
             continue
 
-        # 1. Assunto
+        # A) Define o Assunto (Baseado na posição do texto)
         assunto_atual = "Geral"
         if mapa_assuntos:
+            # Pega o último assunto que apareceu antes desta questão
             anteriores = [m for m in mapa_assuntos if m["inicio"] < pos_inicio]
             if anteriores:
                 assunto_atual = anteriores[-1]["assunto"]
 
-        # 2. Cabeçalho
+        # B) Processa o Cabeçalho (Ano, Banca, Instituição)
         clean_header = cabecalho_cru.replace('(', '').replace(')', '')
         partes = [p.strip() for p in clean_header.split('/')]
+
         banca = partes[0].split('-')[0].strip() or "CESGRANRIO"
         instituicao = ""
         ano = "2025"
 
         for p in partes:
-            if re.search(r'\b20\d{2}\b', p):
+            if re.search(r'\b20\d{2}\b', p):  # Ano (2010-2099)
                 ano = re.search(r'20\d{2}', p).group(0)
             elif p != partes[0] and not instituicao and len(p) > 2:
                 instituicao = p
 
-        # 3. GABARITO (Lógica Híbrida)
+        # C) GABARITO (Estratégia Dupla)
         gabarito = ""
 
-        # A) Tenta no comentário (para Questões Comentadas)
+        # 1. Tenta achar no comentário (para Questões Comentadas)
         match_gab_comentado = re.search(r'Gabarito[:\.\s-]*(?:Letra)?\s*([A-E])', conteudo_bruto, re.IGNORECASE)
 
         if match_gab_comentado:
             gabarito = match_gab_comentado.group(1).upper()
         else:
-            # B) Busca "Look-Ahead" (Para Listas de Questões)
-            # Procura nas próximas linhas do texto (limitado a 5000 chars para não pegar outra seção)
-            # O gabarito da lista costuma estar logo após a lista acabar.
-            # Procura por: "Numero. LETRA X" ou "Numero. X"
-            raio_busca = texto[match.end():match.end() + 10000]
-
-            # Regex específico para achar o gabarito deste número exato
-            # Aceita quebras de linha ou espaços antes do número
-            regex_gabarito_lista = re.compile(fr'(?:^|\s){numero}\.\s*(?:LETRA|Gabarito)?\s*([A-E])', re.IGNORECASE)
-
-            match_gl = regex_gabarito_lista.search(raio_busca)
+            # 2. Busca "Look-Ahead" (Para Listas de Questões)
+            # Procura nas próximas linhas (raio de 15000 chars) pelo padrão "Numero. LETRA X"
+            raio_busca = texto[match.end():match.end() + 15000]
+            match_gl = re.search(fr'(?:^|\s){numero}\.\s*(?:LETRA|Gabarito)?\s*([A-E])', raio_busca, re.IGNORECASE)
             if match_gl:
                 gabarito = match_gl.group(1).upper()
 
-        # 4. Limpeza e Alternativas
+        # D) LIMPEZA E SEPARAÇÃO DE ALTERNATIVAS
+
+        # Corte 1: Remove a parte do comentário ou o gabarito explícito da questão comentada
         conteudo_limpo = re.split(r'(?:\n\s*Comentários:|\n\s*Gabarito)', conteudo_bruto, flags=re.IGNORECASE)[0]
 
-        # Aceita "a)" inline (resolve a questão 2)
+        # Corte 2 (MURO DE CONTENÇÃO):
+        # Se encontrar um título de seção GRANDE (ex: LISTA DE QUESTÕES) logo depois, corta ali.
+        # Isso impede que o índice ou gabarito da próxima seção suje a alternativa E.
+        conteudo_limpo = re.split(r'\n\s*(?:G\s*A\s*B\s*A\s*R\s*I\s*T\s*O|L\s*I\s*S\s*T\s*A\s*D\s*E)', conteudo_limpo,
+                                  flags=re.IGNORECASE)[0]
+
+        # Separação das Alternativas (Aceita formato inline "a) ... b) ...")
         partes_alt = re.split(r'(?:^|\s+)([a-eA-E])\)\s+', conteudo_limpo)
 
         enunciado = partes_alt[0].strip()
@@ -160,9 +188,11 @@ def parsear_questoes(texto_bruto):
                 letra = partes_alt[k].upper()
                 if k + 1 < len(partes_alt):
                     txt = partes_alt[k + 1].strip()
+                    # Remove sujeira final (pontos soltos, traços)
                     txt = re.sub(r'Gabarito.*$', '', txt, flags=re.IGNORECASE).strip().rstrip('.;-')
                     alts[letra] = txt
 
+        # Validação Final
         if enunciado and (alts["A"] or alts["B"]):
             questoes.append({
                 "temp_id": numero,
@@ -187,10 +217,7 @@ def extrair_texto_pdf(caminho_arquivo):
     return texto
 
 
-# --- RESTO DO ARQUIVO (CRUD) ---
-# ... (Mantenha todo o código de rotas de banco de dados abaixo inalterado) ...
-
-# --- GERENCIAMENTO DE QUESTÕES ---
+# --- CRUD BÁSICO DE QUESTÕES ---
 def verificar_questoes():
     garantir_diretorio()
     if not os.path.exists(ARQ_QUESTOES):
