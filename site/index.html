@@ -351,13 +351,21 @@ function renderPreview(lista) {
     el("imp-preview-container").style.display = "block";
 
     lista.forEach((q, i) => {
+        let optionsGab = `<option value="">?</option>`;
+        ["A","B","C","D","E"].forEach(l => {
+            let sel = q.gabarito === l ? "selected" : "";
+            optionsGab += `<option value="${l}" ${sel}>${l}</option>`;
+        });
+
         div.innerHTML += `
         <div class="imp-row" id="imp-row-${i}">
             <div style="width:40px; font-weight:bold">${i+1}</div>
             
             <div class="imp-meta">
-                <input type="text" class="imp-banca" placeholder="Banca" value="CESGRANRIO">
-                <input type="number" class="imp-ano" placeholder="Ano" value="${new Date().getFullYear()}">
+                <input type="text" class="imp-banca" placeholder="Banca" value="${q.banca}" title="Banca">
+                <input type="text" class="imp-inst" placeholder="Instituição" value="${q.instituicao}" style="font-size:0.85em" title="Instituição">
+                <input type="number" class="imp-ano" placeholder="Ano" value="${q.ano}" title="Ano">
+                <input type="text" class="imp-assunto-ind" placeholder="Assunto" value="${q.assunto}" style="font-size:0.85em; color:var(--purple)" title="Assunto">
                 <select class="imp-dif">
                     <option value="Médio">Médio</option><option value="Fácil">Fácil</option><option value="Difícil">Difícil</option>
                 </select>
@@ -376,8 +384,7 @@ function renderPreview(lista) {
 
             <div class="imp-gab">
                 <select class="imp-gabarito">
-                    <option value="">?</option>
-                    <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option>
+                    ${optionsGab}
                 </select>
             </div>
 
@@ -392,14 +399,21 @@ function renderPreview(lista) {
 async function salvarLote() {
     let rows = document.querySelectorAll(".imp-row");
     let disc = el("imp-disciplina").value;
-    let ass = el("imp-assunto").value;
+    let assGlobal = el("imp-assunto").value;
 
-    if(!disc || !ass) return alert("Selecione a Disciplina e o Assunto Global (acima da lista) para aplicar a todas as questões.");
+    if(!disc) return alert("Selecione a Disciplina base (acima da lista).");
 
     let lote = [];
     rows.forEach(r => {
+        // Usa o assunto que veio do PDF, se não tiver, usa o global selecionado no topo
+        let assuntoFinal = r.querySelector(".imp-assunto-ind").value || assGlobal;
+        
+        // Se ainda assim não tiver assunto, avisa (opcional, ou deixa passar vazio)
+        if(!assuntoFinal) assuntoFinal = "Geral";
+
         let obj = {
             banca: r.querySelector(".imp-banca").value,
+            instituicao: r.querySelector(".imp-inst").value, // Captura nova
             ano: r.querySelector(".imp-ano").value,
             dificuldade: r.querySelector(".imp-dif").value,
             enunciado: r.querySelector(".imp-enunciado").value,
@@ -409,16 +423,12 @@ async function salvarLote() {
             alt_d: r.querySelector(".imp-alt-d").value,
             alt_e: r.querySelector(".imp-alt-e").value,
             gabarito: r.querySelector(".imp-gabarito").value,
-            tipo: "ME", // Assumindo ME para importação PDF padrão
+            tipo: "ME", 
             disciplina: disc,
-            assunto: ass,
-            instituicao: "", // Opcional ou pegar de input global
+            assunto: assuntoFinal,
             respondidas: 0,
             acertos: 0
         };
-        // Gerar ID será feito no backend se mandarmos um por um, 
-        // mas para lote é melhor o backend cuidar. 
-        // Vou usar o endpoint POST individual num loop para aproveitar a lógica de ID existente.
         if(obj.enunciado && obj.gabarito) lote.push(obj);
     });
 
@@ -441,7 +451,7 @@ async function salvarLote() {
     alert(`${salvos} questões salvas com sucesso!`);
     el("imp-preview-container").style.display="none";
     el("imp-lista-questoes").innerHTML="";
-    init(); // Recarrega banco
+    init(); 
 }
 
 
