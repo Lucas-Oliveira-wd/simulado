@@ -29,7 +29,7 @@
     .secao{background:#fff;padding:25px;border-radius:8px;margin-top:20px;display:none;box-shadow:0 2px 10px rgba(0,0,0,.05)}
     input,select,textarea{width:100%;padding:8px;margin:5px 0;border:1px solid #ccc;border-radius:4px;box-sizing:border-box}
     .toolbar{display:flex;gap:5px;background:#eee;padding:5px;border:1px solid #ccc;border-bottom:0;border-radius:4px 4px 0 0}
-    .btn-tool{cursor:pointer;padding:2px 8px;font-weight:bold; background:#fff; border:1px solid #ccc; border-radius:4px}
+    .btn-tool{cursor:pointer;padding:2px 8px;font-weight:bold; background:#fff; border:1px solid #ccc; border-radius:4px; min-width: 30px;}
     .input-com-toolbar { margin-top: 0 !important; border-top-left-radius: 0; border-top-right-radius: 0; }
     .btn-acao{background:var(--succ);color:#fff;border:none;padding:10px;width:100%;border-radius:4px;cursor:pointer;font-weight:bold;margin-top:10px}
     
@@ -73,7 +73,33 @@
     .imp-textarea:focus { border-color: var(--sec); outline: none; }
     .preview-header { display: flex; background: var(--primary); color: white; padding: 10px; border-radius: 4px 4px 0 0; font-weight: bold; font-size: 0.85rem;}
     
-    .render-html b{font-weight:900} .render-html u{text-decoration:underline;text-decoration-thickness:2px}
+    /* --- TOOLBAR FLUTUANTE --- */
+    .floating-toolbar {
+        position: absolute;
+        display: none;
+        background: #333;
+        padding: 5px 10px;
+        border-radius: 6px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        z-index: 1000;
+        gap: 5px;
+    }
+    .floating-toolbar::after {
+        content: ''; position: absolute; top: 100%; left: 20px;
+        border-width: 5px; border-style: solid;
+        border-color: #333 transparent transparent transparent;
+    }
+    .floating-toolbar button {
+        background: #555; border: none; color: white;
+        padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold;
+    }
+    .floating-toolbar button:hover { background: #777; }
+
+    /* Renderização de HTML */
+    .render-html b { font-weight: 900; }
+    .render-html u { text-decoration: underline; text-decoration-thickness: 2px; }
+    .render-html i { font-style: italic; }
+    .render-html mark { background-color: #f1c40f; color: #000; padding: 0 2px; border-radius: 2px; }
   </style>
 </head>
 <body>
@@ -88,10 +114,17 @@
   <button id="nav-importar" onclick="nav('importar')">📂 Importar PDF</button>
 </nav></div></header>
 
+<div id="floating-toolbar" class="floating-toolbar">
+    <button onmousedown="event.preventDefault(); fmtUlt('b')" title="Negrito">B</button>
+    <button onmousedown="event.preventDefault(); fmtUlt('i')" title="Itálico" style="font-style:italic">I</button>
+    <button onmousedown="event.preventDefault(); fmtUlt('u')" title="Sublinhado" style="text-decoration:underline">U</button>
+    <button onmousedown="event.preventDefault(); fmtUlt('mark')" title="Destaque" style="color:#f1c40f">🖍</button>
+</div>
+
 <section id="secao-cadastro" class="secao"><div class="container" style="max-width:900px">
   <h2>Cadastrar Questão</h2><form id="form-cadastro">
-  <label>Enunciado:</label><div class="toolbar"><button type="button" class="btn-tool" onclick="fmt('cad-enunciado','b')">B</button><button type="button" class="btn-tool" onclick="fmt('cad-enunciado','u')">U</button></div>
-  <textarea id="cad-enunciado" class="input-com-toolbar" rows="4" required onfocus="foco=this"></textarea>
+  <label>Enunciado:</label>
+  <textarea id="cad-enunciado" class="input-com-toolbar" rows="4" required onfocus="showToolbar(this)"></textarea>
   <div class="filtro-grid">
     <select id="cad-banca" required></select>
     <select id="cad-instituicao"><option value="">Instituição...</option></select>
@@ -104,12 +137,11 @@
   </div>
   <select id="cad-tipo" onchange="altTipo('cad')"><option value="ME">Múltipla Escolha</option><option value="CE">Certo/Errado</option></select>
   <div id="cad-container-alt">
-    <div class="toolbar" style="margin-top:10px"><button type="button" class="btn-tool" onclick="fmtUlt('b')">B</button><button type="button" class="btn-tool" onclick="fmtUlt('u')">U</button></div>
-    <div class="input-group"><span>A)</span><input type="text" id="cad-alt-a" onfocus="foco=this"></div>
-    <div class="input-group"><span>B)</span><input type="text" id="cad-alt-b" onfocus="foco=this"></div>
-    <div class="input-group"><span>C)</span><input type="text" id="cad-alt-c" onfocus="foco=this"></div>
-    <div class="input-group"><span>D)</span><input type="text" id="cad-alt-d" onfocus="foco=this"></div>
-    <div class="input-group"><span>E)</span><input type="text" id="cad-alt-e" onfocus="foco=this"></div>
+    <div class="input-group"><span>A)</span><input type="text" id="cad-alt-a" onfocus="showToolbar(this)"></div>
+    <div class="input-group"><span>B)</span><input type="text" id="cad-alt-b" onfocus="showToolbar(this)"></div>
+    <div class="input-group"><span>C)</span><input type="text" id="cad-alt-c" onfocus="showToolbar(this)"></div>
+    <div class="input-group"><span>D)</span><input type="text" id="cad-alt-d" onfocus="showToolbar(this)"></div>
+    <div class="input-group"><span>E)</span><input type="text" id="cad-alt-e" onfocus="showToolbar(this)"></div>
   </div>
   <label>Gabarito:</label><select id="cad-gabarito" required></select>
   <button type="submit" class="btn-acao">Salvar</button>
@@ -130,7 +162,6 @@
     <div id="imp-preview-container" style="display:none">
         <h3 id="imp-titulo-preview">Prévia</h3>
         <button class="btn-acao" onclick="salvarLote()" style="margin-bottom:15px;">💾 Salvar Todas no Banco</button>
-        
         <div class="preview-header">
             <div style="width:40px">#</div>
             <div style="width:150px; margin-right:10px">Banca/Ano</div>
@@ -244,8 +275,8 @@
 
 <div id="modal-edicao" class="modal"><div class="modal-content"><span class="close-modal" onclick="el('modal-edicao').style.display='none'">&times;</span>
   <h2>Editar</h2><form id="form-edicao"><input type="hidden" id="edit-id">
-  <label>Enunciado:</label><div class="toolbar"><button type="button" class="btn-tool" onclick="fmt('edit-enunciado','b')">B</button><button type="button" class="btn-tool" onclick="fmt('edit-enunciado','u')">U</button></div>
-  <textarea id="edit-enunciado" class="input-com-toolbar" rows="3" required onfocus="foco=this"></textarea>
+  <label>Enunciado:</label>
+  <textarea id="edit-enunciado" class="input-com-toolbar" rows="3" required onfocus="showToolbar(this)"></textarea>
   <div class="filtro-grid">
     <select id="edit-banca"></select>
     <select id="edit-instituicao"></select>
@@ -258,12 +289,11 @@
   </div>
   <select id="edit-tipo" onchange="altTipo('edit')"><option value="ME">Múltipla</option><option value="CE">Certo/Errado</option></select>
   <div id="edit-container-alt">
-    <div class="toolbar" style="margin-top:10px"><button type="button" class="btn-tool" onclick="fmtUlt('b')">B</button><button type="button" class="btn-tool" onclick="fmtUlt('u')">U</button></div>
-    <div class="input-group"><span>A)</span><input type="text" id="edit-alt-a" onfocus="foco=this"></div>
-    <div class="input-group"><span>B)</span><input type="text" id="edit-alt-b" onfocus="foco=this"></div>
-    <div class="input-group"><span>C)</span><input type="text" id="edit-alt-c" onfocus="foco=this"></div>
-    <div class="input-group"><span>D)</span><input type="text" id="edit-alt-d" onfocus="foco=this"></div>
-    <div class="input-group"><span>E)</span><input type="text" id="edit-alt-e" onfocus="foco=this"></div>
+    <div class="input-group"><span>A)</span><input type="text" id="edit-alt-a" onfocus="showToolbar(this)"></div>
+    <div class="input-group"><span>B)</span><input type="text" id="edit-alt-b" onfocus="showToolbar(this)"></div>
+    <div class="input-group"><span>C)</span><input type="text" id="edit-alt-c" onfocus="showToolbar(this)"></div>
+    <div class="input-group"><span>D)</span><input type="text" id="edit-alt-d" onfocus="showToolbar(this)"></div>
+    <div class="input-group"><span>E)</span><input type="text" id="edit-alt-e" onfocus="showToolbar(this)"></div>
   </div>
   <label>Gabarito:</label><select id="edit-gabarito"></select><button class="btn-acao" style="background:#f39c12">Salvar</button>
 </form></div></div>
@@ -287,10 +317,47 @@ const nav = n => {
     if(n==='praticar') prepPratica(); 
     if(n==='prova') prepProva(); 
     if(n==='estatisticas') graf(); 
+    // Esconde a toolbar ao navegar
+    el("floating-toolbar").style.display = "none";
     window.scrollTo(0,0); 
 };
-const fmt = (id,t) => { let c=el(id),s=c.selectionStart,e=c.selectionEnd; c.value=c.value.substring(0,s)+`<${t}>`+c.value.substring(s,e)+`</${t}>`+c.value.substring(e); };
-const fmtUlt = t => { if(foco) fmt(foco.id, t); };
+
+// --- FUNÇÕES DE FORMATAÇÃO E TOOLBAR ---
+const fmt = (elem, t) => { 
+    // Aceita o elemento direto ou ID
+    let c = typeof elem === 'string' ? el(elem) : elem;
+    if(!c) return;
+    
+    let s = c.selectionStart;
+    let e = c.selectionEnd;
+    // Insere as tags no local do cursor/seleção
+    c.value = c.value.substring(0, s) + `<${t}>` + c.value.substring(s, e) + `</${t}>` + c.value.substring(e);
+};
+
+const fmtUlt = (t) => { if(foco) fmt(foco, t); };
+
+function showToolbar(elem) {
+    foco = elem; // Atualiza quem é o foco global
+    const tb = el('floating-toolbar');
+    
+    // Pega a posição do campo que foi clicado
+    const rect = elem.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+
+    // Posiciona a toolbar 40px acima do campo
+    tb.style.top = (rect.top + scrollTop - 40) + 'px';
+    tb.style.left = (rect.left + scrollLeft) + 'px';
+    tb.style.display = 'flex';
+}
+
+// Oculta a toolbar se clicar fora de inputs (opcional, mas bom pra limpeza)
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('input') && !e.target.closest('textarea') && !e.target.closest('.floating-toolbar')) {
+        el('floating-toolbar').style.display = 'none';
+    }
+});
+
 
 // --- GERAL ---
 async function init() {
@@ -372,13 +439,13 @@ function renderPreview(lista) {
             </div>
 
             <div class="imp-content">
-                <textarea class="imp-textarea imp-enunciado" rows="3" placeholder="Enunciado">${q.enunciado}</textarea>
+                <textarea class="imp-textarea imp-enunciado" rows="3" placeholder="Enunciado" onfocus="showToolbar(this)">${q.enunciado}</textarea>
                 <div style="margin-top:5px; display:grid; gap:5px">
-                    <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${q.alt_a}"></div>
-                    <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${q.alt_b}"></div>
-                    <div class="input-group"><span>C)</span><input type="text" class="imp-alt-c" value="${q.alt_c}"></div>
-                    <div class="input-group"><span>D)</span><input type="text" class="imp-alt-d" value="${q.alt_d}"></div>
-                    <div class="input-group"><span>E)</span><input type="text" class="imp-alt-e" value="${q.alt_e}"></div>
+                    <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${q.alt_a}" onfocus="showToolbar(this)"></div>
+                    <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${q.alt_b}" onfocus="showToolbar(this)"></div>
+                    <div class="input-group"><span>C)</span><input type="text" class="imp-alt-c" value="${q.alt_c}" onfocus="showToolbar(this)"></div>
+                    <div class="input-group"><span>D)</span><input type="text" class="imp-alt-d" value="${q.alt_d}" onfocus="showToolbar(this)"></div>
+                    <div class="input-group"><span>E)</span><input type="text" class="imp-alt-e" value="${q.alt_e}" onfocus="showToolbar(this)"></div>
                 </div>
             </div>
 
@@ -405,15 +472,12 @@ async function salvarLote() {
 
     let lote = [];
     rows.forEach(r => {
-        // Usa o assunto que veio do PDF, se não tiver, usa o global selecionado no topo
         let assuntoFinal = r.querySelector(".imp-assunto-ind").value || assGlobal;
-        
-        // Se ainda assim não tiver assunto, avisa (opcional, ou deixa passar vazio)
         if(!assuntoFinal) assuntoFinal = "Geral";
 
         let obj = {
             banca: r.querySelector(".imp-banca").value,
-            instituicao: r.querySelector(".imp-inst").value, // Captura nova
+            instituicao: r.querySelector(".imp-inst").value, 
             ano: r.querySelector(".imp-ano").value,
             dificuldade: r.querySelector(".imp-dif").value,
             enunciado: r.querySelector(".imp-enunciado").value,
