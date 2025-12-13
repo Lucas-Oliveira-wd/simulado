@@ -13,6 +13,22 @@ DB_DIR = os.path.join(BASE_DIR, "../banco_de_dados")
 ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
 ARQ_METADADOS = os.path.join(DB_DIR, "metadados.xlsx")
 
+# --- MAPA DE CORREÇÃO DE TÓPICOS QUEBRADOS ---
+# O PDF separa a primeira letra (Capitular), então mapeamos o resto da palavra.
+CORRECAO_ASSUNTOS = {
+    "UBSTANTIVO": "Substantivo",
+    "DJETIVO": "Adjetivo",
+    "DVÉRBIO": "Advérbio",
+    "RTIGO": "Artigo",
+    "NTERJEIÇÃO": "Interjeição",
+    "UMERAL": "Numeral",
+    "RONOME": "Pronome",
+    "ERBO": "Verbo",
+    "ONJUNÇÃO": "Conjunção",
+    "REPOSIÇÃO": "Preposição",
+    "ALAVRAS SPECIAIS": "Palavras Especiais"
+}
+
 
 # --- FUNÇÕES UTILITÁRIAS ---
 def garantir_diretorio():
@@ -24,18 +40,15 @@ def limpar(texto):
     return str(texto).strip() if texto else ""
 
 
-# --- LÓGICA DE EXTRAÇÃO DE PDF ---
-def limpar_ruido(texto):
-    """
-    Remove cabeçalhos, rodapés e artefatos de PDF que quebram o texto.
-    """
-    # Remove linhas de paginação soltas (ex: "36" ou "36 de 61")
-    texto = re.sub(r'\n\s*\d+(\s*de\s*\d+)?\s*\n', '\n', texto)
+# --- LÓGICA DE EXTRAÇÃO ---
 
-    # Remove o rodapé constante com CPF/Nome do aluno
+def limpar_ruido(texto):
+    """Remove cabeçalhos, rodapés e artefatos."""
+    # Remove paginação (36 de 61)
+    texto = re.sub(r'\n\s*\d+(\s*de\s*\d+)?\s*\n', '\n', texto)
+    # Remove rodapé do aluno
     texto = re.sub(r'\n\s*\d{11}\s*-\s*Ricardo Aciole.*?\n', '\n', texto, flags=re.IGNORECASE)
 
-    # Remove cabeçalhos repetitivos
     padroes = [
         r"PETROBRAS \(Nível Superior\) Português",
         r"www\.estrategiaconcursos\.com\.br",
@@ -45,78 +58,110 @@ def limpar_ruido(texto):
     for p in padroes:
         texto = re.sub(fr'\n\s*{p}.*?\n', '\n', texto, flags=re.IGNORECASE)
 
-    # Remove artefatos estranhos (ex: ==2e5d94==)
     texto = re.sub(r'==[a-f0-9]+==', '', texto)
-
     return texto
 
 
+def extrair_gabarito_final(texto):
+    gabaritos = {}
+    # Busca tabela final: "1. LETRA A"
+    matches = re.findall(r'(?:^|\n)\s*(\d+)\.\s*(?:LETRA|Gabarito)?\s*([A-E])(?=\s|$|\n)', texto, re.IGNORECASE)
+    for num, letra in matches:
+        gabaritos[num] = letra.upper()
+    return gabaritos
+
+
 def parsear_questoes(texto_bruto):
-    # 1. Limpeza prévia
     texto = limpar_ruido(texto_bruto)
     questoes = []
+    gabaritos_lista = extrair_gabarito_final(texto)
 
-    # --- MAPEAMENTO DE ASSUNTOS (Contexto) ---
+    # --- MAPEAMENTO DE ASSUNTOS ---
     mapa_assuntos = []
-    # Procura títulos como "11). QUESTÕES COMENTADAS - SUBSTANTIVO - CESGRANRIO"
-    regex_topico = re.compile(r'(?:QUESTÕES|LISTA DE).*?\s-\s*(.*?)\s*-\s*CESGRANRIO', re.IGNORECASE)
 
-    for match in regex_topico.finditer(texto):
-        assunto_encontrado = match.group(1).strip().title()  # Ex: "Substantivo"
-        mapa_assuntos.append({
-            "inicio": match.start(),
-            "assunto": assunto_encontrado
-        })
+    # REGEX 1: Títulos Normais (Caso o PDF venha limpo)
+    regex_normal = re.compile(r'(?:QUESTÕES|LISTA DE).*?[-–—]\s*([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s]+?)\s*[-–—]\s*CESGRANRIO',
+                              re.IGNORECASE)
+    for match in regex_normal.finditer(texto):
+        assunto = match.group(1).strip().title()
+        if len(assunto) > 3:  # Evita lixo curto
+            mapa_assuntos.append({"inicio": match.start(), "assunto": assunto})
+
+    # REGEX 2: Títulos Quebrados (O caso específico deste PDF)
+    # Padrão: "UESTÕES OMENTADAS [ASSUNTO] ESGRANRIO"
+    regex_quebrado = re.compile(r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES)\s+([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s]+)\s+ESGRANRIO',
+                                re.IGNORECASE)
+
+    for match in regex_quebrado.finditer(texto):
+        trecho_assunto = match.group(1).strip()
+        # Verifica se o trecho capturado está no nosso dicionário de correção
+        assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto)
+
+        # Se não achou exato, tenta limpar espaços extras
+        if not assunto_corrigido:
+            trecho_limpo = trecho_assunto.replace(" ", "")
+            assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_limpo)
+
+        if assunto_corrigido:
+            mapa_assuntos.append({
+                "inicio": match.start(),
+                "assunto": assunto_corrigido
+            })
+
+    # Ordena ocorrências pela posição no texto
+    mapa_assuntos.sort(key=lambda x: x["inicio"])
 
     # --- SCANNER DE QUESTÕES ---
-    regex_quest = re.compile(r'(?:^|\n)\s*(\d+)\.\s*\((.*?)\)\s*(.*?)(?=\n\s*\d+\.\s*\(|$)', re.DOTALL)
+    regex_quest = re.compile(r'(?:^|\n)\s*(\d+)\.\s*\(?(.*?)\)\s*(.*?)(?=\n\s*\d+\.\s*\(|$)', re.DOTALL)
 
     for match in regex_quest.finditer(texto):
-        posicao_questao = match.start()
+        pos_inicio = match.start()
         numero = match.group(1)
         cabecalho_cru = match.group(2)
         conteudo_bruto = match.group(3)
 
-        # Filtro de Banca
         if 'CESGRANRIO' not in cabecalho_cru.upper() and '/' not in cabecalho_cru:
             continue
 
-        # --- DEFINIR ASSUNTO PELO CONTEXTO ---
+        # 1. Define Assunto
         assunto_atual = "Geral"
-        for m in mapa_assuntos:
-            if m["inicio"] < posicao_questao:
-                assunto_atual = m["assunto"]
-            else:
-                break
+        if mapa_assuntos:
+            anteriores = [m for m in mapa_assuntos if m["inicio"] < pos_inicio]
+            if anteriores:
+                assunto_atual = anteriores[-1]["assunto"]
 
-                # --- EXTRAÇÃO DE CABEÇALHO (Instituição e Ano) ---
-        # Ex: CESGRANRIO / UNIRIO / ASS. EM ADM. / 2016
-        partes = [p.strip() for p in cabecalho_cru.split('/')]
+        # 2. Processa Cabeçalho
+        clean_header = cabecalho_cru.replace('(', '').replace(')', '')
+        partes = [p.strip() for p in clean_header.split('/')]
 
-        banca_final = partes[0]
+        banca = partes[0].split('-')[0].strip()
+        if not banca: banca = "CESGRANRIO"
+
         instituicao = ""
-        ano = ""
+        ano = "2025"
 
-        # CORREÇÃO AQUI: loop corrigido para usar 'partes'
         for p in partes:
-            if re.match(r'^\d{4}$', p):
-                ano = p
-            elif p != banca_final and not instituicao and partes.index(p) == 1:
-                instituicao = p
-            elif any(x in p.upper() for x in ['PREFEITURA', 'CÂMARA', 'BANCO', 'PETROBRAS', 'UNIRIO']):
+            if re.search(r'\b20\d{2}\b', p):
+                ano = re.search(r'20\d{2}', p).group(0)
+            elif p != partes[0] and not instituicao and len(p) > 2:
                 instituicao = p
 
-        if not ano: ano = "2025"  # Fallback visual se não achar
-
-        # --- GABARITO ---
+        # 3. Gabarito
         gabarito = ""
-        match_gab = re.search(r'Gabarito[:\.\s-]*(?:Letra)?\s*([A-E])', conteudo_bruto, re.IGNORECASE)
-        if match_gab:
-            gabarito = match_gab.group(1).upper()
+        match_gab_comentado = re.search(r'Gabarito[:\.\s-]*(?:Letra)?\s*([A-E])', conteudo_bruto, re.IGNORECASE)
 
-        # --- SEPARAÇÃO E LIMPEZA ---
+        if match_gab_comentado:
+            gabarito = match_gab_comentado.group(1).upper()
+        else:
+            gabarito = gabaritos_lista.get(numero, "")
+
+        # 4. Limpeza e Alternativas
         conteudo_limpo = re.split(r'(?:\n\s*Comentários:|\n\s*Gabarito)', conteudo_bruto, flags=re.IGNORECASE)[0]
-        partes_alt = re.split(r'(?:^|\n)\s*([A-E])\)\s+', conteudo_limpo)
+
+        # Regex ALTERNATIVAS AJUSTADO PARA INLINE
+        # Aceita "a)" se tiver espaço ou quebra de linha antes.
+        # Isso resolve a Questão 2 onde as alternativas estão grudadas (ex: "renda. b) Muitas")
+        partes_alt = re.split(r'(?:^|\s+)([a-eA-E])\)\s+', conteudo_limpo)
 
         enunciado = partes_alt[0].strip()
         alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
@@ -124,43 +169,38 @@ def parsear_questoes(texto_bruto):
         if len(partes_alt) > 1:
             for k in range(1, len(partes_alt), 2):
                 letra = partes_alt[k].upper()
-                txt_alt = partes_alt[k + 1].strip()
-                txt_alt = re.sub(r'Gabarito.*$', '', txt_alt, flags=re.IGNORECASE | re.DOTALL).strip()
-                txt_alt = txt_alt.rstrip(' .;-')
-                if letra in alts:
-                    alts[letra] = txt_alt
+                if k + 1 < len(partes_alt):
+                    txt = partes_alt[k + 1].strip()
+                    txt = re.sub(r'Gabarito.*$', '', txt, flags=re.IGNORECASE).strip().rstrip('.;-')
+                    alts[letra] = txt
 
+        # Validação: só salva se tiver enunciado e pelo menos 2 alternativas (A e B)
         if enunciado and (alts["A"] or alts["B"]):
             questoes.append({
                 "temp_id": numero,
-                "banca": banca_final,
+                "banca": banca,
                 "instituicao": instituicao,
                 "ano": ano,
                 "assunto": assunto_atual,
                 "enunciado": enunciado,
-                "alt_a": alts["A"],
-                "alt_b": alts["B"],
-                "alt_c": alts["C"],
-                "alt_d": alts["D"],
-                "alt_e": alts["E"],
+                "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
                 "gabarito": gabarito,
-                "dificuldade": "Médio",
-                "tipo": "ME"
+                "dificuldade": "Médio", "tipo": "ME"
             })
 
     return questoes
 
 
 def extrair_texto_pdf(caminho_arquivo):
-    texto_completo = ""
+    texto = ""
     with pdfplumber.open(caminho_arquivo) as pdf:
         for page in pdf.pages:
-            texto_completo += (page.extract_text() or "") + "\n"
-    return texto_completo
+            texto += (page.extract_text() or "") + "\n"
+    return texto
 
 
-# --- RESTANTE DO CÓDIGO (CRUD) ---
-# Mantém-se idêntico ao anterior. Copie abaixo:
+# --- RESTO DO ARQUIVO (CRUD) ---
+# ... (Mantenha todo o código de rotas de banco de dados inalterado) ...
 
 # --- GERENCIAMENTO DE QUESTÕES ---
 def verificar_questoes():
@@ -398,7 +438,7 @@ def upload_pdf():
         questoes = parsear_questoes(texto)
         return jsonify(questoes)
     except Exception as e:
-        print(f"Erro no processamento: {str(e)}")  # Log para debug
+        print(f"Erro no processamento: {str(e)}")
         return jsonify({"erro": str(e)}), 500
     finally:
         if os.path.exists(caminho):
