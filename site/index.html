@@ -73,26 +73,10 @@
     .imp-textarea:focus { border-color: var(--sec); outline: none; }
     .preview-header { display: flex; background: var(--primary); color: white; padding: 10px; border-radius: 4px 4px 0 0; font-weight: bold; font-size: 0.85rem;}
     
-    /* --- TOOLBAR FLUTUANTE --- */
-    .floating-toolbar {
-        position: absolute;
-        display: none;
-        background: #333;
-        padding: 5px 10px;
-        border-radius: 6px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        z-index: 1000;
-        gap: 5px;
-    }
-    .floating-toolbar::after {
-        content: ''; position: absolute; top: 100%; left: 20px;
-        border-width: 5px; border-style: solid;
-        border-color: #333 transparent transparent transparent;
-    }
-    .floating-toolbar button {
-        background: #555; border: none; color: white;
-        padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold;
-    }
+    /* Toolbar de Importação Fixa */
+    .floating-toolbar { position: absolute; display: none; background: #333; padding: 5px 10px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; gap: 5px; }
+    .floating-toolbar::after { content: ''; position: absolute; top: 100%; left: 20px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent; }
+    .floating-toolbar button { background: #555; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .floating-toolbar button:hover { background: #777; }
 
     /* Renderização de HTML */
@@ -100,9 +84,17 @@
     .render-html u { text-decoration: underline; text-decoration-thickness: 2px; }
     .render-html i { font-style: italic; }
     .render-html mark { background-color: #f1c40f; color: #000; padding: 0 2px; border-radius: 2px; }
+
+    /* --- LOADING SPINNER --- */
+    #loader-overlay { display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(255,255,255,0.9); justify-content:center; align-items:center; flex-direction:column; }
+    .spinner { border: 8px solid #f3f3f3; border-top: 8px solid var(--sec); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    #loader-msg { font-size: 1.2rem; color: var(--primary); font-weight: 600; }
   </style>
 </head>
 <body>
+<div id="loader-overlay"><div class="spinner"></div><div id="loader-msg">Processando...</div></div>
+
 <header id="main-header"><div class="container flex"><div class="logo"><h4>Concurso Petrobras</h4></div>
 <nav>
   <button id="nav-cadastro" onclick="nav('cadastro')">Cadastrar</button>
@@ -322,6 +314,15 @@ const nav = n => {
     window.scrollTo(0,0); 
 };
 
+// --- LOADER ---
+const showLoader = (txt) => {
+    el("loader-msg").innerText = txt;
+    el("loader-overlay").style.display = "flex";
+}
+const hideLoader = () => {
+    el("loader-overlay").style.display = "none";
+}
+
 // --- FUNÇÕES DE FORMATAÇÃO E TOOLBAR ---
 const fmt = (elem, t) => { 
     // Aceita o elemento direto ou ID
@@ -398,8 +399,10 @@ async function lerPDF() {
     fd.append("file", inp.files[0]);
 
     el("imp-preview-container").style.display = "none";
-    el("imp-lista-questoes").innerHTML = "<div style='padding:20px; text-align:center'>Processando...</div>";
+    el("imp-lista-questoes").innerHTML = ""; // Limpa antes de carregar
     
+    showLoader("Lendo e Processando PDF..."); // Ativa Loader
+
     try {
         let r = await fetch(`${API}/upload-pdf`, { method:"POST", body:fd });
         if(!r.ok) throw new Error();
@@ -408,6 +411,8 @@ async function lerPDF() {
     } catch(e) {
         alert("Erro ao ler PDF.");
         el("imp-lista-questoes").innerHTML = "";
+    } finally {
+        hideLoader(); // Desativa Loader
     }
 }
 
@@ -477,7 +482,7 @@ async function salvarLote() {
 
         let obj = {
             banca: r.querySelector(".imp-banca").value,
-            instituicao: r.querySelector(".imp-inst").value,
+            instituicao: r.querySelector(".imp-inst").value, 
             ano: r.querySelector(".imp-ano").value,
             dificuldade: r.querySelector(".imp-dif").value,
             enunciado: r.querySelector(".imp-enunciado").value,
@@ -500,6 +505,8 @@ async function salvarLote() {
 
     if(!confirm(`Tentar salvar ${lote.length} questões na disciplina ${disc}?`)) return;
 
+    showLoader("Salvando questões no banco de dados..."); // Ativa Loader
+    
     let contadores = { salvos: 0, duplicados: 0, erros: 0 };
 
     for(let q of lote) {
@@ -523,9 +530,10 @@ async function salvarLote() {
         }
     }
     
+    hideLoader(); // Desativa Loader
+
     alert(`Processo Finalizado!\n\n✅ Salvas: ${contadores.salvos}\n⚠️ Duplicadas (ignoradas): ${contadores.duplicados}\n❌ Erros: ${contadores.erros}`);
     
-    // Só limpa a tela se salvou algo
     if(contadores.salvos > 0) {
         el("imp-preview-container").style.display="none";
         el("imp-lista-questoes").innerHTML="";
