@@ -14,6 +14,7 @@ ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
 ARQ_METADADOS = os.path.join(DB_DIR, "metadados.xlsx")
 
 # --- MAPA DE CORREÇÃO DE TÓPICOS QUEBRADOS ---
+# Adicionei os padrões específicos do PDF 3 (ex: OLOCAÇÃO RONOMINAL)
 CORRECAO_ASSUNTOS = {
     "UBSTANTIVO": "Substantivo",
     "DJETIVO": "Adjetivo",
@@ -25,7 +26,9 @@ CORRECAO_ASSUNTOS = {
     "ERBO": "Verbo",
     "ONJUNÇÃO": "Conjunção",
     "REPOSIÇÃO": "Preposição",
-    "ALAVRAS SPECIAIS": "Palavras Especiais"
+    "ALAVRAS SPECIAIS": "Palavras Especiais",
+    "OLOCAÇÃO RONOMINAL": "Colocação Pronominal",  # <--- NOVO
+    "RONOMES": "Pronomes"  # <--- NOVO
 }
 
 
@@ -39,19 +42,23 @@ def limpar(texto):
     return str(texto).strip() if texto else ""
 
 
+def normalizar_para_comparacao(texto):
+    if not texto: return ""
+    texto_sem_tags = re.sub(r'<[^>]+>', '', str(texto))
+    texto_limpo = re.sub(r'[\W_]+', '', texto_sem_tags).lower()
+    return texto_limpo
+
+
 # --- LÓGICA DE EXTRAÇÃO E LIMPEZA ---
 
 def limpar_ruido(texto):
     """
-    Remove cabeçalhos, rodapés e artefatos visuais do PDF para limpar a área de busca.
+    Remove cabeçalhos, rodapés e artefatos visuais do PDF.
     """
-    # Remove paginação solta (ex: "36" ou "36 de 61")
     texto = re.sub(r'\n\s*\d+(\s*de\s*\d+)?\s*\n', '\n', texto)
-
-    # Remove rodapé constante
+    # Remove nome do aluno no rodapé
     texto = re.sub(r'\n\s*\d{11}\s*-\s*Ricardo Aciole.*?\n', '\n', texto, flags=re.IGNORECASE)
 
-    # Remove cabeçalhos repetitivos
     padroes = [
         r"PETROBRAS \(Nível Superior\) Português",
         r"www\.estrategiaconcursos\.com\.br",
@@ -73,29 +80,35 @@ def parsear_questoes(texto_bruto):
 
     # Regex A: Títulos Normais
     regex_normal = re.compile(r'(?:QUESTÕES|LISTA DE).*?[-–—]\s*([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s]+?)\s*[-–—]\s*CESGRANRIO',
-                              re.IGNORECASE)
+                              re.IGNORECASE | re.DOTALL)
     for match in regex_normal.finditer(texto):
-        assunto = match.group(1).strip().title()
+        assunto = match.group(1).replace('\n', ' ').strip().title()
         if len(assunto) > 3:
             mapa_assuntos.append({"inicio": match.start(), "assunto": assunto})
 
-    # Regex B: Títulos Quebrados
-    regex_quebrado = re.compile(r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES)\s+([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s]+)\s+ESGRANRIO',
-                                re.IGNORECASE)
+    # Regex B: Títulos Quebrados (AJUSTADO PARA PDF 3)
+    # Agora aceita que "CESGRANRIO" apareça quebrado como "C" (nova linha) "ESGRANRIO"
+    regex_quebrado = re.compile(
+        r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES)\s+([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s]+?)\s+(?:C\s*)?ESGRANRIO',
+        re.IGNORECASE | re.DOTALL)
+
     for match in regex_quebrado.finditer(texto):
-        trecho_assunto = match.group(1).strip()
+        trecho_assunto = match.group(1).replace('\n', ' ').strip()
+
+        # Tenta achar no dicionário
         assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto)
+
+        # Se não achou, tenta limpar espaços extras (ex: "S U B S T A N T I V O")
         if not assunto_corrigido:
             assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto.replace(" ", ""))
 
+        # Se achou uma correção válida, salva
         if assunto_corrigido:
             mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_corrigido})
 
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
     # --- 2. SCANNER DE QUESTÕES ---
-    # A regex busca o inicio de uma questão até o inicio da PRÓXIMA (identificada por "Num. (")
-    # Para a ÚLTIMA questão da lista, ela vai pegar tudo até o início da PRÓXIMA LISTA.
     regex_quest = re.compile(r'(?:^|\n)\s*(\d+)\.\s*\(?(.*?)\)\s*(.*?)(?=\n\s*\d+\.\s*\(|$)', re.DOTALL)
 
     for match in regex_quest.finditer(texto):
@@ -105,7 +118,6 @@ def parsear_questoes(texto_bruto):
         cabecalho_cru = match.group(2)
         conteudo_bruto = match.group(3)
 
-        # Filtro de Validade
         if 'CESGRANRIO' not in cabecalho_cru.upper() and '/' not in cabecalho_cru:
             continue
 
@@ -130,41 +142,34 @@ def parsear_questoes(texto_bruto):
             elif p != partes[0] and not instituicao and len(p) > 2:
                 instituicao = p
 
-        # C) GABARITO (Lógica Multinível)
+        # C) GABARITO
         gabarito = ""
 
-        # Regex padrão para identificar "7. LETRA E" ou "7. E"
         regex_padrao_lista = fr'(?:^|\s){numero}\.\s*(?:LETRA|Gabarito)?\s*([A-E])'
+        regex_discursiva = r'(?:Gabarito|gabarito)\s*(?:é|foi|será|correto\s+é)?\s*(?::|a)?\s*(?:Letra|letra|opção|alternativa)?\s*([A-E])(?=[\.\s]|$)'
 
-        # 1. Busca no comentário direto (Questões Comentadas)
-        match_gab_comentado = re.search(r'Gabarito[:\.\s-]*(?:Letra)?\s*([A-E])', conteudo_bruto, re.IGNORECASE)
+        # 1. Busca no comentário
+        match_gab_comentado = re.search(regex_discursiva, conteudo_bruto, re.IGNORECASE)
 
         if match_gab_comentado:
             gabarito = match_gab_comentado.group(1).upper()
         else:
-            # 2. CORREÇÃO DA ÚLTIMA QUESTÃO (Busca INTERNA)
-            # Verifica se a tabela de gabarito foi "engolida" pelo conteudo_bruto
+            # 2. Busca interna (caso a tabela tenha sido engolida)
             match_interno = re.search(regex_padrao_lista, conteudo_bruto, re.IGNORECASE)
-
             if match_interno:
                 gabarito = match_interno.group(1).upper()
             else:
-                # 3. Busca PROSPECTIVA (Busca EXTERNA - Look-ahead)
-                # Se não estava dentro, procura no texto que vem depois (comum para q1, q2...)
+                # 3. Busca Prospectiva
                 texto_futuro = texto[pos_fim:]
                 match_gl = re.search(regex_padrao_lista, texto_futuro, re.IGNORECASE)
                 if match_gl:
                     gabarito = match_gl.group(1).upper()
 
-        # D) LIMPEZA E SEPARAÇÃO DE ALTERNATIVAS
-        # Remove comentários, gabaritos explícitos e tabelas de gabarito que estejam no fim
-        conteudo_limpo = re.split(r'(?:\n\s*Comentários:|\n\s*Gabarito\s+[A-Z])', conteudo_bruto, flags=re.IGNORECASE)[
-            0]
-
-        # O split abaixo remove a tabela GABARITO visualmente do enunciado,
-        # mas como já extraímos o gabarito na etapa C (passo 2), não tem problema cortar agora.
-        conteudo_limpo = re.split(r'\n\s*(?:G\s*A\s*B\s*A\s*R\s*I\s*T\s*O|L\s*I\s*S\s*T\s*A\s*D\s*E)', conteudo_limpo,
-                                  flags=re.IGNORECASE)[0]
+        # D) LIMPEZA
+        padrao_corte = r'(?:\n\s*Comentários|(?:\.|(?<=[a-z]))\s*Comentários|\n\s*Gabarito\s+[A-Z]|\n\s*G\s*A\s*B\s*A\s*R\s*I\s*T\s*O)'
+        conteudo_limpo = re.split(padrao_corte, conteudo_bruto, flags=re.IGNORECASE)[0]
+        # Remove a lista de questões se ela vier logo em seguida
+        conteudo_limpo = re.split(r'\n\s*(?:L\s*I\s*S\s*T\s*A\s*D\s*E)', conteudo_limpo, flags=re.IGNORECASE)[0]
 
         partes_alt = re.split(r'(?:^|\s+)([a-eA-E])\)\s+', conteudo_limpo)
 
@@ -176,7 +181,7 @@ def parsear_questoes(texto_bruto):
                 letra = partes_alt[k].upper()
                 if k + 1 < len(partes_alt):
                     txt = partes_alt[k + 1].strip()
-                    txt = re.sub(r'Gabarito.*$', '', txt, flags=re.IGNORECASE).strip().rstrip('.;-')
+                    txt = re.sub(r'(?:Gabarito|Comentários).*$', '', txt, flags=re.IGNORECASE).strip().rstrip('.;-')
                     alts[letra] = txt
 
         if enunciado and (alts["A"] or alts["B"]):
@@ -364,14 +369,6 @@ def deletar_meta_item(categoria, nome_item):
         wb.save(ARQ_METADADOS)
         return True
     return False
-
-def normalizar_para_comparacao(texto):
-    if not texto: return ""
-    # Remove tags HTML
-    texto_sem_tags = re.sub(r'<[^>]+>', '', str(texto))
-    # Remove tudo que não for letra ou número (pontuação, espaços extras)
-    texto_limpo = re.sub(r'[\W_]+', '', texto_sem_tags).lower()
-    return texto_limpo
 
 
 # --- ENDPOINTS ---
