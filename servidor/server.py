@@ -14,7 +14,7 @@ ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
 ARQ_METADADOS = os.path.join(DB_DIR, "metadados.xlsx")
 
 # --- MAPA DE CORREÇÃO DE TÓPICOS QUEBRADOS ---
-# Adicionei os padrões específicos do PDF 3 (ex: OLOCAÇÃO RONOMINAL)
+# Adicionado suporte para falhas de OCR comuns (primeira letra faltando)
 CORRECAO_ASSUNTOS = {
     "UBSTANTIVO": "Substantivo",
     "DJETIVO": "Adjetivo",
@@ -27,8 +27,9 @@ CORRECAO_ASSUNTOS = {
     "ONJUNÇÃO": "Conjunção",
     "REPOSIÇÃO": "Preposição",
     "ALAVRAS SPECIAIS": "Palavras Especiais",
-    "OLOCAÇÃO RONOMINAL": "Colocação Pronominal",  # <--- NOVO
-    "RONOMES": "Pronomes"  # <--- NOVO
+    "OLOCAÇÃO RONOMINAL": "Colocação Pronominal",
+    "RONOMES": "Pronomes",
+    "OLOCAÇÃO PRONOMINAL": "Colocação Pronominal"
 }
 
 
@@ -43,6 +44,10 @@ def limpar(texto):
 
 
 def normalizar_para_comparacao(texto):
+    """
+    Remove HTML e caracteres especiais para comparar se uma questão já existe.
+    Ex: '<b>Casa</b>.' vira 'casa'
+    """
     if not texto: return ""
     texto_sem_tags = re.sub(r'<[^>]+>', '', str(texto))
     texto_limpo = re.sub(r'[\W_]+', '', texto_sem_tags).lower()
@@ -55,10 +60,13 @@ def limpar_ruido(texto):
     """
     Remove cabeçalhos, rodapés e artefatos visuais do PDF.
     """
+    # Remove paginação solta (ex: "36" ou "36 de 61")
     texto = re.sub(r'\n\s*\d+(\s*de\s*\d+)?\s*\n', '\n', texto)
-    # Remove nome do aluno no rodapé
+
+    # Remove identificação de aluno (Ricardo Aciole)
     texto = re.sub(r'\n\s*\d{11}\s*-\s*Ricardo Aciole.*?\n', '\n', texto, flags=re.IGNORECASE)
 
+    # Remove cabeçalhos repetitivos
     padroes = [
         r"PETROBRAS \(Nível Superior\) Português",
         r"www\.estrategiaconcursos\.com\.br",
@@ -86,29 +94,25 @@ def parsear_questoes(texto_bruto):
         if len(assunto) > 3:
             mapa_assuntos.append({"inicio": match.start(), "assunto": assunto})
 
-    # Regex B: Títulos Quebrados (AJUSTADO PARA PDF 3)
-    # Agora aceita que "CESGRANRIO" apareça quebrado como "C" (nova linha) "ESGRANRIO"
+    # Regex B: Títulos Quebrados (Suporte ao PDF 3)
     regex_quebrado = re.compile(
         r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES)\s+([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s]+?)\s+(?:C\s*)?ESGRANRIO',
         re.IGNORECASE | re.DOTALL)
-
     for match in regex_quebrado.finditer(texto):
         trecho_assunto = match.group(1).replace('\n', ' ').strip()
 
-        # Tenta achar no dicionário
+        # Tenta corrigir pelo dicionário
         assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto)
-
-        # Se não achou, tenta limpar espaços extras (ex: "S U B S T A N T I V O")
         if not assunto_corrigido:
             assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto.replace(" ", ""))
 
-        # Se achou uma correção válida, salva
         if assunto_corrigido:
             mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_corrigido})
 
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
     # --- 2. SCANNER DE QUESTÕES ---
+    # Procura "1. (CESGRANRIO...)"
     regex_quest = re.compile(r'(?:^|\n)\s*(\d+)\.\s*\(?(.*?)\)\s*(.*?)(?=\n\s*\d+\.\s*\(|$)', re.DOTALL)
 
     for match in regex_quest.finditer(texto):
@@ -118,17 +122,18 @@ def parsear_questoes(texto_bruto):
         cabecalho_cru = match.group(2)
         conteudo_bruto = match.group(3)
 
+        # Filtro de Validade
         if 'CESGRANRIO' not in cabecalho_cru.upper() and '/' not in cabecalho_cru:
             continue
 
-        # A) Define o Assunto
+        # A) Define o Assunto com base na posição
         assunto_atual = "Geral"
         if mapa_assuntos:
             anteriores = [m for m in mapa_assuntos if m["inicio"] < pos_inicio]
             if anteriores:
                 assunto_atual = anteriores[-1]["assunto"]
 
-        # B) Processa o Cabeçalho
+        # B) Processa o Cabeçalho (Ano, Instituição)
         clean_header = cabecalho_cru.replace('(', '').replace(')', '')
         partes = [p.strip() for p in clean_header.split('/')]
 
@@ -145,30 +150,39 @@ def parsear_questoes(texto_bruto):
         # C) GABARITO
         gabarito = ""
 
+        # Padrão Tabela: "7. LETRA E"
         regex_padrao_lista = fr'(?:^|\s){numero}\.\s*(?:LETRA|Gabarito)?\s*([A-E])'
+
+        # Padrão Discursivo: "Gabarito: E", "Gabarito é a letra E"
         regex_discursiva = r'(?:Gabarito|gabarito)\s*(?:é|foi|será|correto\s+é)?\s*(?::|a)?\s*(?:Letra|letra|opção|alternativa)?\s*([A-E])(?=[\.\s]|$)'
 
-        # 1. Busca no comentário
+        # 1. Busca no comentário direto
         match_gab_comentado = re.search(regex_discursiva, conteudo_bruto, re.IGNORECASE)
 
         if match_gab_comentado:
             gabarito = match_gab_comentado.group(1).upper()
         else:
-            # 2. Busca interna (caso a tabela tenha sido engolida)
+            # 2. Busca interna (caso a tabela tenha sido engolida pelo scanner)
             match_interno = re.search(regex_padrao_lista, conteudo_bruto, re.IGNORECASE)
             if match_interno:
                 gabarito = match_interno.group(1).upper()
             else:
-                # 3. Busca Prospectiva
+                # 3. Busca Prospectiva (texto futuro)
                 texto_futuro = texto[pos_fim:]
                 match_gl = re.search(regex_padrao_lista, texto_futuro, re.IGNORECASE)
                 if match_gl:
                     gabarito = match_gl.group(1).upper()
 
-        # D) LIMPEZA
-        padrao_corte = r'(?:\n\s*Comentários|(?:\.|(?<=[a-z]))\s*Comentários|\n\s*Gabarito\s+[A-Z]|\n\s*G\s*A\s*B\s*A\s*R\s*I\s*T\s*O)'
+        # D) LIMPEZA E SEPARAÇÃO DE ALTERNATIVAS
+
+        # CORREÇÃO CRÍTICA DO CORTE:
+        # Aceita "Comentário" (singular), "Comentários" (plural), colado em ponto final ou nova linha.
+        # Também remove seções grandes como "LISTA DE QUESTÕES".
+        padrao_corte = r'(?:\n\s*Comentári(?:o|os)|(?:\.|(?<=[a-z]))\s*Comentári(?:o|os)|\n\s*Gabarito\s+[A-Z]|\n\s*G\s*A\s*B\s*A\s*R\s*I\s*T\s*O)'
+
         conteudo_limpo = re.split(padrao_corte, conteudo_bruto, flags=re.IGNORECASE)[0]
-        # Remove a lista de questões se ela vier logo em seguida
+
+        # Corte secundário para evitar invadir a próxima lista
         conteudo_limpo = re.split(r'\n\s*(?:L\s*I\s*S\s*T\s*A\s*D\s*E)', conteudo_limpo, flags=re.IGNORECASE)[0]
 
         partes_alt = re.split(r'(?:^|\s+)([a-eA-E])\)\s+', conteudo_limpo)
@@ -181,7 +195,9 @@ def parsear_questoes(texto_bruto):
                 letra = partes_alt[k].upper()
                 if k + 1 < len(partes_alt):
                     txt = partes_alt[k + 1].strip()
-                    txt = re.sub(r'(?:Gabarito|Comentários).*$', '', txt, flags=re.IGNORECASE).strip().rstrip('.;-')
+                    # Remove sujeira final residual
+                    txt = re.sub(r'(?:Gabarito|Comentári(?:o|os)).*$', '', txt, flags=re.IGNORECASE).strip().rstrip(
+                        '.;-')
                     alts[letra] = txt
 
         if enunciado and (alts["A"] or alts["B"]):
@@ -381,16 +397,15 @@ def post_q():
     nova = request.json
     dados = carregar_questoes()
 
-    # Cria a "impressão digital" da nova questão (Enunciado + Alternativa A)
+    # Validação de Duplicatas
     norm_enunciado_novo = normalizar_para_comparacao(nova.get("enunciado"))
     norm_alta_novo = normalizar_para_comparacao(nova.get("alt_a"))
 
     for q in dados:
-        # Compara com a versão normalizada das questões existentes
         norm_enunciado_existente = normalizar_para_comparacao(q["enunciado"])
         norm_alta_existente = normalizar_para_comparacao(q["alt_a"])
 
-        # Se o "esqueleto" do texto for igual, considera duplicada
+        # Se enunciado e alternativa A forem iguais, rejeita
         if norm_enunciado_existente == norm_enunciado_novo and norm_alta_existente == norm_alta_novo:
             return jsonify({"erro": "Questão duplicada!"}), 409
 
