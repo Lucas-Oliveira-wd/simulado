@@ -264,15 +264,22 @@ document.addEventListener('click', function(e) {
     }
 });
 
+// --- CORREÇÃO AQUI: Removemos o nav('cadastro') daqui ---
 async function init() {
     try {
         let [r1, r2, r3] = await Promise.all([fetch(`${API}/questoes`), fetch(`${API}/opcoes-dinamicas`), fetch(`${API}/flashcards`)]);
         db = await r1.json(); opcoes = await r2.json(); flashDb = await r3.json();
-        popSelGeral(); altTipo('cad'); nav('cadastro');
+        popSelGeral(); 
+        altTipo('cad'); 
+        
+        // Se estiver na tela de banco, atualiza a tabela automaticamente
+        if(el('secao-banco').style.display === 'block') carrTab();
+        // Se estiver gerenciando flashcards, atualiza a lista
+        if(el('fc-modo-gerenciar').style.display === 'block') renderListaFC();
+
     } catch(e) { console.error(e); alert("Erro ao carregar dados."); }
 }
 
-// Preenche Datalists (para inputs híbridos) e Selects (para filtros)
 function pop(elAlvo, arr, def, usarDatalist=false) {
     if(!elAlvo) return;
     let html = def && !usarDatalist ? `<option value="">${def}</option>` : "";
@@ -283,12 +290,9 @@ function pop(elAlvo, arr, def, usarDatalist=false) {
 }
 
 function popSelGeral() {
-    // Popula Datalists Globais
     pop(el("lista-bancas"), opcoes.bancas, "", true);
     pop(el("lista-instituicoes"), opcoes.instituicoes, "", true);
     pop(el("lista-disciplinas"), opcoes.disciplinas, "", true);
-    
-    // Popula Selects de Filtro (Busca, Praticar, Estudo) - estes continuam sendo Selects puros
     ['busca','prat','prova','fc-estudo'].forEach(p => {
         if(el(`${p}-banca`)) pop(el(`${p}-banca`), opcoes.bancas, p==='imp'?"Banca Padrão...":"Banca...");
         if(el(`${p}-instituicao`)) pop(el(`${p}-instituicao`), opcoes.instituicoes, "Instituição...");
@@ -300,11 +304,7 @@ function popSelGeral() {
 function carregarAssuntos(prefixo) {
     let idDisc = (prefixo === 'fc-estudo') ? 'fc-estudo-disc' : `${prefixo}-disciplina`;
     let elDisc = el(idDisc);
-    
-    // Se for um filtro (select), pegamos o value direto. Se for input (cadastro), também.
     let disc = elDisc.value; 
-    
-    // Se for 'cad', 'imp', 'edit' ou 'fc', estamos usando INPUT + DATALIST
     if (['cad', 'imp', 'edit', 'fc'].includes(prefixo)) {
         let listaAss = el("lista-assuntos");
         let html = "";
@@ -313,9 +313,7 @@ function carregarAssuntos(prefixo) {
             lista.forEach(a => html += `<option value="${a.nome}">`);
         }
         listaAss.innerHTML = html;
-    } 
-    // Se for filtro (busca, pratica, prova, fc-estudo), usamos SELECT
-    else {
+    } else {
         let selAss = el(`${prefixo}-assunto`);
         if(!selAss) return;
         let html = '<option value="">Todos Assuntos</option>';
@@ -327,8 +325,6 @@ function carregarAssuntos(prefixo) {
     }
 }
 
-// --- Funções de Importação PDF, Salvar Individual, Lote, etc permanecem iguais ---
-// Apenas adaptado para pegar os valores dos inputs text ao invés de selects onde necessário
 async function lerPDF() {
     let lista = el("imp-lista-questoes");
     if (lista && lista.children.length > 0) if(!confirm("Substituir lista atual?")) return;
@@ -351,7 +347,6 @@ function renderPreview(lista) {
         let classeRow = q.ja_cadastrada ? "imp-row ja-cadastrada" : "imp-row";
         let optionsGab = `<option value="">?</option>`;
         ["A","B","C","D","E"].forEach(l => { let sel = q.gabarito === l ? "selected" : ""; optionsGab += `<option value="${l}" ${sel}>${l}</option>`; });
-        
         div.innerHTML += `
         <div class="${classeRow}" id="imp-row-${i}">
             <div style="width:40px; font-weight:bold; text-align:center">${i+1}<div id="status-${i}">${statusHtml}</div></div>
@@ -394,10 +389,9 @@ function verificarDuplicidadeDinamica(index) {
 
 async function salvarIndividual(index) {
     let r = el(`imp-row-${index}`);
-    let disc = el("imp-disciplina").value; // Input text
+    let disc = el("imp-disciplina").value; 
     if(!disc) return alert("Digite/Selecione a Disciplina base.");
     let assuntoFinal = r.querySelector(".imp-assunto-ind").value || el("imp-assunto").value || "Geral";
-
     const formData = new FormData();
     formData.append("banca", r.querySelector(".imp-banca").value);
     formData.append("instituicao", r.querySelector(".imp-inst").value);
@@ -411,18 +405,14 @@ async function salvarIndividual(index) {
     formData.append("tipo", "ME");
     formData.append("disciplina", disc);
     formData.append("assunto", assuntoFinal);
-
     let fileInput = r.querySelector(".imp-imagem-file");
     if(fileInput && fileInput.files[0]) formData.append("imagem_file", fileInput.files[0]);
-
     if(!formData.get("enunciado") || !formData.get("gabarito")) return alert("Dados incompletos.");
-
     try {
         const response = await fetch(`${API}/questoes`, { method: "POST", body: formData });
         if (response.ok) {
             r.classList.add("sucesso-salvo");
             r.querySelector(".imp-acoes").innerHTML = `<span style="color:green; font-weight:bold">Salva!</span>`;
-            // Recarrega init para atualizar listas se houve termo novo
             init();
         } else if (response.status === 409) { alert("Duplicada!"); } 
         else { alert("Erro ao salvar."); }
@@ -486,52 +476,43 @@ el("form-cadastro").onsubmit = async e => {
 
 function carrTab() { el("total-db").innerText = `${db.length} questões`; filtrar(); }
 function filtrar() { 
-    // Captura os valores dos filtros
     let txt = el("busca-texto").value.toLowerCase(), 
         ban = el("busca-banca").value, 
-        inst = el("busca-instituicao").value, // Valor do filtro (já vem em MAIÚSCULO da lista)
+        inst = el("busca-instituicao").value, // Captura valor (vem MAIUSCULO do datalist)
         dis = el("busca-disciplina").value, 
         ass = el("busca-assunto").value, 
         dif = el("busca-dificuldade").value; 
 
     let filtrados = db.filter(q => {
-        // Normaliza a instituição da questão para comparar (trata nulos)
         let qInst = q.instituicao ? q.instituicao.toString().toUpperCase() : "";
         let filtroInst = inst ? inst.toUpperCase() : "";
-
+        
         return (
             q.enunciado.toLowerCase().includes(txt) && 
             (ban === "" || q.banca === ban) && 
-            (filtroInst === "" || qInst === filtroInst) && // <--- COMPARAÇÃO CORRIGIDA
+            (filtroInst === "" || qInst === filtroInst) && 
             (dis === "" || q.disciplina === dis) && 
             (ass === "" || q.assunto === ass) && 
             (dif === "" || q.dificuldade === dif)
         );
-    }); 
+    });
 
-    let tb = document.querySelector("#tabela-questoes tbody"); 
-    tb.innerHTML = ""; 
-    
+    let tb = document.querySelector("#tabela-questoes tbody"); tb.innerHTML=""; 
     filtrados.forEach(q => { 
-        let difClass = q.dificuldade === 'Fácil' ? 'color-facil' : (q.dificuldade === 'Médio' ? 'color-medio' : 'color-dificil'); 
-        let dots = q.dificuldade === 'Fácil' ? '●' : (q.dificuldade === 'Médio' ? '●●' : '●●●'); 
-        
-        // ADICIONA A CÉLULA DA INSTITUIÇÃO NA TABELA
-        tb.innerHTML += `
-            <tr>
-                <td>${q.id}</td>
-                <td>${q.banca}</td>
-                <td style="font-size:0.85em; color:#555;">${q.instituicao || '-'}</td> <td>${q.ano || '-'}</td>
-                <td>${q.disciplina}</td>
-                <td title="${q.enunciado.replace(/"/g, '&quot;')}">${q.enunciado.substring(0, 40)}...</td>
-                <td>${q.assunto}</td>
-                <td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td>
-                <td>${q.gabarito}</td>
-                <td>
-                    <button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button>
-                    <button class="btn-icon" onclick="del('${q.id}')">🗑️</button>
-                </td>
-            </tr>`; 
+        let difClass = q.dificuldade==='Fácil'?'color-facil':(q.dificuldade==='Médio'?'color-medio':'color-dificil'); 
+        let dots = q.dificuldade==='Fácil'?'●':(q.dificuldade==='Médio'?'●●':'●●●'); 
+        tb.innerHTML += `<tr>
+            <td>${q.id}</td>
+            <td>${q.banca}</td>
+            <td style="font-size:0.85em; color:#555;">${q.instituicao || '-'}</td>
+            <td>${q.ano||'-'}</td>
+            <td>${q.disciplina}</td>
+            <td title="${q.enunciado.replace(/"/g,'&quot;')}">${q.enunciado.substring(0,40)}...</td>
+            <td>${q.assunto}</td>
+            <td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td>
+            <td>${q.gabarito}</td>
+            <td><button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button><button class="btn-icon" onclick="del('${q.id}')">🗑️</button></td>
+        </tr>`; 
     }); 
 }
 function del(id) { if(confirm("Excluir Questão?")) fetch(`${API}/questoes/${id}`, {method:"DELETE"}).then(init); }
@@ -585,7 +566,14 @@ function proxProva() { provaIdx++; if(provaIdx < provaPool.length) { renProva();
 function finalizarProva() { clearInterval(provaIntervalo); el("area-prova").style.display="none"; el("resultado-prova").style.display="block"; let acertos = 0; let html = "<ul style='list-style:none; padding:0'>"; let acertosPorDisc = {}; provaPool.forEach((q, i) => { let resp = provaRespostas[i], correta = q.gabarito, isCorrect = resp === correta; if(isCorrect) acertos++; if (!acertosPorDisc[q.disciplina]) acertosPorDisc[q.disciplina] = { total: 0, acertos: 0 }; acertosPorDisc[q.disciplina].total++; if (isCorrect) acertosPorDisc[q.disciplina].acertos++; let realQ = db.find(d => d.id === q.id); if(realQ) { realQ.respondidas = (realQ.respondidas || 0) + 1; if(isCorrect) realQ.acertos = (realQ.acertos || 0) + 1; fetch(`${API}/questoes`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(realQ)}); } html += `<li style="margin-bottom:10px; border-bottom:1px solid #eee; padding:5px;"><b>Q${i+1} (${q.disciplina}):</b> Sua: <b style="color:${isCorrect?'green':'red'}">${resp||'-'}</b> | Gab: <b>${correta}</b></li>`; }); let discHtml = '<h3>Desempenho por Disciplina</h3><ul style="list-style:none; padding:0;">'; for (const disc in acertosPorDisc) { let stats = acertosPorDisc[disc]; let perc = (stats.acertos / stats.total) * 100; discHtml += `<li style="margin-bottom:5px;"><b>${disc}:</b> ${stats.acertos} / ${stats.total} (${perc.toFixed(1)}%)</li>`; } discHtml += '</ul>'; el("nota-prova").innerText = `${acertos}/${provaPool.length}`; el("msg-prova").innerText = acertos/provaPool.length >= 0.7 ? "Aprovado! 🚀" : "Continue Estudando 📚"; el("detalhes-prova").innerHTML = discHtml + html; init(); }
 function graf() { let ctx=el("chart").getContext("2d"); if(window.myChart)window.myChart.destroy(); let stats={}; db.forEach(q=>{ if(!stats[q.disciplina]) stats[q.disciplina]={r:0,a:0}; stats[q.disciplina].r+=q.respondidas; stats[q.disciplina].a+=q.acertos; }); let l=[], d=[], c=[]; for(let k in stats){ if(stats[k].r>0){ l.push(k); let p=(stats[k].a/stats[k].r)*100; d.push(p.toFixed(1)); c.push(p>=50?'#27ae60':'#e74c3c'); } } window.myChart=new Chart(ctx,{type:'bar',data:{labels:l,datasets:[{label:'%',data:d,backgroundColor:c}]},options:{scales:{y:{beginAtZero:true,max:100}}}}); }
 function setupDragDrop() { const dropZone = el("area-drop"); const fileInput = el("imp-file"); ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { dropZone.addEventListener(eventName, preventDefaults, false); }); function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); } ['dragenter', 'dragover'].forEach(eventName => { dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false); }); ['dragleave', 'drop'].forEach(eventName => { dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false); }); dropZone.addEventListener('drop', handleDrop, false); function handleDrop(e) { let dt = e.dataTransfer; let files = dt.files; if (files.length > 0) { fileInput.files = files; } } }
-window.onload = () => { init(); headerOffset = el('secao-cadastro').offsetTop; setupDragDrop(); };
+
+// --- CORREÇÃO AQUI: Forçamos a navegação para 'cadastro' SÓ ao abrir a página ---
+window.onload = async () => { 
+    await init(); 
+    nav('cadastro'); 
+    headerOffset = el('secao-cadastro').offsetTop; 
+    setupDragDrop(); 
+};
 </script>
 </body>
 </html>
