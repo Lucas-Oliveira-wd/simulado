@@ -5,10 +5,12 @@ import os
 import pdfplumber
 import re
 import uuid
+import difflib
 
 app = Flask(__name__)
 CORS(app)
 
+# --- CONFIGURAÇÕES ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(BASE_DIR, "../banco_de_dados")
 UPLOAD_FOLDER = os.path.join(DB_DIR, "img", "q_img")
@@ -16,29 +18,40 @@ ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
 ARQ_METADADOS = os.path.join(DB_DIR, "metadados.xlsx")
 ARQ_FLASHCARDS = os.path.join(DB_DIR, "flashcards.xlsx")
 
-if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-CORRECAO_ASSUNTOS = {
-    "MPREGO OS EMPOS ODOS": "Emprego de Tempos e Modos", "ODO NDICATIVO": "Modo Indicativo",
-    "ERBOS TRAIÇOEIROS": "Verbos Traiçoeiros", "MPREGO OS EMPOS E ODOS": "Emprego de Tempos e Modos",
-    "UBSTANTIVO": "Substantivo", "DJETIVO": "Adjetivo", "DVÉRBIO": "Advérbio", "RTIGO": "Artigo",
-    "NTERJEIÇÃO": "Interjeição", "UMERAL": "Numeral", "RONOME": "Pronome", "ERBO": "Verbo",
-    "ONJUNÇÃO": "Conjunção", "REPOSIÇÃO": "Preposição", "ALAVRAS SPECIAIS": "Palavras Especiais",
-    "OLOCAÇÃO RONOMINAL": "Colocação Pronominal", "RONOMES": "Pronomes", "OLOCAÇÃO PRONOMINAL": "Colocação Pronominal",
-}
+# --- LISTA MESTRA ---
+ASSUNTOS_CONHECIDOS = [
+    "Correlação Verbal", "Tempos e Modos Verbais", "Vozes Verbais",
+    "Emprego de Tempos e Modos", "Modo Indicativo", "Modo Subjuntivo", "Modo Imperativo",
+    "Verbos Traiçoeiros", "Locução Verbal", "Formas Nominais",
+    "Substantivo", "Adjetivo", "Advérbio", "Artigo", "Interjeição",
+    "Numeral", "Pronome", "Verbo", "Conjunção", "Preposição",
+    "Colocação Pronominal", "Acentuação Gráfica", "Ortografia", "Crase", "Pontuação",
+    "Concordância Verbal", "Concordância Nominal", "Regência Verbal", "Regência Nominal",
+    "Sintaxe", "Semântica", "Interpretação de Texto", "Tipologia Textual",
+    "Gêneros Textuais", "Coesão e Coerência", "Figuras de Linguagem",
+    "Funções da Linguagem", "Variação Linguística", "Funções Sintáticas",
+    "Orações Adverbiais", "Paralelismo", "Palavra Que", "Palavra Se"
+]
 
-# Lista de palavras que identificam um CARGO, para não confundir com Instituição
-BLACKLIST_CARGOS = [
+PALAVRAS_CHAVE_CARGO = [
     "ANALISTA", "TÉCNICO", "ENGENHEIRO", "MÉDICO", "ADVOGADO", "AGENTE", "ESCRITURÁRIO",
     "PROFESSOR", "ESPECIALISTA", "AUDITOR", "DEFENSOR", "PROMOTOR", "JUIZ", "DELEGADO",
     "INSPETOR", "SOLDADO", "OFICIAL", "ASSISTENTE", "CONSULTOR", "COORDENADOR", "DIRETOR",
     "GERENTE", "SUPERVISOR", "PEDAGOGO", "PSICÓLOGO", "CONTADOR", "ADMINISTRADOR", "ECONOMISTA",
-    "ARQUITETO", "ENFERMEIRO", "FARMACÊUTICO", "NUTRICIONISTA", "DENTISTA", "TECNOLOGIA"
+    "ARQUITETO", "ENFERMEIRO", "FARMACÊUTICO", "NUTRICIONISTA", "DENTISTA"
 ]
 
 
+# --- FUNÇÕES UTILITÁRIAS ---
 def garantir_diretorio():
     if not os.path.exists(DB_DIR): os.makedirs(DB_DIR, exist_ok=True)
+
+
+def limpar(texto):
+    return str(texto).strip() if texto else ""
 
 
 def normalizar_para_comparacao(texto):
@@ -50,6 +63,8 @@ def normalizar_para_comparacao(texto):
 def sanitizar_texto(texto):
     if not texto: return ""
     texto = re.sub(r'-\s*\n\s*', '', texto)
+    texto = re.sub(r'\n\s*Gabarito:?\s*Letra\s*[A-E]\s*\n', '\n', texto, flags=re.IGNORECASE)
+
     linhas = [l.strip() for l in texto.split('\n') if l.strip()]
     if not linhas: return ""
     resultado = []
@@ -59,13 +74,16 @@ def sanitizar_texto(texto):
             proxima = linhas[i + 1]
             pontuacao_final = re.search(r'[.:?!;]$', atual)
             comeca_novo_bloco = re.match(r'^(?:[A-Z"\'\(]|\d+\.|[a-e]\))', proxima)
-            if pontuacao_final and comeca_novo_bloco:
+
+            if not pontuacao_final and not comeca_novo_bloco:
+                resultado.append(atual + " ")
+            elif pontuacao_final and comeca_novo_bloco:
                 resultado.append(atual + "\n")
             else:
                 resultado.append(atual + " ")
         else:
             resultado.append(atual)
-    return "".join(resultado)
+    return "".join(resultado).strip()
 
 
 def gerar_assinatura(q):
@@ -73,117 +91,190 @@ def gerar_assinatura(q):
         normalizar_para_comparacao(q.get('enunciado')),
         normalizar_para_comparacao(q.get('alt_a')),
         normalizar_para_comparacao(q.get('alt_b')),
-        normalizar_para_comparacao(q.get('alt_c')),
-        normalizar_para_comparacao(q.get('alt_d')),
-        normalizar_para_comparacao(q.get('alt_e'))
+        normalizar_para_comparacao(q.get('alt_c'))
     )
 
 
+# --- LÓGICA DE RECONSTRUÇÃO (RESTAURADA E CORRIGIDA) ---
+def reconstruir_cabecalho_inteligente(texto):
+    """
+    Reconstrói cabeçalhos como 'Q C - C - C' sobre 'UESTÕES OMENTADAS ORRELAÇÃO VERBAL ESGRANRIO'.
+    CORREÇÃO: Adicionada lista de 'palavras_cheias' para evitar descompasso.
+    """
+    pattern = r"([A-Z\s\-\–]+)\n\s*((?:UESTÕES|ISTA|OMENTADAS|ORRELAÇÃO|ESGRANRIO).*)"
+
+    def reparar(match):
+        linha_letras = match.group(1).strip()
+        linha_palavras = match.group(2).strip()
+
+        # Divide as letras pelos hífens (ex: ['Q C', 'C', 'C']) e limpa espaços
+        blocos_letras = [b.strip().replace(" ", "") for b in re.split(r'[\-\–]', linha_letras) if b.strip()]
+        palavras = linha_palavras.split()
+
+        if not blocos_letras: return match.group(0)
+
+        resultado = []
+        pool_letras = list("".join(blocos_letras))
+
+        # LISTA DE PALAVRAS QUE NÃO DEVEM CONSUMIR LETRAS DO POOL
+        palavras_cheias = ['VERBAL', 'DE', 'DO', 'DA', 'DOS', 'DAS', 'E', 'EM', 'PARA', 'COM']
+
+        for palavra in palavras:
+            palavra_upper = palavra.upper().strip(".,:;")
+
+            # Se for uma palavra inteira (ex: VERBAL), apenas adiciona e continua
+            if palavra_upper in palavras_cheias:
+                resultado.append(palavra)
+                continue
+
+            # Se ainda tem letra para colar, cola
+            if pool_letras:
+                letra = pool_letras.pop(0)
+                resultado.append(letra + palavra)
+            else:
+                resultado.append(palavra)
+
+        frase_final = " ".join(resultado)
+        return "\n" + frase_final + "\n"
+
+    return re.sub(pattern, reparar, texto)
+
+
 def limpar_ruido(texto):
-    patterns = [
-        r"PETROBRAS \(Nível Superior\) Português\s*\d*", r"www\.estrategiaconcursos\.com\.br\s*\d*",
-        r"\d{11}\s*-\s*Ricardo Aciole", r"Equipe Português Estratégia Concursos, Felipe Luccas",
-        r"Aula \d+", r"==\w+==", r"^\s*\d+\s*$"
+    # Chama sua função original, agora corrigida
+    texto = reconstruir_cabecalho_inteligente(texto)
+
+    patterns_to_remove = [
+        r"PETROBRAS \(Nível Superior\) Português\s*\d*",
+        r"www\.estrategiaconcursos\.com\.br\s*\d*",
+        r"\d{11}\s*-\s*Ricardo Aciole",
+        r"Equipe Português Estratégia Concursos, Felipe Luccas",
+        r"Aula \d+",
+        r"==\w+==",
+        r"^\s*\d+\s*$",
+        r"^\.\d+\.\.\)\.",
     ]
-    for p in patterns: texto = re.sub(p, "", texto, flags=re.MULTILINE | re.IGNORECASE)
-    return re.sub(r'\n{3,}', '\n\n', texto)
+    for pattern in patterns_to_remove:
+        texto = re.sub(pattern, "", texto, flags=re.MULTILINE | re.IGNORECASE)
+    texto = re.sub(r'\n{3,}', '\n\n', texto)
+    return texto
 
 
 def extrair_mapa_gabaritos(texto):
     mapa = {}
-    matches = re.finditer(r'(?:^|\n)\s*(\d+)\.?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)', texto, re.IGNORECASE)
-    for m in matches: mapa[m.group(1)] = m.group(2).upper()
+    padrao_tabela = r'(?:^|\n)\s*(\d+)\.?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)'
+    matches = re.finditer(padrao_tabela, texto, re.IGNORECASE)
+    for m in matches:
+        mapa[m.group(1)] = m.group(2).upper()
     return mapa
 
 
 def parsear_questoes(texto_bruto):
+    # Usa a sanitização robusta restaurada
     texto = limpar_ruido(texto_bruto)
     mapa_gabaritos = extrair_mapa_gabaritos(texto)
     questoes = []
     mapa_assuntos = []
 
-    # Mapeamento Assuntos
-    for match in re.finditer(
-            r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES).*?([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s\-]+?)\s*(?:C\s*)?ESGRANRIO', texto,
-            re.IGNORECASE | re.DOTALL):
-        trecho = match.group(1).replace('\n', ' ').replace('-', '').strip()
-        assunto = CORRECAO_ASSUNTOS.get(trecho) or CORRECAO_ASSUNTOS.get(trecho.replace("  ", " "))
-        if not assunto and len(trecho) > 3: assunto = trecho.title()
-        if assunto: mapa_assuntos.append({"inicio": match.start(), "assunto": assunto})
+    # 1. Identificação de Assuntos (Com o texto agora corrigido corretamente)
+    regex_topicos = re.compile(
+        r'(?:QUESTÕES\s+COMENTADAS|LISTA\s+DE\s+QUESTÕES|LISTA\s+E\s+QUESTÕES|PORTUGUÊS).*?[-–—\s]\s*(.*?)\s*(?:[-–—]|$)(?:C\s*)?ESGRANRIO',
+        re.IGNORECASE | re.DOTALL
+    )
+
+    for match in regex_topicos.finditer(texto):
+        trecho_limpo = match.group(1).strip()
+        trecho_limpo = trecho_limpo.replace('-', '').replace('–', '').strip()
+
+        match_fuzzy = difflib.get_close_matches(trecho_limpo, ASSUNTOS_CONHECIDOS, n=1, cutoff=0.5)
+
+        if "CORRELAÇÃO" in trecho_limpo.upper():
+            assunto_final = "Correlação Verbal"
+        elif "VOZES" in trecho_limpo.upper():
+            assunto_final = "Vozes Verbais"
+        else:
+            assunto_final = match_fuzzy[0] if match_fuzzy else trecho_limpo.title()
+
+        mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_final})
+
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    parts = re.split(r'(\d+)\.\s*\((CESGRANRIO.*?)\)', texto)
-    if len(parts) > 1:
-        tracker = len(parts[0])
-        for i in range(1, len(parts), 3):
-            if (i + 2) >= len(parts): break
-            q_num, q_meta, q_content = parts[i].strip(), parts[i + 1].strip(), parts[i + 2]
-            tracker += len(q_num) + len(q_meta) + len(q_content)
+    # 2. Scanner de Questões (Usa finditer para precisão de posição)
+    pattern_questao = re.compile(r'(\d+)\.\s*\(((?:CESGRANRIO|FGV|CEBRASPE|FCC).*?)\)', re.IGNORECASE)
+    matches_questoes = list(pattern_questao.finditer(texto))
 
-            assunto = "Geral"
-            if mapa_assuntos:
-                anteriores = [m for m in mapa_assuntos if m["inicio"] < tracker]
-                if anteriores: assunto = anteriores[-1]["assunto"]
+    for i, m in enumerate(matches_questoes):
+        start_index = m.start()
+        q_numero = m.group(1)
+        q_meta = m.group(2)
 
-            # --- PROCESSAMENTO INTELIGENTE DE METADADOS ---
-            # Remove parênteses e traços extras
-            meta_clean = q_meta.replace("–", "/").replace("-", "/")
-            partes = [p.strip() for p in meta_clean.split('/') if p.strip()]
+        if i + 1 < len(matches_questoes):
+            end_index = matches_questoes[i + 1].start()
+        else:
+            end_index = len(texto)
 
-            banca = "CESGRANRIO"
-            ano = "2025"
-            instituicao = ""
+        q_conteudo_bruto = texto[m.end():end_index]
 
-            for p in partes:
-                p_upper = p.upper()
-                if re.match(r'^\d{4}$', p): ano = p; continue
-                if "CESGRANRIO" in p_upper: continue
-                # Filtra se for cargo
-                if any(c in p_upper for c in BLACKLIST_CARGOS): continue
-                # Filtra códigos curtos que não são siglas conhecidas
-                if len(p) < 4 and p_upper not in ["BB", "ANP", "STJ", "STF", "AGU", "MPE", "TJ", "TRE", "TRT", "MP",
-                                                  "CNJ"]: continue
+        assunto_atual = "Geral"
+        if mapa_assuntos:
+            anteriores = [ma for ma in mapa_assuntos if ma["inicio"] < start_index]
+            if anteriores:
+                assunto_atual = anteriores[-1]["assunto"]
 
-                # Se sobreviveu aos filtros, é a instituição
-                # Damos preferência à maior string (ex: "ELETRONUCLEAR" > "PNMO")
-                if not instituicao or len(p) > len(instituicao):
-                    instituicao = p
+        meta_limpa = q_meta.replace("–", "/").replace("-", "/")
+        partes_meta = [p.strip() for p in meta_limpa.split('/') if p.strip()]
+        banca = "CESGRANRIO"
+        ano = "2025"
+        instituicao = ""
 
-            # Gabarito
-            gabarito = ""
-            matches_gab = list(re.finditer(
-                r'(?:Gabarito|GABARITO|Correta|Letra)(?:.{0,30}?)(?:[Ll]etra|[Oo]pção|[Aa]lternativa)?\s*([A-E])(?=[\.\s]|$)',
-                q_content, re.IGNORECASE))
-            if matches_gab: gabarito = matches_gab[-1].group(1).upper()
-            if not gabarito and q_num in mapa_gabaritos: gabarito = mapa_gabaritos[q_num]
+        for p in partes_meta:
+            p_upper = p.upper()
+            if re.match(r'^\d{4}$', p): ano = p; continue
+            if "CESGRANRIO" in p_upper: banca = "CESGRANRIO"; continue
+            if any(cargo in p_upper for cargo in PALAVRAS_CHAVE_CARGO): continue
+            if len(p) < 4 and p_upper not in ["BB", "ANP", "STJ", "STF", "AGU", "MPE", "TJ", "TRE", "TRT", "DPE", "PGE",
+                                              "PC"]: continue
+            if not instituicao or len(p) > len(instituicao): instituicao = p
 
-            # Enunciado e Alternativas
-            content_limpo = re.split(r"(Comentários?|Comentário:)", q_content, maxsplit=1, flags=re.IGNORECASE)[0]
-            content_limpo = re.split(r'\n\s*(?:L\s*I\s*S\s*T\s*A|GABARITO)', content_limpo, flags=re.IGNORECASE)[0]
+        gabarito = ""
+        gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)\s*:?\s*([A-E])\s*$'
+        matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
+        if matches_gab:
+            gabarito = matches_gab[-1].group(1).upper()
 
-            parts_alt = re.split(r'\b([A-E])\)', content_limpo)
-            enunciado = sanitizar_texto(parts_alt[0].strip())
-            alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
-            if len(parts_alt) > 1:
-                for k in range(1, len(parts_alt), 2):
-                    letra = parts_alt[k].upper()
-                    if k + 1 < len(parts_alt): alts[letra] = sanitizar_texto(parts_alt[k + 1].strip().rstrip('.;'))
+        if not gabarito and q_numero in mapa_gabaritos:
+            gabarito = mapa_gabaritos[q_numero]
 
-            if enunciado and (alts["A"] or alts["B"]):
-                questoes.append({
-                    "temp_id": q_num, "banca": banca, "instituicao": instituicao, "ano": ano,
-                    "assunto": assunto, "enunciado": enunciado,
-                    "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
-                    "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME", "imagem": ""
-                })
+        content_no_comments = \
+        re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
+        content_no_comments = re.sub(r'www\.estrategia.*', '', content_no_comments)
+
+        parts_alt = re.split(r'\b([A-E])\)', content_no_comments)
+        enunciado = sanitizar_texto(parts_alt[0].strip())
+
+        alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
+        if len(parts_alt) > 1:
+            for k in range(1, len(parts_alt), 2):
+                letra = parts_alt[k].upper()
+                if k + 1 < len(parts_alt): alts[letra] = sanitizar_texto(parts_alt[k + 1].strip())
+
+        if enunciado and (alts["A"] or alts["B"]):
+            questoes.append({
+                "temp_id": q_numero, "banca": banca, "instituicao": instituicao, "ano": ano,
+                "assunto": assunto_atual, "enunciado": enunciado,
+                "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
+                "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME", "imagem": ""
+            })
+
     return questoes
 
 
-def extrair_texto_pdf(path):
-    txt = ""
-    with pdfplumber.open(path) as pdf:
-        for page in pdf.pages: txt += (page.extract_text() or "") + "\n"
-    return txt
+def extrair_texto_pdf(caminho_arquivo):
+    texto = ""
+    with pdfplumber.open(caminho_arquivo) as pdf:
+        for page in pdf.pages:
+            texto += (page.extract_text() or "") + "\n"
+    return texto
 
 
 # --- CRUD BASE ---
@@ -202,18 +293,15 @@ def verificar_questoes():
 def carregar_questoes():
     verificar_questoes();
     wb = load_workbook(ARQ_QUESTOES);
-    ws = wb.active
+    ws = wb.active;
     dados = []
     for row in ws.iter_rows(min_row=2, values_only=True):
         if row[0] is None: continue
         img = row[17] if len(row) > 17 else ""
-        dados.append({
-            "id": row[0], "banca": row[1], "instituicao": row[2], "ano": row[3],
-            "enunciado": row[4], "disciplina": row[5], "assunto": row[6],
-            "dificuldade": row[7], "tipo": row[8],
-            "alt_a": row[9], "alt_b": row[10], "alt_c": row[11], "alt_d": row[12], "alt_e": row[13],
-            "gabarito": row[14], "respondidas": row[15] or 0, "acertos": row[16] or 0, "imagem": img
-        })
+        dados.append({"id": row[0], "banca": row[1], "instituicao": row[2], "ano": row[3], "enunciado": row[4],
+                      "disciplina": row[5], "assunto": row[6], "dificuldade": row[7], "tipo": row[8], "alt_a": row[9],
+                      "alt_b": row[10], "alt_c": row[11], "alt_d": row[12], "alt_e": row[13], "gabarito": row[14],
+                      "respondidas": row[15] or 0, "acertos": row[16] or 0, "imagem": img})
     return dados
 
 
@@ -223,11 +311,10 @@ def salvar_questoes(dados):
     ws.append(
         ["id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto", "dificuldade", "tipo", "alt_a",
          "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem"])
-    for i in dados:
-        ws.append(
-            [i["id"], i.get("banca"), i.get("instituicao"), i.get("ano"), i["enunciado"], i["disciplina"], i["assunto"],
-             i["dificuldade"], i["tipo"], i.get("alt_a"), i.get("alt_b"), i.get("alt_c"), i.get("alt_d"),
-             i.get("alt_e"), i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", "")])
+    for i in dados: ws.append(
+        [i["id"], i.get("banca"), i.get("instituicao"), i.get("ano"), i["enunciado"], i["disciplina"], i["assunto"],
+         i["dificuldade"], i["tipo"], i.get("alt_a"), i.get("alt_b"), i.get("alt_c"), i.get("alt_d"), i.get("alt_e"),
+         i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", "")])
     wb.save(ARQ_QUESTOES)
 
 
@@ -267,13 +354,13 @@ def verificar_metadados():
     if not os.path.exists(ARQ_METADADOS):
         wb = Workbook();
         [wb.create_sheet(n).append(["nome"]) for n in ["bancas", "instituicoes", "disciplinas"]]
-        wb.create_sheet("assuntos").append(["nome", "disciplina", "ordem"])
+        wb.create_sheet("assuntos").append(["nome", "disciplina", "ordem"]);
         wb.save(ARQ_METADADOS)
 
 
 def carregar_meta_dict():
     verificar_metadados();
-    wb = load_workbook(ARQ_METADADOS)
+    wb = load_workbook(ARQ_METADADOS);
     dados = {"bancas": [], "instituicoes": [], "disciplinas": [], "assuntos": []}
     for k in ["bancas", "instituicoes", "disciplinas"]:
         if k in wb.sheetnames: [dados[k].append(str(r[0])) for r in wb[k].iter_rows(min_row=2, values_only=True) if
@@ -298,7 +385,7 @@ def gerenciar_assunto(acao, payload, nome_antigo=None):
     todos = [{"nome": str(r[0]), "disciplina": str(r[1]), "ordem": int(r[2]) if r[2] else 999} for r in
              ws.iter_rows(min_row=2, values_only=True) if r[0]]
     if acao == 'editar': todos = [a for a in todos if a["nome"] != nome_antigo]
-    todos.append(payload)
+    todos.append(payload);
     wb.remove(wb["assuntos"]);
     ws_new = wb.create_sheet("assuntos");
     ws_new.append(["nome", "disciplina", "ordem"])
@@ -332,23 +419,19 @@ def post_q():
         nova = request.form.to_dict(); arq = request.files.get('imagem_file')
     else:
         nova = request.json
-    dados = carregar_questoes()
-
+    dados = carregar_questoes();
+    nome_img = ""
     if arq and arq.filename:
         ext = arq.filename.rsplit('.', 1)[1].lower();
-        nome = f"{uuid.uuid4()}.{ext}"
-        arq.save(os.path.join(UPLOAD_FOLDER, nome));
-        nova["imagem"] = nome
+        nome_img = f"{uuid.uuid4()}.{ext}";
+        arq.save(os.path.join(UPLOAD_FOLDER, nome_img));
+        nova["imagem"] = nome_img
     else:
         nova["imagem"] = ""
-
     sig = gerar_assinatura(nova)
     if any(gerar_assinatura(q) == sig for q in dados): return jsonify({"erro": "Duplicada"}), 409
-
-    if not nova.get("id"):
-        ids = sorted([int(q["id"]) for q in dados if str(q["id"]).isdigit()])
-        nova["id"] = 1 if not ids else (ids[-1] + 1)
-
+    if not nova.get("id"): ids = sorted([int(q["id"]) for q in dados if str(q["id"]).isdigit()]); nova[
+        "id"] = 1 if not ids else (ids[-1] + 1)
     nova.update({"respondidas": 0, "acertos": 0});
     dados.append(nova);
     salvar_questoes(dados)
@@ -364,7 +447,6 @@ def put_q():
     else:
         load = request.json;
     if isinstance(load, list): salvar_questoes(load); return jsonify({"status": "ok"})
-
     dados = carregar_questoes()
     for i, q in enumerate(dados):
         if str(q["id"]) == str(load["id"]):
@@ -372,11 +454,11 @@ def put_q():
             q.update(load)
             if arq and arq.filename:
                 ext = arq.filename.rsplit('.', 1)[1].lower();
-                nome = f"{uuid.uuid4()}.{ext}"
-                arq.save(os.path.join(UPLOAD_FOLDER, nome));
-                q["imagem"] = nome
-            elif not load.get("imagem"):
-                q["imagem"] = img_antiga
+                nome_img = f"{uuid.uuid4()}.{ext}";
+                arq.save(os.path.join(UPLOAD_FOLDER, nome_img));
+                q["imagem"] = nome_img
+            else:
+                if not load.get("imagem"): q["imagem"] = img_antiga
             dados[i] = q;
             salvar_questoes(dados);
             return jsonify({"status": "Atualizado"})
@@ -388,7 +470,7 @@ def check_dup():
     payload = request.json;
     sig = gerar_assinatura(payload)
     if not payload.get("enunciado"): return jsonify({"existe": False})
-    dados = carregar_questoes()
+    dados = carregar_questoes();
     return jsonify({"existe": any(gerar_assinatura(q) == sig for q in dados)})
 
 
@@ -429,7 +511,7 @@ def upload_pdf():
     f.save(p)
     try:
         novas = parsear_questoes(extrair_texto_pdf(p));
-        banco = carregar_questoes()
+        banco = carregar_questoes();
         sigs = {gerar_assinatura(q) for q in banco}
         for n in novas: n['ja_cadastrada'] = gerar_assinatura(n) in sigs
         return jsonify(novas)
