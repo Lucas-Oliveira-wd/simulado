@@ -46,9 +46,7 @@ def normalizar_para_comparacao(texto):
 
 def sanitizar_texto(texto):
     if not texto: return ""
-    # Corrige hifenização
     texto = re.sub(r'-\s*\n\s*', '', texto)
-    # Lógica de Parágrafos
     linhas = [l.strip() for l in texto.split('\n') if l.strip()]
     if not linhas: return ""
     resultado = []
@@ -85,12 +83,36 @@ def limpar_ruido(texto):
     return cleaned_text
 
 
+def extrair_mapa_gabaritos(texto):
+    """
+    Varre o texto inteiro procurando tabelas de gabarito.
+    Ex: 1. LETRA C, 2. LETRA B... ou 1. C, 2. B
+    Retorna um dict: {'1': 'C', '2': 'B', ...}
+    """
+    mapa = {}
+    # Regex para capturar linhas de gabarito isoladas (comuns no final dos PDFs do Estratégia)
+    # Procura por: inicio linha -> numero -> ponto opcional -> "LETRA" opcional -> A-E
+    padrao_tabela = r'(?:^|\n)\s*(\d+)\.?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)'
+
+    matches = re.finditer(padrao_tabela, texto, re.IGNORECASE)
+    for m in matches:
+        num = m.group(1)
+        letra = m.group(2).upper()
+        # Só adiciona se não existir ou sobrescreve (geralmente a tabela final é a mais confiável)
+        mapa[num] = letra
+    return mapa
+
+
 def parsear_questoes(texto_bruto):
     texto = limpar_ruido(texto_bruto)
+
+    # 1. Monta o Mapa de Gabaritos (Tabela Final)
+    mapa_gabaritos = extrair_mapa_gabaritos(texto)
+
     questoes = []
     mapa_assuntos = []
 
-    # 1. CAPTURA DE ASSUNTOS
+    # 2. CAPTURA DE ASSUNTOS
     regex_topicos = re.compile(
         r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES).*?([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s\-]+?)\s*(?:C\s*)?ESGRANRIO',
         re.IGNORECASE | re.DOTALL
@@ -106,7 +128,7 @@ def parsear_questoes(texto_bruto):
             mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_corrigido})
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    # 2. CAPTURA DE QUESTÕES
+    # 3. CAPTURA DE QUESTÕES
     question_split_pattern = r"(\d+)\.\s*\((CESGRANRIO.*?)\)"
     parts = re.split(question_split_pattern, texto)
 
@@ -137,25 +159,20 @@ def parsear_questoes(texto_bruto):
             meta_clean = q_meta.replace(banca, "").replace(ano, "").replace("-", "").strip()
             instituicao = meta_clean.strip(" /")
 
-            # --- CAPTURA DE GABARITO APRIMORADA ---
-            # Procura por "Gabarito" seguido de qualquer coisa (até 30 chars) e depois uma Letra isolada ou fim de frase
-            # Ex: "Gabarito letra C.", "Gabarito: C", "Gabarito C"
+            # --- LÓGICA DE GABARITO (Com prioridade para Tabela Externa) ---
             gabarito = ""
-            # Regex explicada:
-            # 1. (?:Gabarito|GABARITO) -> Encontra a palavra chave
-            # 2. (?:.{0,30}?) -> Aceita até 30 caracteres de "sujeira" (ex: ": ", " letra ", " a resposta correta é ")
-            # 3. (?:[Ll]etra|[Oo]pção|[Aa]lternativa)? -> Opcionalmente a palavra letra/opção
-            # 4. \s*([A-E]) -> Espaços e a letra de A a E
-            # 5. (?=[\.\s]|$|$) -> Lookahead para garantir que terminou em ponto, espaço ou fim do texto
-            gabarito_pattern = r'(?:Gabarito|GABARITO)(?:.{0,30}?)(?:[Ll]etra|[Oo]pção|[Aa]lternativa)?\s*([A-E])(?=[\.\s]|$)'
 
-            # Buscamos em TODO o conteúdo bruto, pois o gabarito costuma estar no final
-            matches_gab = list(re.finditer(gabarito_pattern, q_conteudo_bruto, re.IGNORECASE))
+            # 1. Tenta achar no comentário local (Questões Comentadas)
+            gabarito_pattern_local = r'(?:Gabarito|GABARITO|Correta|Letra)(?:.{0,30}?)(?:[Ll]etra|[Oo]pção|[Aa]lternativa)?\s*([A-E])(?=[\.\s]|$)'
+            matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto, re.IGNORECASE))
             if matches_gab:
-                # Pega o último match encontrado no bloco, pois geralmente é a conclusão do comentário
                 gabarito = matches_gab[-1].group(1).upper()
 
-            # Separação de Conteúdo (Remove comentários para não pegar texto de explicação como alternativa)
+            # 2. SE NÃO ACHOU (Lista de Questões): Busca no Mapa Global pelo número da questão
+            if not gabarito and q_numero in mapa_gabaritos:
+                gabarito = mapa_gabaritos[q_numero]
+
+            # Separação de Conteúdo
             content_no_comments = \
             re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
             content_no_comments = \
@@ -440,11 +457,29 @@ def del_fc(id):
 @app.route("/upload-pdf", methods=["POST"])
 def upload_pdf():
     if 'file' not in request.files: return jsonify({"erro": "Sem arquivo"}), 400
-    f = request.files['file'];
-    p = os.path.join(BASE_DIR, "temp.pdf");
+    f = request.files['file']
+    p = os.path.join(BASE_DIR, "temp.pdf")
     f.save(p)
     try:
-        return jsonify(parsear_questoes(extrair_texto_pdf(p)))
+        # 1. Extrai novas (agora com suporte a gabarito separado)
+        novas_questoes = parsear_questoes(extrair_texto_pdf(p))
+
+        # 2. Carrega existentes para verificar duplicidade
+        questoes_banco = carregar_questoes()
+        assinaturas_banco = set()
+        for q in questoes_banco:
+            sig = (normalizar_para_comparacao(q['enunciado']), normalizar_para_comparacao(q['alt_a']))
+            assinaturas_banco.add(sig)
+
+        # 3. Marca duplicadas
+        for nova in novas_questoes:
+            sig_nova = (normalizar_para_comparacao(nova['enunciado']), normalizar_para_comparacao(nova['alt_a']))
+            if sig_nova in assinaturas_banco:
+                nova['ja_cadastrada'] = True
+            else:
+                nova['ja_cadastrada'] = False
+
+        return jsonify(novas_questoes)
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
     finally:

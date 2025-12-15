@@ -67,10 +67,12 @@
 
     /* Estilos Importação */
     .imp-row { display: flex; gap: 10px; align-items: flex-start; background: #fff; padding: 10px; border: 1px solid #eee; margin-bottom: 10px; border-radius: 4px; }
+    .imp-row.ja-cadastrada { border-left: 4px solid #e74c3c; background: #fff5f5; }
+    .imp-row.sucesso-salvo { border-left: 4px solid #27ae60; background: #eafaf1; }
     .imp-meta { min-width: 150px; max-width: 150px; display: flex; flex-direction: column; gap: 5px; }
     .imp-content { flex-grow: 1; }
     .imp-gab { min-width: 60px; max-width: 60px; text-align: center; }
-    .imp-del { min-width: 30px; text-align: center; }
+    .imp-acoes { min-width: 60px; text-align: center; display: flex; flex-direction: column; gap: 5px; align-items: center; justify-content: center; }
     .imp-textarea { width: 100%; border: 1px solid #eee; resize: vertical; font-family: inherit; font-size: 0.9rem; padding: 5px; border-radius: 4px;}
     .imp-textarea:focus { border-color: var(--sec); outline: none; }
     .preview-header { display: flex; background: var(--primary); color: white; padding: 10px; border-radius: 4px 4px 0 0; font-weight: bold; font-size: 0.85rem;}
@@ -190,7 +192,7 @@
             <button class="btn-acao" onclick="salvarLote()" style="margin-bottom:15px;">💾 Salvar Todas no Banco</button>
             <div class="preview-header">
                 <div style="width:40px">#</div><div style="width:150px; margin-right:10px">Banca/Ano</div>
-                <div style="flex-grow:1">Enunciado / Alternativas (Editável)</div><div style="width:60px; text-align:center">Gab</div><div style="width:30px">Del</div>
+                <div style="flex-grow:1">Enunciado / Alternativas (Editável)</div><div style="width:60px; text-align:center">Gab</div><div style="width:60px; text-align:center">Ações</div>
             </div>
             <div id="imp-lista-questoes" style="background:#f4f4f9; padding:10px; max-height:600px; overflow-y:auto; border:1px solid #ccc"></div>
         </div>
@@ -457,15 +459,12 @@ function carregarAssuntos(prefixo) {
 
 // --- IMPORTAÇÃO PDF ---
 async function lerPDF() {
-    // --- TRAVA DE SEGURANÇA INTELIGENTE ---
     let lista = el("imp-lista-questoes");
     if (lista && lista.children.length > 0) {
         if(!confirm("⚠️ ATENÇÃO: Você já tem questões importadas na lista.\n\nLer um novo PDF irá substituir tudo o que está na tela de prévia.\nDeseja continuar?")) {
             return; 
         }
     }
-    // ---------------------------------------
-
     let inp = el("imp-file"); if(inp.files.length === 0) return alert("Selecione um arquivo PDF");
     let fd = new FormData(); fd.append("file", inp.files[0]);
     el("imp-preview-container").style.display = "none"; el("imp-lista-questoes").innerHTML = "";
@@ -479,12 +478,30 @@ function renderPreview(lista) {
     let div = el("imp-lista-questoes"); div.innerHTML = "";
     el("imp-titulo-preview").innerText = `Prévia (${lista.length} encontradas)`;
     el("imp-preview-container").style.display = "block";
+    
     lista.forEach((q, i) => {
+        // --- LÓGICA DE DUPLICIDADE ---
+        let avisoDuplicada = "";
+        let classeRow = "imp-row";
+        let btnSalvar = "";
+        
+        if (q.ja_cadastrada) {
+            avisoDuplicada = `<span style="color:#e74c3c; font-weight:bold; font-size:0.8em; display:block; margin-top:2px;">⚠️ Já Cadastrada</span>`;
+            classeRow += " ja-cadastrada";
+            btnSalvar = `<button class="btn-icon" style="color:#ccc; cursor:not-allowed" title="Já salva no banco">💾</button>`;
+        } else {
+            btnSalvar = `<button class="btn-icon" style="color:#27ae60" onclick="salvarIndividual(${i})" title="Salvar esta questão">💾</button>`;
+        }
+        // -----------------------------
+
         let optionsGab = `<option value="">?</option>`;
         ["A","B","C","D","E"].forEach(l => { let sel = q.gabarito === l ? "selected" : ""; optionsGab += `<option value="${l}" ${sel}>${l}</option>`; });
         div.innerHTML += `
-        <div class="imp-row" id="imp-row-${i}">
-            <div style="width:40px; font-weight:bold">${i+1}</div>
+        <div class="${classeRow}" id="imp-row-${i}">
+            <div style="width:40px; font-weight:bold; text-align:center">
+                ${i+1}
+                ${avisoDuplicada}
+            </div>
             <div class="imp-meta">
                 <input type="text" class="imp-banca" placeholder="Banca" value="${q.banca}" title="Banca">
                 <input type="text" class="imp-inst" placeholder="Instituição" value="${q.instituicao}" style="font-size:0.85em" title="Instituição">
@@ -503,15 +520,73 @@ function renderPreview(lista) {
                 </div>
             </div>
             <div class="imp-gab"><select class="imp-gabarito">${optionsGab}</select></div>
-            <div class="imp-del"><button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()">✖</button></div>
+            <div class="imp-acoes">
+                ${btnSalvar}
+                <button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()" title="Remover da lista">✖</button>
+            </div>
         </div>`;
     });
 }
+
+// --- SALVAR INDIVIDUAL ---
+async function salvarIndividual(index) {
+    let r = el(`imp-row-${index}`);
+    let disc = el("imp-disciplina").value;
+    if(!disc) return alert("Selecione a Disciplina base (acima da lista) antes de salvar.");
+
+    let assuntoFinal = r.querySelector(".imp-assunto-ind").value || el("imp-assunto").value;
+    if(!assuntoFinal) assuntoFinal = "Geral";
+
+    let obj = {
+        banca: r.querySelector(".imp-banca").value,
+        instituicao: r.querySelector(".imp-inst").value,
+        ano: r.querySelector(".imp-ano").value,
+        dificuldade: r.querySelector(".imp-dif").value,
+        enunciado: r.querySelector(".imp-enunciado").value,
+        alt_a: r.querySelector(".imp-alt-a").value,
+        alt_b: r.querySelector(".imp-alt-b").value,
+        alt_c: r.querySelector(".imp-alt-c").value,
+        alt_d: r.querySelector(".imp-alt-d").value,
+        alt_e: r.querySelector(".imp-alt-e").value,
+        gabarito: r.querySelector(".imp-gabarito").value,
+        tipo: "ME",
+        disciplina: disc,
+        assunto: assuntoFinal
+    };
+
+    if(!obj.enunciado || !obj.gabarito) return alert("Enunciado e Gabarito são obrigatórios.");
+
+    try {
+        const response = await fetch(`${API}/questoes`, { 
+            method: "POST", 
+            headers: {"Content-Type":"application/json"}, 
+            body: JSON.stringify(obj) 
+        });
+
+        if (response.status === 200 || response.status === 201) {
+            // Sucesso Visual
+            r.classList.add("sucesso-salvo");
+            r.querySelector(".imp-acoes").innerHTML = `<span style="color:green; font-weight:bold">Salva!</span> <button class="btn-icon" style="color:red" onclick="el('imp-row-${index}').remove()">✖</button>`;
+        } else if (response.status === 409) {
+            alert("Esta questão já existe no banco!");
+            r.classList.add("ja-cadastrada");
+        } else {
+            alert("Erro ao salvar.");
+        }
+    } catch(e) { 
+        alert("Erro de conexão."); 
+    }
+}
+// -------------------------
+
 async function salvarLote() {
     let rows = document.querySelectorAll(".imp-row"); let disc = el("imp-disciplina").value; let assGlobal = el("imp-assunto").value;
     if(!disc) return alert("Selecione a Disciplina base (acima da lista).");
     let lote = [];
     rows.forEach(r => {
+        // Ignora as que já foram salvas individualmente (classe sucesso-salvo)
+        if(r.classList.contains("sucesso-salvo")) return;
+
         let assuntoFinal = r.querySelector(".imp-assunto-ind").value || assGlobal; if(!assuntoFinal) assuntoFinal = "Geral";
         let obj = {
             banca: r.querySelector(".imp-banca").value, instituicao: r.querySelector(".imp-inst").value, 
@@ -522,7 +597,7 @@ async function salvarLote() {
         };
         if(obj.enunciado && obj.gabarito) lote.push(obj);
     });
-    if(lote.length === 0) return alert("Nenhuma questão válida.");
+    if(lote.length === 0) return alert("Nenhuma questão nova para salvar.");
     if(!confirm(`Tentar salvar ${lote.length} questões na disciplina ${disc}?`)) return;
     showLoader("Salvando questões...");
     let contadores = { salvos: 0, duplicados: 0, erros: 0 };
