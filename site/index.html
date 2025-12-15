@@ -236,24 +236,7 @@ async function init() {
         popSelGeral(); altTipo('cad'); nav('cadastro');
     } catch(e) { alert("Erro ao carregar dados. Verifique o servidor."); }
 }
-function popSelGeral() {
-    ['cad','busca','edit','prat','prova','imp','fc','fc-estudo'].forEach(p => {
-        if(el(`${p}-banca`)) pop(el(`${p}-banca`), meta.bancas, p==='imp'?"Banca Padrão...":"Banca...");
-        if(el(`${p}-instituicao`)) pop(el(`${p}-instituicao`), meta.instituicoes, "Instituição...");
-        
-        // Correção do ID específico da aba de estudo
-        let idDisc = (p === 'fc-estudo') ? 'fc-estudo-disc' : `${p}-disciplina`;
-        if(el(idDisc)) pop(el(idDisc), meta.disciplinas, "Disciplina...");
-    });
-}
-function pop(sel, arr, def) {
-    if(!sel) return;
-    let html = def ? `<option value="">${def}</option>` : "";
-    if (arr && arr.length > 0) {
-        arr.forEach(x => html += `<option>${x}</option>`);
-    }
-    sel.innerHTML = html;
-}
+
 // Otimiza a renderização (evita piscar/bugar ao carregar muitas opções)
 function pop(sel, arr, def) {
     if(!sel) return;
