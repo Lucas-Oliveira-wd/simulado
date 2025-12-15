@@ -1,20 +1,28 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from openpyxl import load_workbook, Workbook
 from flask_cors import CORS
 import os
 import pdfplumber
 import re
+import uuid
 
 app = Flask(__name__)
 CORS(app)
 
+# --- CONFIGURAÇÕES DE CAMINHOS ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(BASE_DIR, "../banco_de_dados")
+# Caminho solicitado: .../banco_de_dados/img/q_img
+UPLOAD_FOLDER = os.path.join(DB_DIR, "img", "q_img")
 ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
 ARQ_METADADOS = os.path.join(DB_DIR, "metadados.xlsx")
 ARQ_FLASHCARDS = os.path.join(DB_DIR, "flashcards.xlsx")
 
-# --- MAPA DE CORREÇÃO DE TÓPICOS ---
+# Garante a existência das pastas
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# --- MAPA DE CORREÇÃO DE TÓPICOS (OCR) ---
 CORRECAO_ASSUNTOS = {
     "MPREGO OS EMPOS ODOS": "Emprego de Tempos e Modos",
     "ODO NDICATIVO": "Modo Indicativo",
@@ -65,7 +73,7 @@ def sanitizar_texto(texto):
     return "".join(resultado)
 
 
-# --- LÓGICA DE EXTRAÇÃO ---
+# --- LÓGICA DE EXTRAÇÃO E PARSING ---
 def limpar_ruido(texto):
     patterns_to_remove = [
         r"PETROBRAS \(Nível Superior\) Português\s*\d*",
@@ -84,6 +92,7 @@ def limpar_ruido(texto):
 
 
 def extrair_mapa_gabaritos(texto):
+    """Busca tabelas de gabarito no final do arquivo (ex: 1. LETRA C)."""
     mapa = {}
     padrao_tabela = r'(?:^|\n)\s*(\d+)\.?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)'
     matches = re.finditer(padrao_tabela, texto, re.IGNORECASE)
@@ -100,7 +109,7 @@ def parsear_questoes(texto_bruto):
     questoes = []
     mapa_assuntos = []
 
-    # 1. CAPTURA DE ASSUNTOS
+    # 1. Mapeamento de Assuntos
     regex_topicos = re.compile(
         r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES).*?([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s\-]+?)\s*(?:C\s*)?ESGRANRIO',
         re.IGNORECASE | re.DOTALL
@@ -116,7 +125,7 @@ def parsear_questoes(texto_bruto):
             mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_corrigido})
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    # 2. CAPTURA DE QUESTÕES
+    # 2. Scanner de Questões
     question_split_pattern = r"(\d+)\.\s*\((CESGRANRIO.*?)\)"
     parts = re.split(question_split_pattern, texto)
 
@@ -132,28 +141,59 @@ def parsear_questoes(texto_bruto):
 
             current_pos_tracker += len(q_numero) + len(q_meta) + len(q_conteudo_bruto)
 
+            # Define Assunto
             assunto_atual = "Geral"
             if mapa_assuntos:
                 anteriores = [m for m in mapa_assuntos if m["inicio"] < current_pos_tracker]
                 if anteriores: assunto_atual = anteriores[-1]["assunto"]
 
+            # --- PROCESSAMENTO DE METADADOS CORRIGIDO ---
+            # Objetivo: Separar 'CESGRANRIO / INSTITUICAO / CARGO / ANO' e pegar só a Instituição
+
+            # Normaliza separadores (hífens viram barras) e remove parênteses externos
+            meta_limpa = q_meta.replace("–", "/").replace("-", "/")
+
+            # Divide em partes
+            partes_meta = [p.strip() for p in meta_limpa.split('/') if p.strip()]
+
             banca = "CESGRANRIO"
             ano = "2025"
             instituicao = ""
-            ano_match = re.search(r'\b20\d{2}\b', q_meta)
-            if ano_match: ano = ano_match.group(0)
-            meta_clean = q_meta.replace(banca, "").replace(ano, "").replace("-", "").strip()
-            instituicao = meta_clean.strip(" /")
 
+            # Lista temporária para armazenar o que não for Banca nem Ano
+            sobras = []
+
+            for p in partes_meta:
+                # Verifica Ano (4 dígitos isolados)
+                if re.match(r'^\d{4}$', p):
+                    ano = p
+                    continue
+
+                # Verifica Banca
+                if "CESGRANRIO" in p.upper():
+                    continue  # Já sabemos que é Cesgranrio
+
+                # O que sobrar é Instituição ou Cargo
+                sobras.append(p)
+
+            # A lógica é: O primeiro item da sobra é a Instituição. O resto (Cargo) descartamos.
+            if sobras:
+                instituicao = sobras[0]
+                # Se quisesse cargo, ele estaria em sobras[1] se existisse
+
+            # --- BUSCA DE GABARITO ---
             gabarito = ""
+            # A) Tenta no comentário local
             gabarito_pattern_local = r'(?:Gabarito|GABARITO|Correta|Letra)(?:.{0,30}?)(?:[Ll]etra|[Oo]pção|[Aa]lternativa)?\s*([A-E])(?=[\.\s]|$)'
             matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto, re.IGNORECASE))
             if matches_gab:
                 gabarito = matches_gab[-1].group(1).upper()
 
+            # B) Tenta no Mapa Global (Listas)
             if not gabarito and q_numero in mapa_gabaritos:
                 gabarito = mapa_gabaritos[q_numero]
 
+            # Separação de Conteúdo
             content_no_comments = \
             re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
             content_no_comments = \
@@ -174,9 +214,8 @@ def parsear_questoes(texto_bruto):
                     "temp_id": q_numero, "banca": banca, "instituicao": instituicao, "ano": ano,
                     "assunto": assunto_atual, "enunciado": enunciado,
                     "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
-                    "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME"
+                    "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME", "imagem": ""
                 })
-
     return questoes
 
 
@@ -197,7 +236,7 @@ def verificar_questoes():
         ws.title = "questoes"
         ws.append(
             ["id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto", "dificuldade", "tipo", "alt_a",
-             "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos"])
+             "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem"])
         wb.save(ARQ_QUESTOES)
 
 
@@ -208,12 +247,14 @@ def carregar_questoes():
     dados = []
     for row in ws.iter_rows(min_row=2, values_only=True):
         if row[0] is None: continue
+        img = row[17] if len(row) > 17 else ""
         dados.append({
             "id": row[0], "banca": row[1], "instituicao": row[2], "ano": row[3],
             "enunciado": row[4], "disciplina": row[5], "assunto": row[6],
             "dificuldade": row[7], "tipo": row[8],
             "alt_a": row[9], "alt_b": row[10], "alt_c": row[11], "alt_d": row[12], "alt_e": row[13],
-            "gabarito": row[14], "respondidas": row[15] or 0, "acertos": row[16] or 0
+            "gabarito": row[14], "respondidas": row[15] or 0, "acertos": row[16] or 0,
+            "imagem": img
         })
     return dados
 
@@ -223,16 +264,18 @@ def salvar_questoes(dados):
     ws = wb.active
     ws.append(
         ["id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto", "dificuldade", "tipo", "alt_a",
-         "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos"])
+         "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem"])
     for item in dados:
-        ws.append([item["id"], item.get("banca"), item.get("instituicao"), item.get("ano"), item["enunciado"],
-                   item["disciplina"], item["assunto"], item["dificuldade"], item["tipo"], item.get("alt_a"),
-                   item.get("alt_b"), item.get("alt_c"), item.get("alt_d"), item.get("alt_e"), item["gabarito"],
-                   item["respondidas"], item["acertos"]])
+        ws.append([
+            item["id"], item.get("banca"), item.get("instituicao"), item.get("ano"), item["enunciado"],
+            item["disciplina"], item["assunto"], item["dificuldade"], item["tipo"], item.get("alt_a"),
+            item.get("alt_b"), item.get("alt_c"), item.get("alt_d"), item.get("alt_e"), item["gabarito"],
+            item["respondidas"], item["acertos"], item.get("imagem", "")
+        ])
     wb.save(ARQ_QUESTOES)
 
 
-# --- CRUD FLASHCARDS ---
+# --- CRUD FLASHCARDS (Mantido) ---
 def verificar_flashcards():
     garantir_diretorio()
     if not os.path.exists(ARQ_FLASHCARDS):
@@ -265,7 +308,7 @@ def salvar_flashcards_dados(dados):
     wb.save(ARQ_FLASHCARDS)
 
 
-# --- METADADOS ---
+# --- METADADOS (Mantido) ---
 def verificar_metadados():
     garantir_diretorio()
     if not os.path.exists(ARQ_METADADOS):
@@ -355,58 +398,103 @@ def deletar_meta_item(cat, nome):
     return False
 
 
-# --- NOVO ENDPOINT DE VERIFICAÇÃO DINÂMICA ---
-@app.route("/check-duplicidade", methods=["POST"])
-def check_duplicidade():
-    payload = request.json
-    enunciado = normalizar_para_comparacao(payload.get("enunciado"))
-    alt_a = normalizar_para_comparacao(payload.get("alt_a"))
+# --- ROTAS ---
 
-    if not enunciado: return jsonify({"existe": False})
-
-    questoes_banco = carregar_questoes()
-    for q in questoes_banco:
-        if normalizar_para_comparacao(q['enunciado']) == enunciado and normalizar_para_comparacao(q['alt_a']) == alt_a:
-            return jsonify({"existe": True})
-
-    return jsonify({"existe": False})
+# Rota de Imagem
+@app.route('/img/q_img/<filename>')
+def serve_image(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 
-# --- ROTAS PADRÃO ---
 @app.route("/questoes", methods=["GET"])
 def get_q(): return jsonify(carregar_questoes())
 
 
 @app.route("/questoes", methods=["POST"])
 def post_q():
-    nova = request.json;
+    nova = {}
+    arquivo = None
+    if request.content_type.startswith('multipart/form-data'):
+        nova = request.form.to_dict()
+        if 'imagem_file' in request.files:
+            arquivo = request.files['imagem_file']
+    else:
+        nova = request.json
+
     dados = carregar_questoes()
-    ne = normalizar_para_comparacao(nova.get("enunciado"));
+
+    # Processa Imagem
+    nome_img = ""
+    if arquivo and arquivo.filename != '':
+        ext = arquivo.filename.rsplit('.', 1)[1].lower()
+        nome_img = f"{uuid.uuid4()}.{ext}"
+        arquivo.save(os.path.join(UPLOAD_FOLDER, nome_img))
+
+    nova["imagem"] = nome_img
+
+    # Validação
+    ne = normalizar_para_comparacao(nova.get("enunciado"))
     na = normalizar_para_comparacao(nova.get("alt_a"))
     if any(normalizar_para_comparacao(q["enunciado"]) == ne and normalizar_para_comparacao(q["alt_a"]) == na for q in
            dados):
         return jsonify({"erro": "Duplicada"}), 409
+
     if not nova.get("id"):
         ids = sorted([int(q["id"]) for q in dados if str(q["id"]).isdigit()])
         nova["id"] = 1 if not ids else (ids[-1] + 1)
-    nova.update({"respondidas": 0, "acertos": 0});
-    dados.append(nova);
+
+    nova.update({"respondidas": 0, "acertos": 0})
+    dados.append(nova)
     salvar_questoes(dados)
     return jsonify({"mensagem": "Salvo", "id": nova["id"]}), 201
 
 
 @app.route("/questoes", methods=["PUT"])
 def put_q():
-    load = request.json
-    if isinstance(load, list): salvar_questoes(load); return jsonify({"status": "ok"})
+    load = {}
+    arquivo = None
+    if request.content_type and request.content_type.startswith('multipart/form-data'):
+        load = request.form.to_dict()
+        if 'imagem_file' in request.files:
+            arquivo = request.files['imagem_file']
+    else:
+        load = request.json
+        if isinstance(load, list):
+            salvar_questoes(load)
+            return jsonify({"status": "ok"})
+
     dados = carregar_questoes()
     for i, q in enumerate(dados):
         if str(q["id"]) == str(load["id"]):
-            q.update(load);
-            dados[i] = q;
-            salvar_questoes(dados);
+            img_antiga = q.get("imagem", "")
+            q.update(load)
+
+            if arquivo and arquivo.filename != '':
+                ext = arquivo.filename.rsplit('.', 1)[1].lower()
+                nome_img = f"{uuid.uuid4()}.{ext}"
+                arquivo.save(os.path.join(UPLOAD_FOLDER, nome_img))
+                q["imagem"] = nome_img
+            else:
+                if not load.get("imagem"):
+                    q["imagem"] = img_antiga
+
+            dados[i] = q
+            salvar_questoes(dados)
             return jsonify({"status": "Atualizado"})
     return jsonify({"erro": "404"}), 404
+
+
+@app.route("/check-duplicidade", methods=["POST"])
+def check_duplicidade():
+    payload = request.json
+    enunciado = normalizar_para_comparacao(payload.get("enunciado"))
+    alt_a = normalizar_para_comparacao(payload.get("alt_a"))
+    if not enunciado: return jsonify({"existe": False})
+    questoes_banco = carregar_questoes()
+    for q in questoes_banco:
+        if normalizar_para_comparacao(q['enunciado']) == enunciado and normalizar_para_comparacao(q['alt_a']) == alt_a:
+            return jsonify({"existe": True})
+    return jsonify({"existe": False})
 
 
 @app.route("/questoes/<string:id>", methods=["DELETE"])

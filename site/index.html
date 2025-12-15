@@ -35,6 +35,10 @@
     .input-com-toolbar { margin-top: 0 !important; border-top-left-radius: 0; border-top-right-radius: 0; }
     .btn-acao{background:var(--succ);color:#fff;border:none;padding:10px;width:100%;border-radius:4px;cursor:pointer;font-weight:bold;margin-top:10px}
     
+    /* Imagens */
+    .questao-img { max-width: 100%; max-height: 300px; display: block; margin: 10px auto; border-radius: 4px; border: 1px solid #ddd; }
+    .img-preview-mini { max-width: 100px; max-height: 100px; display: block; margin-top: 5px; border: 1px solid #ccc; }
+
     /* Tabela */
     table{width:100%;border-collapse:collapse;margin-top:15px;font-size:.85em;table-layout:fixed}
     th,td{padding:6px 8px;border-bottom:1px solid #eee;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:left}
@@ -122,6 +126,7 @@
 <section id="secao-cadastro" class="secao"><div class="container" style="max-width:900px">
   <h2>Cadastrar Questão</h2><form id="form-cadastro">
   <label>Enunciado:</label><textarea id="cad-enunciado" class="input-com-toolbar" rows="4" required onfocus="showToolbar(this)"></textarea>
+  <label>Imagem (Opcional):</label><input type="file" id="cad-imagem" accept="image/*">
   <div class="filtro-grid"><select id="cad-banca" required></select><select id="cad-instituicao"><option value="">Instituição...</option></select><input type="number" id="cad-ano" placeholder="Ano"><select id="cad-disciplina" required onchange="carregarAssuntos('cad')"></select></div>
   <div class="filtro-grid"><select id="cad-assunto" required></select><select id="cad-dificuldade"><option>Fácil</option><option>Médio</option><option>Difícil</option></select></div>
   <select id="cad-tipo" onchange="altTipo('cad')"><option value="ME">Múltipla Escolha</option><option value="CE">Certo/Errado</option></select>
@@ -167,7 +172,15 @@
 <section id="secao-estatisticas" class="secao"><div class="container" style="max-width:900px"><h2>Desempenho</h2><canvas id="chart"></canvas></div></section>
 <section id="secao-config" class="secao"><div class="container"><h2>Gerenciar Metadados</h2><div class="filtro-grid" style="margin-bottom:20px"><button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('disciplinas')">Disciplinas</button><button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('assuntos')">Assuntos</button><button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('bancas')">Bancas</button><button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('instituicoes')">Instituições</button></div><div id="painel-config" style="background:#f9f9f9; padding:20px; border-radius:8px;"><h3 id="titulo-config">Selecione uma categoria acima</h3><div class="flex" style="gap:10px; margin-bottom:10px"><select id="cfg-disc-select" style="display:none; max-width:200px"></select><input type="number" id="cfg-ordem" placeholder="Ord." style="display:none; max-width:60px"><input type="text" id="cfg-novo-nome" placeholder="Nome do novo item..."><button id="cfg-btn-acao" class="btn-acao" style="width:auto; margin:0" onclick="addMeta()">Adicionar</button></div><div id="lista-meta-conteudo" class="lista-meta"></div></div></div></section>
 
-<div id="modal-edicao" class="modal"><div class="modal-content"><span class="close-modal" onclick="el('modal-edicao').style.display='none'">&times;</span><h2>Editar</h2><form id="form-edicao"><input type="hidden" id="edit-id"><label>Enunciado:</label><textarea id="edit-enunciado" class="input-com-toolbar" rows="3" required onfocus="showToolbar(this)"></textarea><div class="filtro-grid"><select id="edit-banca"></select><select id="edit-instituicao"></select><input type="number" id="edit-ano" placeholder="Ano"><select id="edit-disciplina" onchange="carregarAssuntos('edit')"></select></div><div class="filtro-grid"><select id="edit-assunto"></select><select id="edit-dificuldade"><option>Fácil</option><option>Médio</option><option>Difícil</option></select></div><select id="edit-tipo" onchange="altTipo('edit')"><option value="ME">Múltipla</option><option value="CE">Certo/Errado</option></select><div id="edit-container-alt"><div class="input-group"><span>A)</span><input type="text" id="edit-alt-a" onfocus="showToolbar(this)"></div><div class="input-group"><span>B)</span><input type="text" id="edit-alt-b" onfocus="showToolbar(this)"></div><div class="input-group"><span>C)</span><input type="text" id="edit-alt-c" onfocus="showToolbar(this)"></div><div class="input-group"><span>D)</span><input type="text" id="edit-alt-d" onfocus="showToolbar(this)"></div><div class="input-group"><span>E)</span><input type="text" id="edit-alt-e" onfocus="showToolbar(this)"></div></div><label>Gabarito:</label><select id="edit-gabarito"></select><button class="btn-acao" style="background:#f39c12">Salvar</button></form></div></div>
+<div id="modal-edicao" class="modal"><div class="modal-content"><span class="close-modal" onclick="el('modal-edicao').style.display='none'">&times;</span><h2>Editar</h2><form id="form-edicao"><input type="hidden" id="edit-id">
+<label>Enunciado:</label><textarea id="edit-enunciado" class="input-com-toolbar" rows="3" required onfocus="showToolbar(this)"></textarea>
+<label>Imagem:</label>
+<div style="display:flex; align-items:center; gap:10px;">
+    <input type="file" id="edit-imagem-file" accept="image/*">
+    <div id="edit-img-preview-container"></div>
+</div>
+<input type="hidden" id="edit-imagem-nome">
+<div class="filtro-grid"><select id="edit-banca"></select><select id="edit-instituicao"></select><input type="number" id="edit-ano" placeholder="Ano"><select id="edit-disciplina" onchange="carregarAssuntos('edit')"></select></div><div class="filtro-grid"><select id="edit-assunto"></select><select id="edit-dificuldade"><option>Fácil</option><option>Médio</option><option>Difícil</option></select></div><select id="edit-tipo" onchange="altTipo('edit')"><option value="ME">Múltipla</option><option value="CE">Certo/Errado</option></select><div id="edit-container-alt"><div class="input-group"><span>A)</span><input type="text" id="edit-alt-a" onfocus="showToolbar(this)"></div><div class="input-group"><span>B)</span><input type="text" id="edit-alt-b" onfocus="showToolbar(this)"></div><div class="input-group"><span>C)</span><input type="text" id="edit-alt-c" onfocus="showToolbar(this)"></div><div class="input-group"><span>D)</span><input type="text" id="edit-alt-d" onfocus="showToolbar(this)"></div><div class="input-group"><span>E)</span><input type="text" id="edit-alt-e" onfocus="showToolbar(this)"></div></div><label>Gabarito:</label><select id="edit-gabarito"></select><button class="btn-acao" style="background:#f39c12">Salvar</button></form></div></div>
 
 <script>
 const API = "http://localhost:5000";
@@ -175,7 +188,7 @@ let db=[], meta={}, foco=null, ordCol={c:null,d:'asc'};
 let pratPool=[], pratIdx=0, pratAcertos=0;
 let provaPool=[], provaIdx=0, provaRespostas=[], provaTempoTotal=0, provaIntervalo=null;
 let flashDb=[], flashPool=[], flashIdx=0;
-let checkDupTimeout = null; // Timer para debounce
+let checkDupTimeout = null; 
 
 const el = id => document.getElementById(id);
 const header = el("main-header");
@@ -258,7 +271,6 @@ async function lerPDF() {
     } catch(e) { alert("Erro ao ler PDF."); el("imp-lista-questoes").innerHTML = ""; } finally { hideLoader(); }
 }
 
-// Renderiza prévia com Listeners para checagem dinâmica
 function renderPreview(lista) {
     let div = el("imp-lista-questoes"); div.innerHTML = "";
     el("imp-titulo-preview").innerText = `Prévia (${lista.length} encontradas)`;
@@ -286,6 +298,10 @@ function renderPreview(lista) {
             </div>
             <div class="imp-content">
                 <textarea class="imp-textarea imp-enunciado" rows="3" placeholder="Enunciado" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})">${q.enunciado}</textarea>
+                <div style="margin: 5px 0;">
+                    <label style="font-size:0.8em; color:#666">Anexar Imagem:</label>
+                    <input type="file" class="imp-imagem-file" accept="image/*" style="font-size:0.8em">
+                </div>
                 <div style="margin-top:5px; display:grid; gap:5px">
                     <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${q.alt_a}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
                     <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${q.alt_b}" onfocus="showToolbar(this)"></div>
@@ -303,37 +319,27 @@ function renderPreview(lista) {
     });
 }
 
-// Verifica duplicidade enquanto digita (Debounce 500ms)
 function verificarDuplicidadeDinamica(index) {
     clearTimeout(checkDupTimeout);
     checkDupTimeout = setTimeout(async () => {
         let row = el(`imp-row-${index}`);
         let enu = row.querySelector(".imp-enunciado").value;
         let alta = row.querySelector(".imp-alt-a").value;
-        
         if (!enu) return;
-
         try {
             const resp = await fetch(`${API}/check-duplicidade`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ enunciado: enu, alt_a: alta })
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enunciado: enu, alt_a: alta })
             });
             const data = await resp.json();
-            
-            let statusDiv = el(`status-${index}`);
-            let btnSave = el(`btn-save-${index}`);
-            
+            let statusDiv = el(`status-${index}`), btnSave = el(`btn-save-${index}`);
             if (data.existe) {
                 statusDiv.innerHTML = `<span class="aviso-dup">⚠️ Já Cadastrada</span>`;
                 row.classList.add("ja-cadastrada");
-                btnSave.disabled = true;
-                btnSave.style.opacity = "0.5";
+                btnSave.disabled = true; btnSave.style.opacity = "0.5";
             } else {
                 statusDiv.innerHTML = "";
                 row.classList.remove("ja-cadastrada");
-                btnSave.disabled = false;
-                btnSave.style.opacity = "1";
+                btnSave.disabled = false; btnSave.style.opacity = "1";
             }
         } catch(e) { console.error("Erro check dup", e); }
     }, 500);
@@ -347,42 +353,56 @@ async function salvarIndividual(index) {
     let assuntoFinal = r.querySelector(".imp-assunto-ind").value || el("imp-assunto").value;
     if(!assuntoFinal) assuntoFinal = "Geral";
 
-    let obj = {
-        banca: r.querySelector(".imp-banca").value,
-        instituicao: r.querySelector(".imp-inst").value,
-        ano: r.querySelector(".imp-ano").value,
-        dificuldade: r.querySelector(".imp-dif").value,
-        enunciado: r.querySelector(".imp-enunciado").value,
-        alt_a: r.querySelector(".imp-alt-a").value,
-        alt_b: r.querySelector(".imp-alt-b").value,
-        alt_c: r.querySelector(".imp-alt-c").value,
-        alt_d: r.querySelector(".imp-alt-d").value,
-        alt_e: r.querySelector(".imp-alt-e").value,
-        gabarito: r.querySelector(".imp-gabarito").value,
-        tipo: "ME", disciplina: disc, assunto: assuntoFinal
-    };
+    const formData = new FormData();
+    formData.append("banca", r.querySelector(".imp-banca").value);
+    formData.append("instituicao", r.querySelector(".imp-inst").value);
+    formData.append("ano", r.querySelector(".imp-ano").value);
+    formData.append("dificuldade", r.querySelector(".imp-dif").value);
+    formData.append("enunciado", r.querySelector(".imp-enunciado").value);
+    formData.append("alt_a", r.querySelector(".imp-alt-a").value);
+    formData.append("alt_b", r.querySelector(".imp-alt-b").value);
+    formData.append("alt_c", r.querySelector(".imp-alt-c").value);
+    formData.append("alt_d", r.querySelector(".imp-alt-d").value);
+    formData.append("alt_e", r.querySelector(".imp-alt-e").value);
+    formData.append("gabarito", r.querySelector(".imp-gabarito").value);
+    formData.append("tipo", "ME");
+    formData.append("disciplina", disc);
+    formData.append("assunto", assuntoFinal);
 
-    if(!obj.enunciado || !obj.gabarito) return alert("Enunciado e Gabarito são obrigatórios.");
+    // Captura imagem
+    const fileInput = r.querySelector(".imp-imagem-file");
+    if(fileInput && fileInput.files[0]) {
+        formData.append("imagem_file", fileInput.files[0]);
+    }
+
+    if(!formData.get("enunciado") || !formData.get("gabarito")) return alert("Enunciado e Gabarito são obrigatórios.");
 
     try {
-        const response = await fetch(`${API}/questoes`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(obj) });
+        const response = await fetch(`${API}/questoes`, { method: "POST", body: formData });
         if (response.status === 200 || response.status === 201) {
             r.classList.remove("ja-cadastrada");
             r.classList.add("sucesso-salvo");
             r.querySelector(".imp-acoes").innerHTML = `<span style="color:green; font-weight:bold">Salva!</span> <button class="btn-icon" style="color:red" onclick="el('imp-row-${index}').remove()">✖</button>`;
         } else if (response.status === 409) {
             alert("Esta questão já existe no banco!");
-            verificarDuplicidadeDinamica(index); // Atualiza visual
+            verificarDuplicidadeDinamica(index);
         } else { alert("Erro ao salvar."); }
     } catch(e) { alert("Erro de conexão."); }
 }
 
 async function salvarLote() {
+    // Nota: O salvamento em lote em JSON não suporta imagens. Imagens devem ser salvas individualmente ou precisaria converter tudo para FormData loopado
     let rows = document.querySelectorAll(".imp-row"); let disc = el("imp-disciplina").value; let assGlobal = el("imp-assunto").value;
     if(!disc) return alert("Selecione a Disciplina base (acima da lista).");
+    
+    // Filtra apenas questões sem imagem para lote JSON, ou avisa
     let lote = [];
     rows.forEach(r => {
-        if(r.classList.contains("sucesso-salvo") || r.classList.contains("ja-cadastrada")) return; // Pula as que já existem
+        if(r.classList.contains("sucesso-salvo") || r.classList.contains("ja-cadastrada")) return; 
+        
+        // Verifica se tem imagem anexada, se tiver, avisa que deve salvar individualmente
+        if(r.querySelector(".imp-imagem-file").files.length > 0) return;
+
         let assuntoFinal = r.querySelector(".imp-assunto-ind").value || assGlobal || "Geral";
         let obj = {
             banca: r.querySelector(".imp-banca").value, instituicao: r.querySelector(".imp-inst").value, 
@@ -393,8 +413,10 @@ async function salvarLote() {
         };
         if(obj.enunciado && obj.gabarito) lote.push(obj);
     });
-    if(lote.length === 0) return alert("Nenhuma questão nova e válida para salvar.");
-    if(!confirm(`Tentar salvar ${lote.length} questões?`)) return;
+
+    if(lote.length === 0) return alert("Nenhuma questão nova (sem imagem) para salvar em lote. Para questões com imagem, use o botão de salvar individual.");
+    
+    if(!confirm(`Tentar salvar ${lote.length} questões (sem imagens) em lote?`)) return;
     showLoader("Salvando questões...");
     let contadores = { salvos: 0, erros: 0 };
     for(let q of lote) {
@@ -405,7 +427,7 @@ async function salvarLote() {
     }
     hideLoader();
     alert(`Finalizado!\n✅ Salvas: ${contadores.salvos}\n❌ Erros: ${contadores.erros}`);
-    if(contadores.salvos > 0) { el("imp-preview-container").style.display="none"; el("imp-lista-questoes").innerHTML=""; init(); }
+    if(contadores.salvos > 0) { init(); }
 }
 
 // Configurações e Inicialização
@@ -429,17 +451,72 @@ function cancelarEdicaoMeta() { editandoMeta = null; el("cfg-novo-nome").value =
 async function addMeta() { let nome = el("cfg-novo-nome").value; if(!nome) return alert("Digite um nome"); let novoItem = { nome: nome }; if(catAtual === 'assuntos') { let disc = el("cfg-disc-select").value, ord = el("cfg-ordem").value; if(!disc) return alert("Para assuntos, selecione a disciplina."); novoItem.disciplina = disc; novoItem.ordem = ord ? parseInt(ord) : null; } try { let payload = editandoMeta ? { antigo: editandoMeta, novo: novoItem } : novoItem; let method = editandoMeta ? "PUT" : "POST"; await fetch(`${API}/metadados/${catAtual}`, { method: method, headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) }); let r = await fetch(`${API}/metadados`); meta = await r.json(); cancelarEdicaoMeta(); renderListaMeta(); popSelGeral(); } catch (e) { alert("Erro ao salvar metadado."); } }
 async function delMeta(nome) { if(!confirm(`Excluir ${nome} de ${catAtual}?`)) return; await fetch(`${API}/metadados/${catAtual}?nome=${encodeURIComponent(nome)}`, {method:"DELETE"}); let r = await fetch(`${API}/metadados`); meta = await r.json(); renderListaMeta(); popSelGeral(); }
 function altTipo(p) { let t = el(`${p}-tipo`).value, d = el(`${p}-container-alt`), s = el(`${p}-gabarito`); s.innerHTML=""; if(t==="ME"){ d.style.display="block"; ["A","B","C","D","E"].forEach(l=>s.innerHTML+=`<option value="${l}">${l}</option>`); } else { d.style.display="none"; s.innerHTML=`<option value="C">Certo</option><option value="E">Errado</option>`; } }
-el("form-cadastro").onsubmit = async e => { e.preventDefault(); const obj = { banca: el("cad-banca").value, instituicao: el("cad-instituicao").value, ano: el("cad-ano").value, enunciado: el("cad-enunciado").value, disciplina: el("cad-disciplina").value, assunto: el("cad-assunto").value, dificuldade: el("cad-dificuldade").value, tipo: el("cad-tipo").value, gabarito: el("cad-gabarito").value, alt_a: el("cad-alt-a").value, alt_b: el("cad-alt-b").value, alt_c: el("cad-alt-c").value, alt_d: el("cad-alt-d").value, alt_e: el("cad-alt-e").value }; try { const r = await fetch(`${API}/questoes`, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(obj)}); if(r.status === 409) return alert("Questão duplicada!"); if(r.ok) { alert("Salvo!"); e.target.reset(); altTipo("cad"); init(); } else throw new Error(); } catch(err) { alert("Erro ao salvar."); } };
+
+// CADASTRO MANUAL (FormData)
+el("form-cadastro").onsubmit = async e => { 
+    e.preventDefault(); 
+    const formData = new FormData();
+    formData.append("banca", el("cad-banca").value); formData.append("instituicao", el("cad-instituicao").value); formData.append("ano", el("cad-ano").value);
+    formData.append("enunciado", el("cad-enunciado").value); formData.append("disciplina", el("cad-disciplina").value); formData.append("assunto", el("cad-assunto").value);
+    formData.append("dificuldade", el("cad-dificuldade").value); formData.append("tipo", el("cad-tipo").value); formData.append("gabarito", el("cad-gabarito").value);
+    formData.append("alt_a", el("cad-alt-a").value); formData.append("alt_b", el("cad-alt-b").value); formData.append("alt_c", el("cad-alt-c").value); formData.append("alt_d", el("cad-alt-d").value); formData.append("alt_e", el("cad-alt-e").value);
+    
+    let fileInput = el("cad-imagem"); if(fileInput.files[0]) formData.append("imagem_file", fileInput.files[0]);
+
+    try { 
+        const r = await fetch(`${API}/questoes`, {method:"POST", body: formData}); 
+        if(r.status === 409) return alert("Questão duplicada!"); 
+        if(r.ok) { alert("Salvo!"); e.target.reset(); fileInput.value=""; altTipo("cad"); init(); } else throw new Error(); 
+    } catch(err) { alert("Erro ao salvar."); } 
+};
+
 function carrTab() { el("total-db").innerText = `${db.length} questões`; filtrar(); }
 function filtrar() { let txt=el("busca-texto").value.toLowerCase(), ban=el("busca-banca").value, dis=el("busca-disciplina").value, ass=el("busca-assunto").value, dif=el("busca-dificuldade").value; let filtrados = db.filter(q => q.enunciado.toLowerCase().includes(txt) && (ban===""||q.banca===ban) && (dis===""||q.disciplina===dis) && (ass===""||q.assunto===ass) && (dif===""||q.dificuldade===dif)); let tb = document.querySelector("#tabela-questoes tbody"); tb.innerHTML=""; filtrados.forEach(q => { let difClass = q.dificuldade==='Fácil'?'color-facil':(q.dificuldade==='Médio'?'color-medio':'color-dificil'); let dots = q.dificuldade==='Fácil'?'●':(q.dificuldade==='Médio'?'●●':'●●●'); tb.innerHTML += `<tr><td>${q.id}</td><td>${q.banca}</td><td>${q.ano||'-'}</td><td>${q.disciplina}</td><td title="${q.enunciado.replace(/"/g,'&quot;')}">${q.enunciado.substring(0,40)}...</td><td>${q.assunto}</td><td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td><td>${q.gabarito}</td><td><button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button><button class="btn-icon" onclick="del('${q.id}')">🗑️</button></td></tr>`; }); }
 function del(id) { if(confirm("Excluir Questão?")) fetch(`${API}/questoes/${id}`, {method:"DELETE"}).then(init); }
 function ord(c) { ordCol.d = (ordCol.c===c && ordCol.d==='asc') ? 'desc':'asc'; ordCol.c=c; aplOrd(); filtrar(); }
 function aplOrd() { let {c,d} = ordCol; let m = d==='asc'?1:-1; db.sort((a,b) => { let va=a[c]?a[c].toString().toLowerCase():"", vb=b[c]?b[c].toString().toLowerCase():""; if(c==='id'){ va=parseInt(a[c]); vb=parseInt(b[c]); } return va<vb ? -1*m : (va>vb ? 1*m : 0); }); }
-function abrirEd(id) { let q = db.find(x=>String(x.id)===String(id)); if(!q)return; el("edit-id").value=q.id; el("edit-enunciado").value=q.enunciado; el("edit-assunto").value=q.assunto; el("edit-instituicao").value=q.instituicao||""; el("edit-ano").value=q.ano||""; el("edit-dificuldade").value=q.dificuldade; el("edit-tipo").value=q.tipo; el("edit-banca").value=q.banca; el("edit-disciplina").value=q.disciplina; carregarAssuntos('edit'); el("edit-assunto").value=q.assunto; altTipo("edit"); if(q.tipo==="ME"){ el("edit-alt-a").value=q.alt_a||""; el("edit-alt-b").value=q.alt_b||""; el("edit-alt-c").value=q.alt_c||""; el("edit-alt-d").value=q.alt_d||""; el("edit-alt-e").value=q.alt_e||""; } el("edit-gabarito").value=q.gabarito; el("modal-edicao").style.display="block"; }
-el("form-edicao").onsubmit = async e => { e.preventDefault(); const obj = { id: el("edit-id").value, banca: el("edit-banca").value, instituicao: el("edit-instituicao").value, ano: el("edit-ano").value, enunciado: el("edit-enunciado").value, disciplina: el("edit-disciplina").value, assunto: el("edit-assunto").value, dificuldade: el("edit-dificuldade").value, tipo: el("edit-tipo").value, gabarito: el("edit-gabarito").value, alt_a: el("edit-alt-a").value, alt_b: el("edit-alt-b").value, alt_c: el("edit-alt-c").value, alt_d: el("edit-alt-d").value, alt_e: el("edit-alt-e").value }; await fetch(`${API}/questoes`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(obj)}); el("modal-edicao").style.display="none"; init(); };
+
+function abrirEd(id) { 
+    let q = db.find(x=>String(x.id)===String(id)); if(!q)return; 
+    el("edit-id").value=q.id; el("edit-enunciado").value=q.enunciado; el("edit-assunto").value=q.assunto; el("edit-instituicao").value=q.instituicao||""; el("edit-ano").value=q.ano||""; el("edit-dificuldade").value=q.dificuldade; el("edit-tipo").value=q.tipo; el("edit-banca").value=q.banca; el("edit-disciplina").value=q.disciplina; carregarAssuntos('edit'); el("edit-assunto").value=q.assunto; altTipo("edit"); 
+    if(q.tipo==="ME"){ el("edit-alt-a").value=q.alt_a||""; el("edit-alt-b").value=q.alt_b||""; el("edit-alt-c").value=q.alt_c||""; el("edit-alt-d").value=q.alt_d||""; el("edit-alt-e").value=q.alt_e||""; } el("edit-gabarito").value=q.gabarito; 
+    
+    // Imagem Edição
+    el("edit-imagem-nome").value = q.imagem || "";
+    el("edit-imagem-file").value = "";
+    let prev = el("edit-img-preview-container");
+    prev.innerHTML = q.imagem ? `<a href="${API}/img/q_img/${q.imagem}" target="_blank"><img src="${API}/img/q_img/${q.imagem}" class="img-preview-mini"></a>` : "<span style='font-size:0.8em;color:#999'>Sem imagem</span>";
+
+    el("modal-edicao").style.display="block"; 
+}
+
+el("form-edicao").onsubmit = async e => { 
+    e.preventDefault(); 
+    const formData = new FormData();
+    formData.append("id", el("edit-id").value); formData.append("banca", el("edit-banca").value); formData.append("instituicao", el("edit-instituicao").value); formData.append("ano", el("edit-ano").value);
+    formData.append("enunciado", el("edit-enunciado").value); formData.append("disciplina", el("edit-disciplina").value); formData.append("assunto", el("edit-assunto").value);
+    formData.append("dificuldade", el("edit-dificuldade").value); formData.append("tipo", el("edit-tipo").value); formData.append("gabarito", el("edit-gabarito").value);
+    formData.append("alt_a", el("edit-alt-a").value); formData.append("alt_b", el("edit-alt-b").value); formData.append("alt_c", el("edit-alt-c").value); formData.append("alt_d", el("edit-alt-d").value); formData.append("alt_e", el("edit-alt-e").value);
+    
+    formData.append("imagem", el("edit-imagem-nome").value);
+    let fileInput = el("edit-imagem-file"); if(fileInput.files[0]) formData.append("imagem_file", fileInput.files[0]);
+
+    await fetch(`${API}/questoes`, {method:"PUT", body: formData}); 
+    el("modal-edicao").style.display="none"; init(); 
+};
+
 function prepPratica() { el("config-pratica").style.display="block"; el("area-pratica").style.display="none"; }
 function iniciarPratica() { let dis=el("prat-disciplina").value, ban=el("prat-banca").value, ass=el("prat-assunto").value, qtd=el("prat-qtd").value; let pool = db.filter(q => (dis===""||q.disciplina===dis) && (ban===""||q.banca===ban) && (ass===""||q.assunto===ass)); if(pool.length===0) return alert("Nenhuma questão encontrada"); pratPool = pool.sort(()=>0.5-Math.random()).slice(0, qtd); pratIdx = 0; pratAcertos = 0; el("config-pratica").style.display="none"; el("area-pratica").style.display="block"; renPratica(); }
-function renPratica() { let q = pratPool[pratIdx]; el("prat-progresso").innerText = `Questão ${pratIdx+1} de ${pratPool.length}`; el("prat-meta").innerHTML = `<b>${q.banca}</b> (${q.ano||'-'}) | ${q.instituicao||'-'} | ${q.disciplina} > ${q.assunto}`; el("prat-enunciado").innerHTML = q.enunciado; let div = el("prat-alternativas"); div.innerHTML=""; if(q.tipo==="CE"){ radio(div,"C","Certo","prat"); radio(div,"E","Errado","prat"); } else ["A","B","C","D","E"].forEach(l=>{ if(q[`alt_${l.toLowerCase()}`]) radio(div,l,q[`alt_${l.toLowerCase()}`],"prat"); }); el("prat-feedback").innerHTML=""; el("prat-feedback").style.background="transparent"; el("prat-btn-confirma").style.display="block"; el("prat-btn-prox").style.display="none"; }
+function renPratica() { 
+    let q = pratPool[pratIdx]; 
+    el("prat-progresso").innerText = `Questão ${pratIdx+1} de ${pratPool.length}`; 
+    el("prat-meta").innerHTML = `<b>${q.banca}</b> (${q.ano||'-'}) | ${q.instituicao||'-'} | ${q.disciplina} > ${q.assunto}`; 
+    
+    let htmlImg = q.imagem ? `<img src="${API}/img/q_img/${q.imagem}" class="questao-img">` : "";
+    el("prat-enunciado").innerHTML = htmlImg + q.enunciado; 
+    
+    let div = el("prat-alternativas"); div.innerHTML=""; if(q.tipo==="CE"){ radio(div,"C","Certo","prat"); radio(div,"E","Errado","prat"); } else ["A","B","C","D","E"].forEach(l=>{ if(q[`alt_${l.toLowerCase()}`]) radio(div,l,q[`alt_${l.toLowerCase()}`],"prat"); }); el("prat-feedback").innerHTML=""; el("prat-feedback").style.background="transparent"; el("prat-btn-confirma").style.display="block"; el("prat-btn-prox").style.display="none"; 
+}
 function radio(d,v,t,n) { d.innerHTML+=`<div class="alternativa-wrapper" onclick="selecionarAlternativa(this, '${n}', '${v}')"><span class="btn-riscar" onclick="event.stopPropagation();this.parentElement.classList.toggle('riscado-ativo')">✖</span><input type="radio" name="${n}" value="${v}" style="margin:0 10px; pointer-events:none"><span class="render-html">${v}) ${t}</span></div>`; }
 function selecionarAlternativa(elWrapper, name, val) { document.querySelectorAll(`input[name='${name}']`).forEach(i => i.checked = false); document.querySelectorAll(`#area-${name} .alternativa-wrapper`).forEach(e => e.classList.remove("selected")); elWrapper.classList.add("selected"); elWrapper.querySelector("input").checked = true; if(name === 'prova') provaRespostas[provaIdx] = val; }
 function confirmaPratica() { let s=document.querySelector('input[name="prat"]:checked'); if(!s) return alert("Selecione"); let q=pratPool[pratIdx], acertou=s.value===q.gabarito, f=el("prat-feedback"); f.innerHTML = acertou ? "Correto! ✅" : `Errado! ❌ Gabarito: ${q.gabarito}`; f.style.background = acertou ? "#d4edda" : "#f8d7da"; if(acertou) { pratAcertos++; } let qOriginal = db.find(d => d.id === q.id); if (qOriginal) { qOriginal.respondidas = (qOriginal.respondidas || 0) + 1; if (acertou) qOriginal.acertos = (qOriginal.acertos || 0) + 1; fetch(`${API}/questoes`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(qOriginal)}); } el("prat-btn-confirma").style.display="none"; el("prat-btn-prox").style.display="block"; }
@@ -449,7 +526,14 @@ function prepProva() { el("resultado-prova").style.display="none"; let dis=meta.
 function calcDistribuicao() { let total=0; document.querySelectorAll(".inp-dist").forEach(i => total += parseInt(i.value||0)); el("total-porc").innerText = `Total: ${total}%`; el("total-porc").style.color = total===100 ? "green" : "red"; }
 function iniciarProva() { let totalPerc=0; document.querySelectorAll(".inp-dist").forEach(i => totalPerc += parseInt(i.value||0)); if(totalPerc!==100) return alert("A soma das porcentagens deve ser 100%"); let qtdTotal = parseInt(el("prova-total").value); provaTempoTotal = parseInt(el("prova-tempo").value) * 60; provaPool = []; document.querySelectorAll(".inp-dist").forEach(i => { let perc = parseInt(i.value||0); if(perc > 0) { let disc = i.dataset.disc; let qtdDisc = Math.round((perc/100) * qtdTotal); let questoesDisc = db.filter(q => q.disciplina === disc).sort(()=>0.5-Math.random()).slice(0, qtdDisc); provaPool = provaPool.concat(questoesDisc); } }); if(provaPool.length === 0) return alert("Nenhuma questão disponível."); provaPool = provaPool.sort(()=>0.5-Math.random()); provaIdx = 0; provaRespostas = []; el("config-prova").style.display="none"; el("area-prova").style.display="block"; el("barra-tempo-container").style.display="block"; iniciarTimer(); renProva(); }
 function iniciarTimer() { let tempoRestante = provaTempoTotal; if(provaIntervalo) clearInterval(provaIntervalo); provaIntervalo = setInterval(() => { tempoRestante--; let min = Math.floor(tempoRestante/60), sec = tempoRestante%60; el("prova-timer").innerText = `${min}:${sec<10?'0'+sec:sec}`; el("barra-tempo-fill").style.width = `${(tempoRestante/provaTempoTotal)*100}%`; if(tempoRestante <= 0) { clearInterval(provaIntervalo); finalizarProva(); } }, 1000); }
-function renProva() { let q = provaPool[provaIdx]; el("prova-progresso").innerText = `Questão ${provaIdx+1} de ${provaPool.length}`; el("prova-meta").innerText = `${q.banca} (${q.ano||'-'}) | ${q.instituicao||'-'} | ${q.disciplina} > ${q.assunto}`; el("prova-enunciado").innerHTML = q.enunciado; let div = el("prova-alternativas"); div.innerHTML=""; let respSalva = provaRespostas[provaIdx] || null; if(q.tipo==="CE"){ radioProva(div,"C","Certo", respSalva); radioProva(div,"E","Errado", respSalva); } else ["A","B","C","D","E"].forEach(l=>{ if(q[`alt_${l.toLowerCase()}`]) radioProva(div,l,q[`alt_${l.toLowerCase()}`], respSalva); }); }
+function renProva() { 
+    let q = provaPool[provaIdx]; 
+    el("prova-progresso").innerText = `Questão ${provaIdx+1} de ${provaPool.length}`; 
+    el("prova-meta").innerText = `${q.banca} (${q.ano||'-'}) | ${q.instituicao||'-'} | ${q.disciplina} > ${q.assunto}`; 
+    let htmlImg = q.imagem ? `<img src="${API}/img/q_img/${q.imagem}" class="questao-img">` : "";
+    el("prova-enunciado").innerHTML = htmlImg + q.enunciado; 
+    let div = el("prova-alternativas"); div.innerHTML=""; let respSalva = provaRespostas[provaIdx] || null; if(q.tipo==="CE"){ radioProva(div,"C","Certo", respSalva); radioProva(div,"E","Errado", respSalva); } else ["A","B","C","D","E"].forEach(l=>{ if(q[`alt_${l.toLowerCase()}`]) radioProva(div,l,q[`alt_${l.toLowerCase()}`], respSalva); }); 
+}
 function radioProva(div, val, txt, selecionado) { let cls = selecionado === val ? "selected" : ""; div.innerHTML += `<div class="alternativa-wrapper ${cls}" onclick="selecionarAlternativa(this, 'prova', '${val}')"><span class="btn-riscar" onclick="event.stopPropagation();this.parentElement.classList.toggle('riscado-ativo')">✖</span><input type="radio" name="prova" value="${val}" ${selecionado === val ? 'checked' : ''} style="margin:0 10px; pointer-events:none"><span class="render-html">${val}) ${txt}</span></div>`; }
 function proxProva() { provaIdx++; if(provaIdx < provaPool.length) { renProva(); } else { if(confirm("Finalizar Prova?")) finalizarProva(); else provaIdx--; } }
 function finalizarProva() { clearInterval(provaIntervalo); el("area-prova").style.display="none"; el("resultado-prova").style.display="block"; let acertos = 0; let html = "<ul style='list-style:none; padding:0'>"; let acertosPorDisc = {}; provaPool.forEach((q, i) => { let resp = provaRespostas[i], correta = q.gabarito, isCorrect = resp === correta; if(isCorrect) acertos++; if (!acertosPorDisc[q.disciplina]) acertosPorDisc[q.disciplina] = { total: 0, acertos: 0 }; acertosPorDisc[q.disciplina].total++; if (isCorrect) acertosPorDisc[q.disciplina].acertos++; let realQ = db.find(d => d.id === q.id); if(realQ) { realQ.respondidas = (realQ.respondidas || 0) + 1; if(isCorrect) realQ.acertos = (realQ.acertos || 0) + 1; fetch(`${API}/questoes`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(realQ)}); } html += `<li style="margin-bottom:10px; border-bottom:1px solid #eee; padding:5px;"><b>Q${i+1} (${q.disciplina}):</b> Sua: <b style="color:${isCorrect?'green':'red'}">${resp||'-'}</b> | Gab: <b>${correta}</b></li>`; }); let discHtml = '<h3>Desempenho por Disciplina</h3><ul style="list-style:none; padding:0;">'; for (const disc in acertosPorDisc) { let stats = acertosPorDisc[disc]; let perc = (stats.acertos / stats.total) * 100; discHtml += `<li style="margin-bottom:5px;"><b>${disc}:</b> ${stats.acertos} / ${stats.total} (${perc.toFixed(1)}%)</li>`; } discHtml += '</ul>'; el("nota-prova").innerText = `${acertos}/${provaPool.length}`; el("msg-prova").innerText = acertos/provaPool.length >= 0.7 ? "Aprovado! 🚀" : "Continue Estudando 📚"; el("detalhes-prova").innerHTML = discHtml + html; init(); }
