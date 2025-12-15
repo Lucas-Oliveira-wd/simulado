@@ -240,19 +240,61 @@ function popSelGeral() {
     ['cad','busca','edit','prat','prova','imp','fc','fc-estudo'].forEach(p => {
         if(el(`${p}-banca`)) pop(el(`${p}-banca`), meta.bancas, p==='imp'?"Banca Padrão...":"Banca...");
         if(el(`${p}-instituicao`)) pop(el(`${p}-instituicao`), meta.instituicoes, "Instituição...");
-        pop(el(`${p}-disciplina`), meta.disciplinas, "Disciplina...");
+        
+        // Correção do ID específico da aba de estudo
+        let idDisc = (p === 'fc-estudo') ? 'fc-estudo-disc' : `${p}-disciplina`;
+        if(el(idDisc)) pop(el(idDisc), meta.disciplinas, "Disciplina...");
     });
 }
 function pop(sel, arr, def) {
     if(!sel) return;
-    sel.innerHTML = def ? `<option value="">${def}</option>` : "";
-    arr.forEach(x => sel.innerHTML += `<option>${x}</option>`);
+    let html = def ? `<option value="">${def}</option>` : "";
+    if (arr && arr.length > 0) {
+        arr.forEach(x => html += `<option>${x}</option>`);
+    }
+    sel.innerHTML = html;
 }
+// Otimiza a renderização (evita piscar/bugar ao carregar muitas opções)
+function pop(sel, arr, def) {
+    if(!sel) return;
+    let html = def ? `<option value="">${def}</option>` : "";
+    if (arr && arr.length > 0) {
+        arr.forEach(x => html += `<option>${x}</option>`);
+    }
+    sel.innerHTML = html;
+}
+
+// Corrige os IDs, especificamente o 'fc-estudo-disc' que estava quebrando
+function popSelGeral() {
+    ['cad','busca','edit','prat','prova','imp','fc','fc-estudo'].forEach(p => {
+        if(el(`${p}-banca`)) pop(el(`${p}-banca`), meta.bancas, p==='imp'?"Banca Padrão...":"Banca...");
+        if(el(`${p}-instituicao`)) pop(el(`${p}-instituicao`), meta.instituicoes, "Instituição...");
+        
+        // Correção do ID específico da aba de estudo
+        let idDisc = (p === 'fc-estudo') ? 'fc-estudo-disc' : `${p}-disciplina`;
+        if(el(idDisc)) pop(el(idDisc), meta.disciplinas, "Disciplina...");
+    });
+}
+
+// Corrige a leitura do valor da disciplina para carregar os assuntos
 function carregarAssuntos(prefixo) {
-    let disc = el(`${prefixo}-disciplina`).value; let selAss = el(`${prefixo}-assunto`);
-    selAss.innerHTML = '<option value="">Todos Assuntos</option>';
-    let lista = meta.assuntos.filter(a => a.disciplina === disc);
-    lista.forEach(a => { selAss.innerHTML += `<option value="${a.nome}">${a.ordem}. ${a.nome}</option>`; });
+    // Mapeamento correto do ID da disciplina
+    let idDisc = (prefixo === 'fc-estudo') ? 'fc-estudo-disc' : `${prefixo}-disciplina`;
+    let elDisc = el(idDisc);
+    let selAss = el(`${prefixo}-assunto`);
+    
+    if (!elDisc || !selAss) return;
+
+    let disc = elDisc.value;
+    let html = '<option value="">Todos Assuntos</option>';
+    
+    if (meta.assuntos) {
+        let lista = meta.assuntos.filter(a => a.disciplina === disc);
+        lista.forEach(a => { 
+            html += `<option value="${a.nome}">${a.ordem || ''}. ${a.nome}</option>`; 
+        });
+    }
+    selAss.innerHTML = html;
 }
 
 // --- IMPORTAÇÃO PDF ---

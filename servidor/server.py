@@ -5,6 +5,7 @@ import os
 import pdfplumber
 import re
 import uuid
+import difflib
 
 app = Flask(__name__)
 CORS(app)
@@ -20,7 +21,7 @@ ARQ_FLASHCARDS = os.path.join(DB_DIR, "flashcards.xlsx")
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# --- PALAVRAS CHAVE DE CARGO (Apenas para limpeza de metadados da questão) ---
+# --- PALAVRAS CHAVE DE CARGO ---
 PALAVRAS_CHAVE_CARGO = [
     "ANALISTA", "TÉCNICO", "ENGENHEIRO", "MÉDICO", "ADVOGADO", "AGENTE", "ESCRITURÁRIO",
     "PROFESSOR", "ESPECIALISTA", "AUDITOR", "DEFENSOR", "PROMOTOR", "JUIZ", "DELEGADO",
@@ -78,64 +79,66 @@ def gerar_assinatura(q):
     )
 
 
-# --- RECONSTRUÇÃO LÓGICA (MATEMÁTICA) ---
+# --- RECONSTRUÇÃO GUIADA (COM HÍFENS) ---
 def reconstruir_header_logico(texto):
     """
-    Reconstrói o cabeçalho usando a lógica: Iniciais da Linha 1 + Palavras da Linha 2.
+    Usa a Linha 1 como mapa para reconstruir a Linha 2, preservando hífens.
     """
-    # Regex ajustado para capturar as duas linhas do padrão
-    pattern = r"([A-Z\s\-\–]+)\n\s*((?:UESTÕES|ISTA|OMENTADAS|ORRELAÇÃO|ESGRANRIO|MPREGO).*)"
+    pattern = r"([A-Z\s\-\–]+)\n\s*((?:UESTÕES|ISTA).*)"
 
     def resolver_match(m):
-        # Extrai apenas as letras da primeira linha (ex: ['Q', 'C', 'C', 'V'])
-        letras_header = [c for c in m.group(1) if c.isalpha()]
-        palavras_quebradas = m.group(2).split()
+        raw_letras = m.group(1)
+        raw_palavras = m.group(2)
 
-        # Lista de palavras "inteiras" que devem ser puladas (não consomem letra inicial)
-        palavras_inteiras = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS"]
+        # Tokens guia: Letras ou Hífens
+        tokens_guia = re.findall(r'[A-Z]|-', raw_letras)
+        palavras_quebradas = raw_palavras.split()
+
+        stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "EM", "QUE", "SE"]
 
         resultado = []
-        idx_letra = 0
+        idx_p2 = 0
 
-        for palavra in palavras_quebradas:
-            p_upper = palavra.upper().strip(".,:;")
+        for token in tokens_guia:
+            if token == '-':
+                resultado.append("-")
+            else:
+                # Avança palavras inteiras (stopwords) que não consomem letra
+                while idx_p2 < len(palavras_quebradas):
+                    palavra_atual = palavras_quebradas[idx_p2]
+                    p_upper = palavra_atual.upper().strip(".,:;")
 
-            # Se for palavra inteira conhecida ou número, mantém e pula
-            if p_upper in palavras_inteiras or re.match(r'^\d+$', p_upper):
-                resultado.append(palavra)
-                continue
+                    if p_upper in stopwords:
+                        resultado.append(palavra_atual)
+                        idx_p2 += 1
+                    else:
+                        break
 
-            # Se não tem mais letras no header para usar, mantém a palavra quebrada (melhor que crashar)
-            if idx_letra >= len(letras_header):
-                resultado.append(palavra)
-                continue
+                # Cola a letra na palavra quebrada
+                if idx_p2 < len(palavras_quebradas):
+                    palavra_atual = palavras_quebradas[idx_p2]
+                    resultado.append(token + palavra_atual)
+                    idx_p2 += 1
+                else:
+                    resultado.append(token)
 
-            letra_atual = letras_header[idx_letra]
+        # Adiciona sobras
+        while idx_p2 < len(palavras_quebradas):
+            resultado.append(palavras_quebradas[idx_p2])
+            idx_p2 += 1
 
-            # CASO ESPECIAL 'E': (ex: Tempos E Modos)
-            # Se a letra é 'E' e a palavra atual começa com vogal, é provável que seja um conector isolado
-            if letra_atual == 'E' and palavra[0].upper() in "AEIOU":
-                # Insere o 'E' como palavra separada e avança para a próxima letra do header
-                resultado.append("E")
-                idx_letra += 1
-                if idx_letra < len(letras_header):
-                    letra_atual = letras_header[idx_letra]
+        # Limpeza final dos espaços em volta dos hífens
+        final_str = " ".join(resultado)
+        final_str = final_str.replace(" - ", " - ").replace("- ", " - ").replace(" -", " - ")
+        final_str = re.sub(r'\s+', ' ', final_str)
 
-            # Junta a letra na palavra
-            nova_palavra = letra_atual + palavra
-            resultado.append(nova_palavra)
-            idx_letra += 1
-
-        return "\n" + " ".join(resultado) + "\n"
+        return "\n" + final_str + "\n"
 
     return re.sub(pattern, resolver_match, texto)
 
 
 def limpar_ruido(texto):
-    # 1. Reconstrói o cabeçalho ANTES de qualquer outra limpeza
     texto = reconstruir_header_logico(texto)
-
-    # 2. Remove lixo conhecido
     patterns_to_remove = [
         r"PETROBRAS \(Nível Superior\) Português\s*\d*",
         r"www\.estrategiaconcursos\.com\.br\s*\d*",
@@ -153,7 +156,7 @@ def limpar_ruido(texto):
 
 def extrair_mapa_gabaritos(texto):
     mapa = {}
-    padrao_tabela = r'(?:^|\n)\s*(\d+)\.?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)'
+    padrao_tabela = r'(?:^|\n)\s*(\d+)\s*[\.\-]?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)'
     matches = re.finditer(padrao_tabela, texto, re.IGNORECASE)
     for m in matches:
         mapa[m.group(1)] = m.group(2).upper()
@@ -166,44 +169,49 @@ def parsear_questoes(texto_bruto):
     questoes = []
     mapa_assuntos = []
 
-    # 1. IDENTIFICAÇÃO DE ASSUNTOS (SEM PADRONIZAÇÃO FORÇADA)
-    # Procura linhas reconstruídas que pareçam cabeçalhos de lista
+    # 1. IDENTIFICAÇÃO DE ASSUNTOS
     regex_topicos = re.compile(
-        r'(?:QUESTÕES\s+COMENTADAS|LISTA\s+DE\s+QUESTÕES|LISTA\s+E\s+QUESTÕES).*?[-–—\s]\s*(.*?)\s*(?:[-–—]|$)(?:C\s*)?ESGRANRIO',
-        re.IGNORECASE | re.DOTALL
+        r'(?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)\s*-\s*(.+?)\s*-\s*(.+?)(?:\n|$)',
+        re.IGNORECASE
     )
 
     for match in regex_topicos.finditer(texto):
-        trecho_limpo = match.group(1).strip()
-        trecho_limpo = trecho_limpo.replace('-', '').replace('–', '').strip()
+        assunto_raw = match.group(1).strip()
+        assunto_final = assunto_raw.title()
+        assunto_final = re.sub(r'Cesgranrio', '', assunto_final, flags=re.IGNORECASE).strip()
 
-        # Remove a palavra CESGRANRIO se ela tiver "grudado" no final
-        trecho_limpo = re.sub(r'\s*CESGRANRIO$', '', trecho_limpo, flags=re.IGNORECASE).strip()
-
-        # Usa o texto EXATO que foi reconstruído, apenas formatando para Title Case
-        assunto_final = trecho_limpo.title()
-
-        # Trava de segurança: Se o assunto reconstruído for muito longo (>60 chars), ignora
-        if len(assunto_final) < 60 and len(assunto_final) > 3:
+        if 3 < len(assunto_final) < 80:
             mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_final})
 
-    # Fallback: Se não achou nenhum cabeçalho, procura termos chave brutos no início do arquivo
     if not mapa_assuntos:
         if "CORRELAÇÃO" in texto.upper()[:3000]:
             mapa_assuntos.append({"inicio": 0, "assunto": "Correlação Verbal"})
+        elif "FUNÇÕES SINTÁTICAS" in texto.upper()[:3000]:
+            mapa_assuntos.append({"inicio": 0, "assunto": "Funções Sintáticas"})
+        elif "ORAÇÕES ADVERBIAIS" in texto.upper()[:3000]:
+            mapa_assuntos.append({"inicio": 0, "assunto": "Orações Adverbiais"})
+        elif "PONTUAÇÃO" in texto.upper()[:3000]:
+            mapa_assuntos.append({"inicio": 0, "assunto": "Pontuação"})
 
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    # 2. SCANNER DE QUESTÕES
-    pattern_questao = re.compile(r'^\s*(\d+)\.\s*\((.+?)\)', re.MULTILINE)
+    # 2. SCANNER DE QUESTÕES (CORRIGIDO PARA ACEITAR SEM PARÊNTESES)
+    # Regex: Início de linha, Número, Ponto, Espaços opcionais, (Parêntese opcional), Texto, (Parêntese opcional), Fim de linha
+    pattern_questao = re.compile(r'^\s*(\d+)\.\s*(?:\(?)\s*(.+?)\s*(?:\)?)\s*$', re.MULTILINE)
     matches_questoes = list(pattern_questao.finditer(texto))
 
     for i, m in enumerate(matches_questoes):
         start_index = m.start()
         q_numero = m.group(1)
-        q_meta = m.group(2)
+        q_meta = m.group(2)  # Conteúdo dos metadados (Banca/Ano etc)
 
-        if len(q_meta) < 3 or len(q_meta) > 100: continue
+        # Validação de Segurança: O cabeçalho deve parecer um metadado de concurso
+        # Deve ter 4 dígitos (ano) OU nome de banca comum
+        if not re.search(r'\d{4}|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS', q_meta.upper()):
+            continue
+
+        # Ignora linhas muito curtas (ex: índices)
+        if len(q_meta) < 3: continue
 
         if i + 1 < len(matches_questoes):
             end_index = matches_questoes[i + 1].start()
@@ -212,34 +220,46 @@ def parsear_questoes(texto_bruto):
 
         q_conteudo_bruto = texto[m.end():end_index]
 
-        # Define Assunto baseado na posição
+        # Assunto
         assunto_atual = "Geral"
         if mapa_assuntos:
             anteriores = [ma for ma in mapa_assuntos if ma["inicio"] < start_index]
             if anteriores:
                 assunto_atual = anteriores[-1]["assunto"]
+        elif mapa_assuntos:
+            assunto_atual = mapa_assuntos[0]["assunto"]
 
+        # --- METADADOS (POSICIONAL) ---
         meta_limpa = q_meta.replace("–", "/").replace("-", "/")
         partes_meta = [p.strip() for p in meta_limpa.split('/') if p.strip()]
+
         banca = "CESGRANRIO"
-        ano = "2025"
         instituicao = ""
+        ano = "2025"
 
-        for p in partes_meta:
-            p_upper = p.upper()
-            if re.match(r'^\d{4}$', p): ano = p; continue
-            if "CESGRANRIO" in p_upper or "ESGRANRIO" in p_upper: banca = "CESGRANRIO"; continue
-            if any(cargo in p_upper for cargo in PALAVRAS_CHAVE_CARGO): continue
-            if len(p) < 4 and p_upper not in ["BB", "ANP", "STJ", "STF", "AGU", "MPE", "TJ", "TRE", "TRT", "DPE", "PGE",
-                                              "PC"]: continue
-            if not instituicao or len(p) > len(instituicao): instituicao = p
+        # Remove Ano da lista se achar
+        for idx, p in enumerate(partes_meta):
+            if re.match(r'^\d{4}$', p):
+                ano = p
+                partes_meta.pop(idx)
+                break
 
+        if len(partes_meta) > 0: banca = partes_meta[0]
+        if len(partes_meta) > 1: instituicao = partes_meta[1]
+
+        # --- GABARITO ---
         gabarito = ""
-        gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)\s*:?\s*([A-E])\s*$'
-        matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
-        if matches_gab: gabarito = matches_gab[-1].group(1).upper()
-        if not gabarito and q_numero in mapa_gabaritos: gabarito = mapa_gabaritos[q_numero]
+        gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
 
+        matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
+        if matches_gab:
+            gabarito = matches_gab[-1].group(1).upper()
+
+        if not gabarito and q_numero in mapa_gabaritos:
+            if "Comentário" not in q_conteudo_bruto and "COMENTÁRIO" not in q_conteudo_bruto.upper():
+                gabarito = mapa_gabaritos[q_numero]
+
+        # Enunciado/Alternativas
         content_no_comments = \
         re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
         content_no_comments = re.sub(r'www\.estrategia.*', '', content_no_comments)
@@ -272,7 +292,7 @@ def extrair_texto_pdf(caminho_arquivo):
     return texto
 
 
-# --- CRUD BASE ---
+# --- CRUD BASE (IGUAL) ---
 def verificar_questoes():
     garantir_diretorio()
     if not os.path.exists(ARQ_QUESTOES):
