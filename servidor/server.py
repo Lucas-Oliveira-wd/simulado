@@ -79,10 +79,12 @@ def gerar_assinatura(q):
     )
 
 
-# --- RECONSTRUÇÃO GUIADA (COM HÍFENS) ---
+# --- RECONSTRUÇÃO DE TEXTO (ESPACIAMENTO INTELIGENTE) ---
 def reconstruir_header_logico(texto):
     """
-    Usa a Linha 1 como mapa para reconstruir a Linha 2, preservando hífens.
+    Reconstrói a Linha 2 baseada na Linha 1.
+    DIFERENÇA: Respeita o espaçamento original da Linha 1.
+    Se L1 for "D-P", gera "Dois-Pontos". Se for "D - P", gera "Dois - Pontos".
     """
     pattern = r"([A-Z\s\-\–]+)\n\s*((?:UESTÕES|ISTA).*)"
 
@@ -90,49 +92,54 @@ def reconstruir_header_logico(texto):
         raw_letras = m.group(1)
         raw_palavras = m.group(2)
 
-        # Tokens guia: Letras ou Hífens
-        tokens_guia = re.findall(r'[A-Z]|-', raw_letras)
+        # Encontra letras ou hífens E suas posições para saber se tem espaço depois
+        matches_guia = list(re.finditer(r'([A-Z]|-)', raw_letras))
         palavras_quebradas = raw_palavras.split()
 
-        stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "EM", "QUE", "SE"]
+        stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "E", "EM", "QUE", "SE"]
 
-        resultado = []
+        resultado_final = ""
         idx_p2 = 0
 
-        for token in tokens_guia:
-            if token == '-':
-                resultado.append("-")
-            else:
-                # Avança palavras inteiras (stopwords) que não consomem letra
+        for i, match in enumerate(matches_guia):
+            token = match.group(1)
+
+            # Lógica de colar palavras (igual à anterior)
+            termo_para_adicionar = token
+            if token != '-':
+                # Avança stopwords
                 while idx_p2 < len(palavras_quebradas):
                     palavra_atual = palavras_quebradas[idx_p2]
-                    p_upper = palavra_atual.upper().strip(".,:;")
-
-                    if p_upper in stopwords:
-                        resultado.append(palavra_atual)
+                    if palavra_atual.upper().strip(".,:;") in stopwords:
+                        resultado_final += palavra_atual  # Adiciona stopword diretamente
+                        # Checa se precisa de espaço após a stopword (heurística simples: sempre sim)
+                        resultado_final += " "
                         idx_p2 += 1
                     else:
                         break
 
-                # Cola a letra na palavra quebrada
                 if idx_p2 < len(palavras_quebradas):
-                    palavra_atual = palavras_quebradas[idx_p2]
-                    resultado.append(token + palavra_atual)
+                    termo_para_adicionar = token + palavras_quebradas[idx_p2]
                     idx_p2 += 1
-                else:
-                    resultado.append(token)
 
-        # Adiciona sobras
-        while idx_p2 < len(palavras_quebradas):
-            resultado.append(palavras_quebradas[idx_p2])
-            idx_p2 += 1
+            resultado_final += termo_para_adicionar
 
-        # Limpeza final dos espaços em volta dos hífens
-        final_str = " ".join(resultado)
-        final_str = final_str.replace(" - ", " - ").replace("- ", " - ").replace(" -", " - ")
-        final_str = re.sub(r'\s+', ' ', final_str)
+            # LÓGICA DE ESPAÇAMENTO VISUAL
+            # Se houver caractere de espaço na string original entre este token e o próximo, adiciona espaço.
+            # Se não houver (ex: D-P), não adiciona.
+            if i < len(matches_guia) - 1:
+                fim_atual = match.end()
+                inicio_prox = matches_guia[i + 1].start()
+                # Se houver "vazio" entre eles no raw_letras, é um espaço
+                if inicio_prox > fim_atual:
+                    resultado_final += " "
 
-        return "\n" + final_str + "\n"
+        # Adiciona sobras da linha 2
+        if idx_p2 < len(palavras_quebradas):
+            resultado_final += " " + " ".join(palavras_quebradas[idx_p2:])
+
+        # Limpeza final de espaços duplos
+        return "\n" + re.sub(r'\s+', ' ', resultado_final).strip() + "\n"
 
     return re.sub(pattern, resolver_match, texto)
 
@@ -169,19 +176,28 @@ def parsear_questoes(texto_bruto):
     questoes = []
     mapa_assuntos = []
 
-    # 1. IDENTIFICAÇÃO DE ASSUNTOS
-    regex_topicos = re.compile(
-        r'(?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)\s*-\s*(.+?)\s*-\s*(.+?)(?:\n|$)',
+    # 1. IDENTIFICAÇÃO DE ASSUNTOS (Fatiamento por Índice - Preservando Espaços)
+    regex_linha = re.compile(
+        r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)',
         re.IGNORECASE
     )
 
-    for match in regex_topicos.finditer(texto):
-        assunto_raw = match.group(1).strip()
-        assunto_final = assunto_raw.title()
-        assunto_final = re.sub(r'Cesgranrio', '', assunto_final, flags=re.IGNORECASE).strip()
+    for match in regex_linha.finditer(texto):
+        linha_completa = match.group(1).strip()
+        idx_primeiro_hifen = linha_completa.find('-')
+        idx_ultimo_hifen = linha_completa.rfind('-')
 
-        if 3 < len(assunto_final) < 80:
-            mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_final})
+        if idx_primeiro_hifen != -1 and idx_ultimo_hifen != -1 and idx_primeiro_hifen < idx_ultimo_hifen:
+            # Pega o miolo exato.
+            # O .strip() remove apenas espaços das extremidades (logo após o 1º hífen e logo antes do último).
+            # Qualquer espaço interno ou hífens compostos (ex: "Dois - Pontos") serão mantidos.
+            assunto_raw = linha_completa[idx_primeiro_hifen + 1: idx_ultimo_hifen].strip()
+
+            assunto_final = assunto_raw.title()
+            assunto_final = re.sub(r'Cesgranrio', '', assunto_final, flags=re.IGNORECASE).strip()
+
+            if 3 < len(assunto_final) < 80:
+                mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_final})
 
     if not mapa_assuntos:
         if "CORRELAÇÃO" in texto.upper()[:3000]:
@@ -190,27 +206,22 @@ def parsear_questoes(texto_bruto):
             mapa_assuntos.append({"inicio": 0, "assunto": "Funções Sintáticas"})
         elif "ORAÇÕES ADVERBIAIS" in texto.upper()[:3000]:
             mapa_assuntos.append({"inicio": 0, "assunto": "Orações Adverbiais"})
-        elif "PONTUAÇÃO" in texto.upper()[:3000]:
-            mapa_assuntos.append({"inicio": 0, "assunto": "Pontuação"})
 
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    # 2. SCANNER DE QUESTÕES (CORRIGIDO PARA ACEITAR SEM PARÊNTESES)
-    # Regex: Início de linha, Número, Ponto, Espaços opcionais, (Parêntese opcional), Texto, (Parêntese opcional), Fim de linha
+    # 2. SCANNER DE QUESTÕES
+    # A correção vital: (?:\(?)...(?:\)?) permite capturar "14.CESGRANRIO" sem parênteses
     pattern_questao = re.compile(r'^\s*(\d+)\.\s*(?:\(?)\s*(.+?)\s*(?:\)?)\s*$', re.MULTILINE)
     matches_questoes = list(pattern_questao.finditer(texto))
 
     for i, m in enumerate(matches_questoes):
         start_index = m.start()
         q_numero = m.group(1)
-        q_meta = m.group(2)  # Conteúdo dos metadados (Banca/Ano etc)
+        q_meta = m.group(2)
 
-        # Validação de Segurança: O cabeçalho deve parecer um metadado de concurso
-        # Deve ter 4 dígitos (ano) OU nome de banca comum
+        # Filtro de segurança reforçado
         if not re.search(r'\d{4}|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS', q_meta.upper()):
             continue
-
-        # Ignora linhas muito curtas (ex: índices)
         if len(q_meta) < 3: continue
 
         if i + 1 < len(matches_questoes):
@@ -224,12 +235,11 @@ def parsear_questoes(texto_bruto):
         assunto_atual = "Geral"
         if mapa_assuntos:
             anteriores = [ma for ma in mapa_assuntos if ma["inicio"] < start_index]
-            if anteriores:
-                assunto_atual = anteriores[-1]["assunto"]
+            if anteriores: assunto_atual = anteriores[-1]["assunto"]
         elif mapa_assuntos:
             assunto_atual = mapa_assuntos[0]["assunto"]
 
-        # --- METADADOS (POSICIONAL) ---
+        # Metadados Posicional Estrito
         meta_limpa = q_meta.replace("–", "/").replace("-", "/")
         partes_meta = [p.strip() for p in meta_limpa.split('/') if p.strip()]
 
@@ -237,7 +247,6 @@ def parsear_questoes(texto_bruto):
         instituicao = ""
         ano = "2025"
 
-        # Remove Ano da lista se achar
         for idx, p in enumerate(partes_meta):
             if re.match(r'^\d{4}$', p):
                 ano = p
@@ -247,7 +256,7 @@ def parsear_questoes(texto_bruto):
         if len(partes_meta) > 0: banca = partes_meta[0]
         if len(partes_meta) > 1: instituicao = partes_meta[1]
 
-        # --- GABARITO ---
+        # Gabarito
         gabarito = ""
         gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
 
@@ -259,7 +268,7 @@ def parsear_questoes(texto_bruto):
             if "Comentário" not in q_conteudo_bruto and "COMENTÁRIO" not in q_conteudo_bruto.upper():
                 gabarito = mapa_gabaritos[q_numero]
 
-        # Enunciado/Alternativas
+        # Enunciado
         content_no_comments = \
         re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
         content_no_comments = re.sub(r'www\.estrategia.*', '', content_no_comments)
@@ -292,7 +301,7 @@ def extrair_texto_pdf(caminho_arquivo):
     return texto
 
 
-# --- CRUD BASE (IGUAL) ---
+# --- CRUD BASE ---
 def verificar_questoes():
     garantir_diretorio()
     if not os.path.exists(ARQ_QUESTOES):
@@ -367,53 +376,81 @@ def salvar_flashcards_dados(dados):
 def verificar_metadados():
     garantir_diretorio()
     if not os.path.exists(ARQ_METADADOS):
-        wb = Workbook();
-        [wb.create_sheet(n).append(["nome"]) for n in ["bancas", "instituicoes", "disciplinas"]]
-        wb.create_sheet("assuntos").append(["nome", "disciplina", "ordem"]);
+        wb = Workbook()
+        for n in ["bancas", "instituicoes", "disciplinas"]:
+            wb.create_sheet(n).append(["nome"])
+        wb.create_sheet("assuntos").append(["nome", "disciplina", "ordem"])
+        if "Sheet" in wb.sheetnames: del wb["Sheet"]
         wb.save(ARQ_METADADOS)
 
 
 def carregar_meta_dict():
-    verificar_metadados();
-    wb = load_workbook(ARQ_METADADOS);
+    verificar_metadados()
+    wb = load_workbook(ARQ_METADADOS)
+    sheet_map = {name.lower(): name for name in wb.sheetnames}
     dados = {"bancas": [], "instituicoes": [], "disciplinas": [], "assuntos": []}
-    for k in ["bancas", "instituicoes", "disciplinas"]:
-        if k in wb.sheetnames: [dados[k].append(str(r[0])) for r in wb[k].iter_rows(min_row=2, values_only=True) if
-                                r[0]]
-    if "assuntos" in wb.sheetnames: [
-        dados["assuntos"].append({"nome": str(r[0]), "disciplina": str(r[1]), "ordem": int(r[2]) if r[2] else 999}) for
-        r in wb["assuntos"].iter_rows(min_row=2, values_only=True) if r[0]]
-    for k in dados: dados[k].sort(key=lambda x: (x["disciplina"], x["ordem"]) if isinstance(x, dict) else x)
+
+    def carregar_coluna(key_api, key_xls):
+        real_sheet = sheet_map.get(key_xls)
+        if real_sheet:
+            for r in wb[real_sheet].iter_rows(min_row=2, values_only=True):
+                if r[0]: dados[key_api].append(str(r[0]))
+
+    carregar_coluna("bancas", "bancas")
+    carregar_coluna("instituicoes", "instituicoes")
+    carregar_coluna("disciplinas", "disciplinas")
+
+    real_assuntos = sheet_map.get("assuntos")
+    if real_assuntos:
+        for r in wb[real_assuntos].iter_rows(min_row=2, values_only=True):
+            if r[0]:
+                dados["assuntos"].append({
+                    "nome": str(r[0]),
+                    "disciplina": str(r[1]) if len(r) > 1 and r[1] else "",
+                    "ordem": int(r[2]) if len(r) > 2 and r[2] else 999
+                })
+
+    dados["bancas"].sort()
+    dados["instituicoes"].sort()
+    dados["disciplinas"].sort()
+    dados["assuntos"].sort(key=lambda x: (x["disciplina"], x["ordem"]))
     return dados
 
 
 def salvar_meta_simples(cat, item):
-    wb = load_workbook(ARQ_METADADOS);
-    ws = wb[cat];
+    wb = load_workbook(ARQ_METADADOS)
+    sheet_name = {name.lower(): name for name in wb.sheetnames}.get(cat, cat)
+    if sheet_name not in wb.sheetnames: wb.create_sheet(sheet_name).append(["nome"])
+    ws = wb[sheet_name];
     ws.append([item["nome"]]);
     wb.save(ARQ_METADADOS)
 
 
 def gerenciar_assunto(acao, payload, nome_antigo=None):
-    wb = load_workbook(ARQ_METADADOS);
-    ws = wb["assuntos"]
+    wb = load_workbook(ARQ_METADADOS)
+    sheet_name = {name.lower(): name for name in wb.sheetnames}.get("assuntos", "assuntos")
+    ws = wb[sheet_name]
     todos = [{"nome": str(r[0]), "disciplina": str(r[1]), "ordem": int(r[2]) if r[2] else 999} for r in
              ws.iter_rows(min_row=2, values_only=True) if r[0]]
     if acao == 'editar': todos = [a for a in todos if a["nome"] != nome_antigo]
-    todos.append(payload);
-    wb.remove(wb["assuntos"]);
-    ws_new = wb.create_sheet("assuntos");
+    todos.append(payload)
+    del wb[sheet_name]
+    ws_new = wb.create_sheet("assuntos")
     ws_new.append(["nome", "disciplina", "ordem"])
-    todos.sort(key=lambda x: (x["disciplina"], x["ordem"]));
-    [ws_new.append([a["nome"], a["disciplina"], a["ordem"]]) for a in todos];
+    todos.sort(key=lambda x: (x["disciplina"], x["ordem"]))
+    [ws_new.append([a["nome"], a["disciplina"], a["ordem"]]) for a in todos]
     wb.save(ARQ_METADADOS)
 
 
 def deletar_meta_item(cat, nome):
-    wb = load_workbook(ARQ_METADADOS);
-    ws = wb[cat]
+    wb = load_workbook(ARQ_METADADOS)
+    sheet_name = {name.lower(): name for name in wb.sheetnames}.get(cat, cat)
+    ws = wb[sheet_name]
     for i, r in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-        if str(r[0]) == str(nome): ws.delete_rows(i); wb.save(ARQ_METADADOS); return True
+        if str(r[0]) == str(nome):
+            ws.delete_rows(i);
+            wb.save(ARQ_METADADOS);
+            return True
     return False
 
 
