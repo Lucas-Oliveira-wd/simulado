@@ -15,20 +15,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(BASE_DIR, "../banco_de_dados")
 UPLOAD_FOLDER = os.path.join(DB_DIR, "img", "q_img")
 ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
-ARQ_METADADOS = os.path.join(DB_DIR, "metadados.xlsx")
 ARQ_FLASHCARDS = os.path.join(DB_DIR, "flashcards.xlsx")
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# --- PALAVRAS CHAVE DE CARGO ---
-PALAVRAS_CHAVE_CARGO = [
-    "ANALISTA", "TÉCNICO", "ENGENHEIRO", "MÉDICO", "ADVOGADO", "AGENTE", "ESCRITURÁRIO",
-    "PROFESSOR", "ESPECIALISTA", "AUDITOR", "DEFENSOR", "PROMOTOR", "JUIZ", "DELEGADO",
-    "INSPETOR", "SOLDADO", "OFICIAL", "ASSISTENTE", "CONSULTOR", "COORDENADOR", "DIRETOR",
-    "GERENTE", "SUPERVISOR", "PEDAGOGO", "PSICÓLOGO", "CONTADOR", "ADMINISTRADOR", "ECONOMISTA",
-    "ARQUITETO", "ENFERMEIRO", "FARMACÊUTICO", "NUTRICIONISTA", "DENTISTA"
-]
 
 
 # --- FUNÇÕES UTILITÁRIAS ---
@@ -79,66 +69,40 @@ def gerar_assinatura(q):
     )
 
 
-# --- RECONSTRUÇÃO DE TEXTO (ESPACIAMENTO INTELIGENTE) ---
+# --- RECONSTRUÇÃO DE TEXTO ---
 def reconstruir_header_logico(texto):
-    """
-    Reconstrói a Linha 2 baseada na Linha 1.
-    DIFERENÇA: Respeita o espaçamento original da Linha 1.
-    Se L1 for "D-P", gera "Dois-Pontos". Se for "D - P", gera "Dois - Pontos".
-    """
     pattern = r"([A-Z\s\-\–]+)\n\s*((?:UESTÕES|ISTA).*)"
 
     def resolver_match(m):
         raw_letras = m.group(1)
         raw_palavras = m.group(2)
-
-        # Encontra letras ou hífens E suas posições para saber se tem espaço depois
         matches_guia = list(re.finditer(r'([A-Z]|-)', raw_letras))
         palavras_quebradas = raw_palavras.split()
-
         stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "E", "EM", "QUE", "SE"]
-
         resultado_final = ""
         idx_p2 = 0
-
         for i, match in enumerate(matches_guia):
             token = match.group(1)
-
-            # Lógica de colar palavras (igual à anterior)
             termo_para_adicionar = token
             if token != '-':
-                # Avança stopwords
                 while idx_p2 < len(palavras_quebradas):
                     palavra_atual = palavras_quebradas[idx_p2]
                     if palavra_atual.upper().strip(".,:;") in stopwords:
-                        resultado_final += palavra_atual  # Adiciona stopword diretamente
-                        # Checa se precisa de espaço após a stopword (heurística simples: sempre sim)
-                        resultado_final += " "
+                        resultado_final += palavra_atual + " "
                         idx_p2 += 1
                     else:
                         break
-
                 if idx_p2 < len(palavras_quebradas):
                     termo_para_adicionar = token + palavras_quebradas[idx_p2]
                     idx_p2 += 1
-
             resultado_final += termo_para_adicionar
-
-            # LÓGICA DE ESPAÇAMENTO VISUAL
-            # Se houver caractere de espaço na string original entre este token e o próximo, adiciona espaço.
-            # Se não houver (ex: D-P), não adiciona.
             if i < len(matches_guia) - 1:
                 fim_atual = match.end()
                 inicio_prox = matches_guia[i + 1].start()
-                # Se houver "vazio" entre eles no raw_letras, é um espaço
                 if inicio_prox > fim_atual:
                     resultado_final += " "
-
-        # Adiciona sobras da linha 2
         if idx_p2 < len(palavras_quebradas):
             resultado_final += " " + " ".join(palavras_quebradas[idx_p2:])
-
-        # Limpeza final de espaços duplos
         return "\n" + re.sub(r'\s+', ' ', resultado_final).strip() + "\n"
 
     return re.sub(pattern, resolver_match, texto)
@@ -147,13 +111,9 @@ def reconstruir_header_logico(texto):
 def limpar_ruido(texto):
     texto = reconstruir_header_logico(texto)
     patterns_to_remove = [
-        r"PETROBRAS \(Nível Superior\) Português\s*\d*",
-        r"www\.estrategiaconcursos\.com\.br\s*\d*",
-        r"\d{11}\s*-\s*Ricardo Aciole",
-        r"Equipe Português Estratégia Concursos, Felipe Luccas",
-        r"Aula \d+",
-        r"==\w+==",
-        r"^\.\d+\.\.\)\.",
+        r"PETROBRAS \(Nível Superior\) Português\s*\d*", r"www\.estrategiaconcursos\.com\.br\s*\d*",
+        r"\d{11}\s*-\s*Ricardo Aciole", r"Equipe Português Estratégia Concursos, Felipe Luccas",
+        r"Aula \d+", r"==\w+==", r"^\.\d+\.\.\)\.",
     ]
     for pattern in patterns_to_remove:
         texto = re.sub(pattern, "", texto, flags=re.MULTILINE | re.IGNORECASE)
@@ -165,8 +125,7 @@ def extrair_mapa_gabaritos(texto):
     mapa = {}
     padrao_tabela = r'(?:^|\n)\s*(\d+)\s*[\.\-]?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)'
     matches = re.finditer(padrao_tabela, texto, re.IGNORECASE)
-    for m in matches:
-        mapa[m.group(1)] = m.group(2).upper()
+    for m in matches: mapa[m.group(1)] = m.group(2).upper()
     return mapa
 
 
@@ -175,29 +134,15 @@ def parsear_questoes(texto_bruto):
     mapa_gabaritos = extrair_mapa_gabaritos(texto)
     questoes = []
     mapa_assuntos = []
-
-    # 1. IDENTIFICAÇÃO DE ASSUNTOS (Fatiamento por Índice - Preservando Espaços)
-    regex_linha = re.compile(
-        r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)',
-        re.IGNORECASE
-    )
-
+    regex_linha = re.compile(r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)', re.IGNORECASE)
     for match in regex_linha.finditer(texto):
         linha_completa = match.group(1).strip()
         idx_primeiro_hifen = linha_completa.find('-')
         idx_ultimo_hifen = linha_completa.rfind('-')
-
         if idx_primeiro_hifen != -1 and idx_ultimo_hifen != -1 and idx_primeiro_hifen < idx_ultimo_hifen:
-            # Pega o miolo exato.
-            # O .strip() remove apenas espaços das extremidades (logo após o 1º hífen e logo antes do último).
-            # Qualquer espaço interno ou hífens compostos (ex: "Dois - Pontos") serão mantidos.
             assunto_raw = linha_completa[idx_primeiro_hifen + 1: idx_ultimo_hifen].strip()
-
-            assunto_final = assunto_raw.title()
-            assunto_final = re.sub(r'Cesgranrio', '', assunto_final, flags=re.IGNORECASE).strip()
-
-            if 3 < len(assunto_final) < 80:
-                mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_final})
+            assunto_final = re.sub(r'Cesgranrio', '', assunto_raw.title(), flags=re.IGNORECASE).strip()
+            if 3 < len(assunto_final) < 80: mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_final})
 
     if not mapa_assuntos:
         if "CORRELAÇÃO" in texto.upper()[:3000]:
@@ -206,32 +151,20 @@ def parsear_questoes(texto_bruto):
             mapa_assuntos.append({"inicio": 0, "assunto": "Funções Sintáticas"})
         elif "ORAÇÕES ADVERBIAIS" in texto.upper()[:3000]:
             mapa_assuntos.append({"inicio": 0, "assunto": "Orações Adverbiais"})
-
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    # 2. SCANNER DE QUESTÕES
-    # A correção vital: (?:\(?)...(?:\)?) permite capturar "14.CESGRANRIO" sem parênteses
     pattern_questao = re.compile(r'^\s*(\d+)\.\s*(?:\(?)\s*(.+?)\s*(?:\)?)\s*$', re.MULTILINE)
     matches_questoes = list(pattern_questao.finditer(texto))
 
     for i, m in enumerate(matches_questoes):
         start_index = m.start()
-        q_numero = m.group(1)
+        q_numero = m.group(1);
         q_meta = m.group(2)
-
-        # Filtro de segurança reforçado
-        if not re.search(r'\d{4}|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS', q_meta.upper()):
-            continue
+        if not re.search(r'\d{4}|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS',
+                         q_meta.upper()): continue
         if len(q_meta) < 3: continue
-
-        if i + 1 < len(matches_questoes):
-            end_index = matches_questoes[i + 1].start()
-        else:
-            end_index = len(texto)
-
+        end_index = matches_questoes[i + 1].start() if i + 1 < len(matches_questoes) else len(texto)
         q_conteudo_bruto = texto[m.end():end_index]
-
-        # Assunto
         assunto_atual = "Geral"
         if mapa_assuntos:
             anteriores = [ma for ma in mapa_assuntos if ma["inicio"] < start_index]
@@ -239,43 +172,29 @@ def parsear_questoes(texto_bruto):
         elif mapa_assuntos:
             assunto_atual = mapa_assuntos[0]["assunto"]
 
-        # Metadados Posicional Estrito
         meta_limpa = q_meta.replace("–", "/").replace("-", "/")
         partes_meta = [p.strip() for p in meta_limpa.split('/') if p.strip()]
-
-        banca = "CESGRANRIO"
-        instituicao = ""
+        banca = "CESGRANRIO";
+        instituicao = "";
         ano = "2025"
-
         for idx, p in enumerate(partes_meta):
-            if re.match(r'^\d{4}$', p):
-                ano = p
-                partes_meta.pop(idx)
-                break
-
+            if re.match(r'^\d{4}$', p): ano = p; partes_meta.pop(idx); break
         if len(partes_meta) > 0: banca = partes_meta[0]
         if len(partes_meta) > 1: instituicao = partes_meta[1]
 
-        # Gabarito
         gabarito = ""
         gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
-
         matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
-        if matches_gab:
-            gabarito = matches_gab[-1].group(1).upper()
-
+        if matches_gab: gabarito = matches_gab[-1].group(1).upper()
         if not gabarito and q_numero in mapa_gabaritos:
-            if "Comentário" not in q_conteudo_bruto and "COMENTÁRIO" not in q_conteudo_bruto.upper():
-                gabarito = mapa_gabaritos[q_numero]
+            if "Comentário" not in q_conteudo_bruto and "COMENTÁRIO" not in q_conteudo_bruto.upper(): gabarito = \
+            mapa_gabaritos[q_numero]
 
-        # Enunciado
         content_no_comments = \
         re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
         content_no_comments = re.sub(r'www\.estrategia.*', '', content_no_comments)
-
         parts_alt = re.split(r'\b([A-E])\)', content_no_comments)
         enunciado = sanitizar_texto(parts_alt[0].strip())
-
         alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
         if len(parts_alt) > 1:
             for k in range(1, len(parts_alt), 2):
@@ -289,15 +208,13 @@ def parsear_questoes(texto_bruto):
                 "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
                 "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME", "imagem": ""
             })
-
     return questoes
 
 
 def extrair_texto_pdf(caminho_arquivo):
     texto = ""
     with pdfplumber.open(caminho_arquivo) as pdf:
-        for page in pdf.pages:
-            texto += (page.extract_text() or "") + "\n"
+        for page in pdf.pages: texto += (page.extract_text() or "") + "\n"
     return texto
 
 
@@ -373,85 +290,41 @@ def salvar_flashcards_dados(dados):
     wb.save(ARQ_FLASHCARDS)
 
 
-def verificar_metadados():
-    garantir_diretorio()
-    if not os.path.exists(ARQ_METADADOS):
-        wb = Workbook()
-        for n in ["bancas", "instituicoes", "disciplinas"]:
-            wb.create_sheet(n).append(["nome"])
-        wb.create_sheet("assuntos").append(["nome", "disciplina", "ordem"])
-        if "Sheet" in wb.sheetnames: del wb["Sheet"]
-        wb.save(ARQ_METADADOS)
+# --- FUNÇÃO NOVA: EXTRAÇÃO DINÂMICA DO DB ---
+def extrair_opcoes_do_banco():
+    questoes = carregar_questoes()
+    bancas = set()
+    instituicoes = set()
+    disciplinas = set()
+    assuntos_map = {}  # { "Portugues": ["Crase", "Sintaxe"], ... }
 
+    for q in questoes:
+        if q['banca']: bancas.add(str(q['banca']).strip())
+        if q['instituicao']: instituicoes.add(str(q['instituicao']).strip())
+        disc = str(q['disciplina']).strip()
+        assunto = str(q['assunto']).strip()
 
-def carregar_meta_dict():
-    verificar_metadados()
-    wb = load_workbook(ARQ_METADADOS)
-    sheet_map = {name.lower(): name for name in wb.sheetnames}
-    dados = {"bancas": [], "instituicoes": [], "disciplinas": [], "assuntos": []}
+        if disc:
+            disciplinas.add(disc)
+            if disc not in assuntos_map: assuntos_map[disc] = set()
+            if assunto: assuntos_map[disc].add(assunto)
 
-    def carregar_coluna(key_api, key_xls):
-        real_sheet = sheet_map.get(key_xls)
-        if real_sheet:
-            for r in wb[real_sheet].iter_rows(min_row=2, values_only=True):
-                if r[0]: dados[key_api].append(str(r[0]))
+    # Converter sets para listas ordenadas
+    assuntos_final = []
+    for disc, lista_assuntos in assuntos_map.items():
+        for a in lista_assuntos:
+            assuntos_final.append({'nome': a, 'disciplina': disc})
 
-    carregar_coluna("bancas", "bancas")
-    carregar_coluna("instituicoes", "instituicoes")
-    carregar_coluna("disciplinas", "disciplinas")
+    # Adicionar opção "Geral" para disciplinas que não tem assuntos ainda, ou se DB vazio
+    if not disciplinas: disciplinas.add("Geral")
+    if not bancas: bancas.add("Banca Padrão")
 
-    real_assuntos = sheet_map.get("assuntos")
-    if real_assuntos:
-        for r in wb[real_assuntos].iter_rows(min_row=2, values_only=True):
-            if r[0]:
-                dados["assuntos"].append({
-                    "nome": str(r[0]),
-                    "disciplina": str(r[1]) if len(r) > 1 and r[1] else "",
-                    "ordem": int(r[2]) if len(r) > 2 and r[2] else 999
-                })
-
-    dados["bancas"].sort()
-    dados["instituicoes"].sort()
-    dados["disciplinas"].sort()
-    dados["assuntos"].sort(key=lambda x: (x["disciplina"], x["ordem"]))
-    return dados
-
-
-def salvar_meta_simples(cat, item):
-    wb = load_workbook(ARQ_METADADOS)
-    sheet_name = {name.lower(): name for name in wb.sheetnames}.get(cat, cat)
-    if sheet_name not in wb.sheetnames: wb.create_sheet(sheet_name).append(["nome"])
-    ws = wb[sheet_name];
-    ws.append([item["nome"]]);
-    wb.save(ARQ_METADADOS)
-
-
-def gerenciar_assunto(acao, payload, nome_antigo=None):
-    wb = load_workbook(ARQ_METADADOS)
-    sheet_name = {name.lower(): name for name in wb.sheetnames}.get("assuntos", "assuntos")
-    ws = wb[sheet_name]
-    todos = [{"nome": str(r[0]), "disciplina": str(r[1]), "ordem": int(r[2]) if r[2] else 999} for r in
-             ws.iter_rows(min_row=2, values_only=True) if r[0]]
-    if acao == 'editar': todos = [a for a in todos if a["nome"] != nome_antigo]
-    todos.append(payload)
-    del wb[sheet_name]
-    ws_new = wb.create_sheet("assuntos")
-    ws_new.append(["nome", "disciplina", "ordem"])
-    todos.sort(key=lambda x: (x["disciplina"], x["ordem"]))
-    [ws_new.append([a["nome"], a["disciplina"], a["ordem"]]) for a in todos]
-    wb.save(ARQ_METADADOS)
-
-
-def deletar_meta_item(cat, nome):
-    wb = load_workbook(ARQ_METADADOS)
-    sheet_name = {name.lower(): name for name in wb.sheetnames}.get(cat, cat)
-    ws = wb[sheet_name]
-    for i, r in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-        if str(r[0]) == str(nome):
-            ws.delete_rows(i);
-            wb.save(ARQ_METADADOS);
-            return True
-    return False
+    return {
+        "bancas": sorted(list(bancas)),
+        "instituicoes": sorted(list(instituicoes)),
+        "disciplinas": sorted(list(disciplinas)),
+        "assuntos": sorted(assuntos_final, key=lambda x: (x['disciplina'], x['nome']))
+    }
 
 
 # --- ROTAS ---
@@ -573,26 +446,10 @@ def upload_pdf():
         if os.path.exists(p): os.remove(p)
 
 
-@app.route("/metadados", methods=["GET"])
-def get_meta(): return jsonify(carregar_meta_dict())
-
-
-@app.route("/metadados/<string:cat>", methods=["POST", "PUT", "DELETE"])
-def handle_meta(cat):
-    if request.method == "DELETE": return jsonify({"status": "ok"}) if deletar_meta_item(cat, request.args.get(
-        "nome")) else (jsonify({"erro": "404"}), 404)
-    data = request.json
-    if request.method == "POST":
-        if cat == "assuntos":
-            gerenciar_assunto('criar', data)
-        else:
-            salvar_meta_simples(cat, data)
-    if request.method == "PUT":
-        if cat == "assuntos":
-            gerenciar_assunto('editar', data["novo"], data["antigo"])
-        else:
-            salvar_meta_simples(cat, data["novo"])
-    return jsonify({"status": "ok"})
+# Rota de opções agora lê direto do DB, eliminando metadados.xlsx
+@app.route("/opcoes-dinamicas", methods=["GET"])
+def get_opcoes():
+    return jsonify(extrair_opcoes_do_banco())
 
 
 if __name__ == "__main__": app.run(debug=True, port=5000)
