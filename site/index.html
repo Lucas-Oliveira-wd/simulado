@@ -170,8 +170,21 @@
     <select id="busca-disciplina" onchange="carregarAssuntos('busca'); filtrar()"></select>
     <select id="busca-assunto" onchange="filtrar()"><option value="">Todos Assuntos</option></select>
     <select id="busca-banca" onchange="filtrar()"></select>
+    <select id="busca-instituicao" onchange="filtrar()"><option value="">Instituição...</option></select>
     <select id="busca-dificuldade" onchange="filtrar()"><option value="">Dif.</option><option>Fácil</option><option>Médio</option><option>Difícil</option></select>
-</div><div style="overflow-x:auto"><table id="tabela-questoes"><thead><tr><th width="40" onclick="ord('id')">ID</th><th width="90">Banca</th><th width="50">Ano</th><th width="100">Disc.</th><th>Enunciado</th><th width="100">Assunto</th><th width="50">Dif</th><th width="40">Gab</th><th width="60">Ações</th></tr></thead><tbody></tbody></table></div></div></section>
+</div><div style="overflow-x:auto"><table id="tabela-questoes"><thead>
+    <tr>
+        <th width="40" onclick="ord('id')">ID</th>
+        <th width="90">Banca</th>
+        <th width="90">Inst.</th> <th width="50">Ano</th>
+        <th width="100">Disc.</th>
+        <th>Enunciado</th>
+        <th width="100">Assunto</th>
+        <th width="50">Dif</th>
+        <th width="40">Gab</th>
+        <th width="60">Ações</th>
+    </tr>
+</thead><tbody></tbody></table></div></div></section>
 
 <section id="secao-flashcards" class="secao"><div class="container"><div class="flex" style="margin-bottom: 20px;"><h2>🗂️ Flashcards</h2><div><button class="btn-acao" style="width:auto; background:#3498db; margin:0 5px" onclick="toggleModeFC('estudo')">🎓 Modo Estudo</button><button class="btn-acao" style="width:auto; background:#95a5a6; margin:0" onclick="toggleModeFC('gerenciar')">✏️ Gerenciar</button></div></div>
 <div id="fc-modo-gerenciar" style="display:none"><div class="fc-layout"><div><h4>Cartões Existentes</h4><input type="text" id="fc-filtro-ger" placeholder="Filtrar por texto..." onkeyup="renderListaFC()"><div id="fc-lista" class="fc-lista"></div></div><div style="background:#fafafa; padding:20px; border-radius:8px; border:1px solid #eee"><h4 id="fc-titulo-form">Novo Cartão</h4><form id="fc-form"><input type="hidden" id="fc-id">
@@ -472,7 +485,55 @@ el("form-cadastro").onsubmit = async e => {
 };
 
 function carrTab() { el("total-db").innerText = `${db.length} questões`; filtrar(); }
-function filtrar() { let txt=el("busca-texto").value.toLowerCase(), ban=el("busca-banca").value, dis=el("busca-disciplina").value, ass=el("busca-assunto").value, dif=el("busca-dificuldade").value; let filtrados = db.filter(q => q.enunciado.toLowerCase().includes(txt) && (ban===""||q.banca===ban) && (dis===""||q.disciplina===dis) && (ass===""||q.assunto===ass) && (dif===""||q.dificuldade===dif)); let tb = document.querySelector("#tabela-questoes tbody"); tb.innerHTML=""; filtrados.forEach(q => { let difClass = q.dificuldade==='Fácil'?'color-facil':(q.dificuldade==='Médio'?'color-medio':'color-dificil'); let dots = q.dificuldade==='Fácil'?'●':(q.dificuldade==='Médio'?'●●':'●●●'); tb.innerHTML += `<tr><td>${q.id}</td><td>${q.banca}</td><td>${q.ano||'-'}</td><td>${q.disciplina}</td><td title="${q.enunciado.replace(/"/g,'&quot;')}">${q.enunciado.substring(0,40)}...</td><td>${q.assunto}</td><td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td><td>${q.gabarito}</td><td><button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button><button class="btn-icon" onclick="del('${q.id}')">🗑️</button></td></tr>`; }); }
+function filtrar() { 
+    // Captura os valores dos filtros
+    let txt = el("busca-texto").value.toLowerCase(), 
+        ban = el("busca-banca").value, 
+        inst = el("busca-instituicao").value, // Valor do filtro (já vem em MAIÚSCULO da lista)
+        dis = el("busca-disciplina").value, 
+        ass = el("busca-assunto").value, 
+        dif = el("busca-dificuldade").value; 
+
+    let filtrados = db.filter(q => {
+        // Normaliza a instituição da questão para comparar (trata nulos)
+        let qInst = q.instituicao ? q.instituicao.toString().toUpperCase() : "";
+        let filtroInst = inst ? inst.toUpperCase() : "";
+
+        return (
+            q.enunciado.toLowerCase().includes(txt) && 
+            (ban === "" || q.banca === ban) && 
+            (filtroInst === "" || qInst === filtroInst) && // <--- COMPARAÇÃO CORRIGIDA
+            (dis === "" || q.disciplina === dis) && 
+            (ass === "" || q.assunto === ass) && 
+            (dif === "" || q.dificuldade === dif)
+        );
+    }); 
+
+    let tb = document.querySelector("#tabela-questoes tbody"); 
+    tb.innerHTML = ""; 
+    
+    filtrados.forEach(q => { 
+        let difClass = q.dificuldade === 'Fácil' ? 'color-facil' : (q.dificuldade === 'Médio' ? 'color-medio' : 'color-dificil'); 
+        let dots = q.dificuldade === 'Fácil' ? '●' : (q.dificuldade === 'Médio' ? '●●' : '●●●'); 
+        
+        // ADICIONA A CÉLULA DA INSTITUIÇÃO NA TABELA
+        tb.innerHTML += `
+            <tr>
+                <td>${q.id}</td>
+                <td>${q.banca}</td>
+                <td style="font-size:0.85em; color:#555;">${q.instituicao || '-'}</td> <td>${q.ano || '-'}</td>
+                <td>${q.disciplina}</td>
+                <td title="${q.enunciado.replace(/"/g, '&quot;')}">${q.enunciado.substring(0, 40)}...</td>
+                <td>${q.assunto}</td>
+                <td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td>
+                <td>${q.gabarito}</td>
+                <td>
+                    <button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button>
+                    <button class="btn-icon" onclick="del('${q.id}')">🗑️</button>
+                </td>
+            </tr>`; 
+    }); 
+}
 function del(id) { if(confirm("Excluir Questão?")) fetch(`${API}/questoes/${id}`, {method:"DELETE"}).then(init); }
 function ord(c) { ordCol.d = (ordCol.c===c && ordCol.d==='asc') ? 'desc':'asc'; ordCol.c=c; aplOrd(); filtrar(); }
 function aplOrd() { let {c,d} = ordCol; let m = d==='asc'?1:-1; db.sort((a,b) => { let va=a[c]?a[c].toString().toLowerCase():"", vb=b[c]?b[c].toString().toLowerCase():""; if(c==='id'){ va=parseInt(a[c]); vb=parseInt(b[c]); } return va<vb ? -1*m : (va>vb ? 1*m : 0); }); }
