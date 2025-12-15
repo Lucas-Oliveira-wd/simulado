@@ -84,35 +84,23 @@ def limpar_ruido(texto):
 
 
 def extrair_mapa_gabaritos(texto):
-    """
-    Varre o texto inteiro procurando tabelas de gabarito.
-    Ex: 1. LETRA C, 2. LETRA B... ou 1. C, 2. B
-    Retorna um dict: {'1': 'C', '2': 'B', ...}
-    """
     mapa = {}
-    # Regex para capturar linhas de gabarito isoladas (comuns no final dos PDFs do Estratégia)
-    # Procura por: inicio linha -> numero -> ponto opcional -> "LETRA" opcional -> A-E
     padrao_tabela = r'(?:^|\n)\s*(\d+)\.?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)'
-
     matches = re.finditer(padrao_tabela, texto, re.IGNORECASE)
     for m in matches:
         num = m.group(1)
         letra = m.group(2).upper()
-        # Só adiciona se não existir ou sobrescreve (geralmente a tabela final é a mais confiável)
         mapa[num] = letra
     return mapa
 
 
 def parsear_questoes(texto_bruto):
     texto = limpar_ruido(texto_bruto)
-
-    # 1. Monta o Mapa de Gabaritos (Tabela Final)
     mapa_gabaritos = extrair_mapa_gabaritos(texto)
-
     questoes = []
     mapa_assuntos = []
 
-    # 2. CAPTURA DE ASSUNTOS
+    # 1. CAPTURA DE ASSUNTOS
     regex_topicos = re.compile(
         r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES).*?([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s\-]+?)\s*(?:C\s*)?ESGRANRIO',
         re.IGNORECASE | re.DOTALL
@@ -128,7 +116,7 @@ def parsear_questoes(texto_bruto):
             mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_corrigido})
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    # 3. CAPTURA DE QUESTÕES
+    # 2. CAPTURA DE QUESTÕES
     question_split_pattern = r"(\d+)\.\s*\((CESGRANRIO.*?)\)"
     parts = re.split(question_split_pattern, texto)
 
@@ -144,13 +132,11 @@ def parsear_questoes(texto_bruto):
 
             current_pos_tracker += len(q_numero) + len(q_meta) + len(q_conteudo_bruto)
 
-            # Assunto
             assunto_atual = "Geral"
             if mapa_assuntos:
                 anteriores = [m for m in mapa_assuntos if m["inicio"] < current_pos_tracker]
                 if anteriores: assunto_atual = anteriores[-1]["assunto"]
 
-            # Metadados
             banca = "CESGRANRIO"
             ano = "2025"
             instituicao = ""
@@ -159,20 +145,15 @@ def parsear_questoes(texto_bruto):
             meta_clean = q_meta.replace(banca, "").replace(ano, "").replace("-", "").strip()
             instituicao = meta_clean.strip(" /")
 
-            # --- LÓGICA DE GABARITO (Com prioridade para Tabela Externa) ---
             gabarito = ""
-
-            # 1. Tenta achar no comentário local (Questões Comentadas)
             gabarito_pattern_local = r'(?:Gabarito|GABARITO|Correta|Letra)(?:.{0,30}?)(?:[Ll]etra|[Oo]pção|[Aa]lternativa)?\s*([A-E])(?=[\.\s]|$)'
             matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto, re.IGNORECASE))
             if matches_gab:
                 gabarito = matches_gab[-1].group(1).upper()
 
-            # 2. SE NÃO ACHOU (Lista de Questões): Busca no Mapa Global pelo número da questão
             if not gabarito and q_numero in mapa_gabaritos:
                 gabarito = mapa_gabaritos[q_numero]
 
-            # Separação de Conteúdo
             content_no_comments = \
             re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
             content_no_comments = \
@@ -374,7 +355,24 @@ def deletar_meta_item(cat, nome):
     return False
 
 
-# --- ROTAS ---
+# --- NOVO ENDPOINT DE VERIFICAÇÃO DINÂMICA ---
+@app.route("/check-duplicidade", methods=["POST"])
+def check_duplicidade():
+    payload = request.json
+    enunciado = normalizar_para_comparacao(payload.get("enunciado"))
+    alt_a = normalizar_para_comparacao(payload.get("alt_a"))
+
+    if not enunciado: return jsonify({"existe": False})
+
+    questoes_banco = carregar_questoes()
+    for q in questoes_banco:
+        if normalizar_para_comparacao(q['enunciado']) == enunciado and normalizar_para_comparacao(q['alt_a']) == alt_a:
+            return jsonify({"existe": True})
+
+    return jsonify({"existe": False})
+
+
+# --- ROTAS PADRÃO ---
 @app.route("/questoes", methods=["GET"])
 def get_q(): return jsonify(carregar_questoes())
 
@@ -461,24 +459,18 @@ def upload_pdf():
     p = os.path.join(BASE_DIR, "temp.pdf")
     f.save(p)
     try:
-        # 1. Extrai novas (agora com suporte a gabarito separado)
         novas_questoes = parsear_questoes(extrair_texto_pdf(p))
-
-        # 2. Carrega existentes para verificar duplicidade
         questoes_banco = carregar_questoes()
         assinaturas_banco = set()
         for q in questoes_banco:
             sig = (normalizar_para_comparacao(q['enunciado']), normalizar_para_comparacao(q['alt_a']))
             assinaturas_banco.add(sig)
-
-        # 3. Marca duplicadas
         for nova in novas_questoes:
             sig_nova = (normalizar_para_comparacao(nova['enunciado']), normalizar_para_comparacao(nova['alt_a']))
             if sig_nova in assinaturas_banco:
                 nova['ja_cadastrada'] = True
             else:
                 nova['ja_cadastrada'] = False
-
         return jsonify(novas_questoes)
     except Exception as e:
         return jsonify({"erro": str(e)}), 500

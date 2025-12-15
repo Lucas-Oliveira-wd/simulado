@@ -12,7 +12,7 @@
     body{font-family:'Segoe UI',sans-serif;margin:0;background:var(--bg);color:#333;line-height:1.5}
     .container{max-width:1300px;margin:0 auto;padding:20px} .flex{display:flex;justify-content:space-between;align-items:center}
     
-    /* Header Padrão e Sticky */
+    /* Header */
     header{background:var(--primary);color:#fff;padding:1rem 0;box-shadow:0 2px 5px rgba(0,0,0,.1); transition:.3s; z-index:10} 
     header h4{margin:0; font-weight:600; font-size:1.5rem; transition:.3s}
     header.sticky{position:fixed;top:0;width:100%;padding:.5rem 0;box-shadow:0 4px 10px rgba(0,0,0,.2)}
@@ -48,25 +48,8 @@
     .filtro-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
     .input-group{display:flex;align-items:center} .input-group span{width:25px;font-weight:bold}
     
-    /* Estilos Config */
-    .cfg-painel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .lista-meta { max-height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 5px; }
-    .item-meta { display: flex; justify-content: space-between; padding: 5px; border-bottom: 1px solid #eee; }
-    
-    /* Estilos Praticar/Prova */
-    .questao-card { border: 1px solid #ddd; padding: 15px; margin-top: 15px; border-radius: 6px; }
-    .info-questao { color: var(--text-muted); font-size: 0.9em; margin-bottom: 10px; }
-    .alternativa-wrapper { padding: 10px; border: 1px solid #eee; margin-bottom: 5px; border-radius: 4px; cursor: pointer; position: relative; }
-    .alternativa-wrapper:hover { background: #f9f9f9; }
-    .alternativa-wrapper.selected { background: #d6eaf8; border-color: var(--sec); font-weight: 500; }
-    .btn-riscar { position: absolute; left: 5px; opacity: 0; color: var(--acc); font-weight: bold; cursor: pointer; }
-    .alternativa-wrapper:hover .btn-riscar { opacity: 1; }
-    .riscado-ativo { text-decoration: line-through; opacity: 0.6; background: #eee; }
-    #barra-tempo-container { width: 100%; background: #e0e0e0; height: 10px; border-radius: 5px; margin-bottom: 15px; display: none; }
-    #barra-tempo-fill { height: 100%; background: var(--succ); width: 100%; border-radius: 5px; transition: width 1s linear; }
-
-    /* Estilos Importação */
-    .imp-row { display: flex; gap: 10px; align-items: flex-start; background: #fff; padding: 10px; border: 1px solid #eee; margin-bottom: 10px; border-radius: 4px; }
+    /* Importação Styles */
+    .imp-row { display: flex; gap: 10px; align-items: flex-start; background: #fff; padding: 10px; border: 1px solid #eee; margin-bottom: 10px; border-radius: 4px; transition: 0.3s; }
     .imp-row.ja-cadastrada { border-left: 4px solid #e74c3c; background: #fff5f5; }
     .imp-row.sucesso-salvo { border-left: 4px solid #27ae60; background: #eafaf1; }
     .imp-meta { min-width: 150px; max-width: 150px; display: flex; flex-direction: column; gap: 5px; }
@@ -76,46 +59,40 @@
     .imp-textarea { width: 100%; border: 1px solid #eee; resize: vertical; font-family: inherit; font-size: 0.9rem; padding: 5px; border-radius: 4px;}
     .imp-textarea:focus { border-color: var(--sec); outline: none; }
     .preview-header { display: flex; background: var(--primary); color: white; padding: 10px; border-radius: 4px 4px 0 0; font-weight: bold; font-size: 0.85rem;}
+    .aviso-dup { color:#e74c3c; font-weight:bold; font-size:0.8em; display:block; margin-top:2px; }
     
-    /* Toolbar de Importação Fixa */
+    /* Toolbar Flutuante */
     .floating-toolbar { position: absolute; display: none; background: #333; padding: 5px 10px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; gap: 5px; }
-    .floating-toolbar::after { content: ''; position: absolute; top: 100%; left: 20px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent; }
     .floating-toolbar button { background: #555; border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
     .floating-toolbar button:hover { background: #777; }
 
-    /* Renderização de HTML */
+    /* Renderização HTML */
     .render-html b { font-weight: 900; }
-    .render-html u { text-decoration: underline; text-decoration-thickness: 2px; }
+    .render-html u { text-decoration: underline; }
     .render-html i { font-style: italic; }
-    .render-html mark { background-color: #f1c40f; color: #000; padding: 0 2px; border-radius: 2px; }
+    .render-html mark { background-color: #f1c40f; color: #000; padding: 0 2px; }
 
-    /* --- FLASHCARDS STYLES --- */
+    /* Flashcards */
     .fc-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
     .fc-lista { border: 1px solid #eee; max-height: 500px; overflow-y: auto; background: #fafafa; border-radius: 8px; padding: 10px; }
     .fc-item-lista { padding: 10px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
-    .fc-item-lista:hover { background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .fc-item-lista.active { background: #e8f6f3; border-left: 4px solid var(--succ); }
-    
-    /* 3D Flip Card */
     .flip-card-container { perspective: 1000px; width: 100%; height: 350px; margin: 20px auto; max-width: 600px; cursor: pointer; }
     .flip-card-inner { position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.6s; transform-style: preserve-3d; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     .flip-card-container.virado .flip-card-inner { transform: rotateY(180deg); }
-    .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; font-size: 1.2rem; }
+    .flip-card-front, .flip-card-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; font-size: 1.2rem; }
     .flip-card-front { background-color: #fff; color: #333; border: 2px solid #eee; }
     .flip-card-back { background-color: var(--sec); color: white; transform: rotateY(180deg); border: 2px solid var(--sec); }
     .fc-botoes-resposta { display: flex; justify-content: center; gap: 15px; margin-top: 20px; opacity: 0; pointer-events: none; transition: 0.3s; }
     .fc-botoes-resposta.visivel { opacity: 1; pointer-events: all; }
-    .fc-tag { font-size: 0.7rem; background: #eee; padding: 2px 6px; border-radius: 4px; color: #777; margin-bottom: 10px; }
 
-    /* --- LOADING SPINNER --- */
+    /* Loader */
     #loader-overlay { display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(255,255,255,0.9); justify-content:center; align-items:center; flex-direction:column; }
     .spinner { border: 8px solid #f3f3f3; border-top: 8px solid var(--sec); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 15px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    #loader-msg { font-size: 1.2rem; color: var(--primary); font-weight: 600; }
 
-    /* --- DRAG AND DROP --- */
+    /* Drag Drop */
     #area-drop { transition: all 0.3s ease; border: 2px solid transparent; }
-    #area-drop.drag-over { background-color: #e8f6f3 !important; border: 2px dashed #27ae60 !important; transform: scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    #area-drop.drag-over { background-color: #e8f6f3 !important; border: 2px dashed #27ae60 !important; transform: scale(1.02); }
     #msg-drop { pointer-events: none; font-weight: bold; color: #27ae60; display: none; }
     #area-drop.drag-over #msg-drop { display: block; }
   </style>
@@ -137,25 +114,16 @@
 
 <div id="floating-toolbar" class="floating-toolbar">
     <button onmousedown="event.preventDefault(); fmtUlt('b')" title="Negrito">B</button>
-    <button onmousedown="event.preventDefault(); fmtUlt('i')" title="Itálico" style="font-style:italic">I</button>
-    <button onmousedown="event.preventDefault(); fmtUlt('u')" title="Sublinhado" style="text-decoration:underline">U</button>
-    <button onmousedown="event.preventDefault(); fmtUlt('mark')" title="Destaque" style="color:#f1c40f">🖍</button>
+    <button onmousedown="event.preventDefault(); fmtUlt('i')" title="Itálico">I</button>
+    <button onmousedown="event.preventDefault(); fmtUlt('u')" title="Sublinhado">U</button>
+    <button onmousedown="event.preventDefault(); fmtUlt('mark')" title="Destaque">🖍</button>
 </div>
 
 <section id="secao-cadastro" class="secao"><div class="container" style="max-width:900px">
   <h2>Cadastrar Questão</h2><form id="form-cadastro">
-  <label>Enunciado:</label>
-  <textarea id="cad-enunciado" class="input-com-toolbar" rows="4" required onfocus="showToolbar(this)"></textarea>
-  <div class="filtro-grid">
-    <select id="cad-banca" required></select>
-    <select id="cad-instituicao"><option value="">Instituição...</option></select>
-    <input type="number" id="cad-ano" placeholder="Ano">
-    <select id="cad-disciplina" required onchange="carregarAssuntos('cad')"></select>
-  </div>
-  <div class="filtro-grid">
-    <select id="cad-assunto" required><option value="">Selecione a Disciplina primeiro</option></select>
-    <select id="cad-dificuldade"><option>Fácil</option><option>Médio</option><option>Difícil</option></select>
-  </div>
+  <label>Enunciado:</label><textarea id="cad-enunciado" class="input-com-toolbar" rows="4" required onfocus="showToolbar(this)"></textarea>
+  <div class="filtro-grid"><select id="cad-banca" required></select><select id="cad-instituicao"><option value="">Instituição...</option></select><input type="number" id="cad-ano" placeholder="Ano"><select id="cad-disciplina" required onchange="carregarAssuntos('cad')"></select></div>
+  <div class="filtro-grid"><select id="cad-assunto" required></select><select id="cad-dificuldade"><option>Fácil</option><option>Médio</option><option>Difícil</option></select></div>
   <select id="cad-tipo" onchange="altTipo('cad')"><option value="ME">Múltipla Escolha</option><option value="CE">Certo/Errado</option></select>
   <div id="cad-container-alt">
     <div class="input-group"><span>A)</span><input type="text" id="cad-alt-a" onfocus="showToolbar(this)"></div>
@@ -164,21 +132,15 @@
     <div class="input-group"><span>D)</span><input type="text" id="cad-alt-d" onfocus="showToolbar(this)"></div>
     <div class="input-group"><span>E)</span><input type="text" id="cad-alt-e" onfocus="showToolbar(this)"></div>
   </div>
-  <label>Gabarito:</label><select id="cad-gabarito" required></select>
-  <button type="submit" class="btn-acao">Salvar</button>
+  <label>Gabarito:</label><select id="cad-gabarito" required></select><button type="submit" class="btn-acao">Salvar</button>
   </form>
 </div></section>
 
 <section id="secao-importar" class="secao">
     <div class="container">
         <h2>Importar de PDF</h2>
-        
         <div id="area-drop" class="filtro-grid" style="background:#f9f9f9; padding:25px; border-radius:6px; margin-bottom:20px; position:relative;">
-            
-            <div id="msg-drop" style="position:absolute; top:-15px; left:50%; transform:translateX(-50%); background:#27ae60; color:white; padding:2px 10px; border-radius:4px; font-size:0.8rem;">
-                Solte o arquivo aqui!
-            </div>
-
+            <div id="msg-drop" style="position:absolute; top:-15px; left:50%; transform:translateX(-50%); background:#27ae60; color:white; padding:2px 10px; border-radius:4px; font-size:0.8rem;">Solte o arquivo aqui!</div>
             <div style="grid-column: span 2; display: flex; gap: 10px; align-items: center;">
                 <input type="file" id="imp-file" accept="application/pdf" style="background:#fff; width:100%">
                 <button class="btn-acao" onclick="lerPDF()" style="margin:5px 0; width:150px; background:#27ae60">Ler PDF</button>
@@ -186,7 +148,6 @@
             <select id="imp-disciplina" onchange="carregarAssuntos('imp')"></select>
             <select id="imp-assunto"><option value="">Assunto Global...</option></select>
         </div>
-
         <div id="imp-preview-container" style="display:none">
             <h3 id="imp-titulo-preview">Prévia</h3>
             <button class="btn-acao" onclick="salvarLote()" style="margin-bottom:15px;">💾 Salvar Todas no Banco</button>
@@ -199,183 +160,14 @@
     </div>
 </section>
 
-<section id="secao-banco" class="secao"><div class="container">
-  <div class="flex"><h2>Banco de Questões</h2><span id="total-db" style="color:#777"></span></div>
-  <div class="filtro-grid" style="background:#f9f9f9;padding:10px;border-radius:6px">
-    <input type="text" id="busca-texto" placeholder="Buscar..." onkeyup="filtrar()">
-    <select id="busca-disciplina" onchange="carregarAssuntos('busca'); filtrar()"></select>
-    <select id="busca-assunto" onchange="filtrar()"><option value="">Todos Assuntos</option></select>
-    <select id="busca-banca" onchange="filtrar()"></select>
-    <select id="busca-dificuldade" onchange="filtrar()"><option value="">Dif.</option><option>Fácil</option><option>Médio</option><option>Difícil</option></select>
-  </div>
-  <div style="overflow-x:auto"><table id="tabela-questoes"><thead><tr><th width="40" onclick="ord('id')">ID</th><th width="90">Banca</th><th width="50">Ano</th><th width="100">Disc.</th><th>Enunciado</th><th width="100">Assunto</th><th width="50">Dif</th><th width="40">Gab</th><th width="60">Ações</th></tr></thead><tbody></tbody></table></div>
-</div></section>
+<section id="secao-banco" class="secao"><div class="container"><div class="flex"><h2>Banco de Questões</h2><span id="total-db" style="color:#777"></span></div><div class="filtro-grid" style="background:#f9f9f9;padding:10px;border-radius:6px"><input type="text" id="busca-texto" placeholder="Buscar..." onkeyup="filtrar()"><select id="busca-disciplina" onchange="carregarAssuntos('busca'); filtrar()"></select><select id="busca-assunto" onchange="filtrar()"><option value="">Todos Assuntos</option></select><select id="busca-banca" onchange="filtrar()"></select><select id="busca-dificuldade" onchange="filtrar()"><option value="">Dif.</option><option>Fácil</option><option>Médio</option><option>Difícil</option></select></div><div style="overflow-x:auto"><table id="tabela-questoes"><thead><tr><th width="40" onclick="ord('id')">ID</th><th width="90">Banca</th><th width="50">Ano</th><th width="100">Disc.</th><th>Enunciado</th><th width="100">Assunto</th><th width="50">Dif</th><th width="40">Gab</th><th width="60">Ações</th></tr></thead><tbody></tbody></table></div></div></section>
+<section id="secao-flashcards" class="secao"><div class="container"><div class="flex" style="margin-bottom: 20px;"><h2>🗂️ Flashcards</h2><div><button class="btn-acao" style="width:auto; background:#3498db; margin:0 5px" onclick="toggleModeFC('estudo')">🎓 Modo Estudo</button><button class="btn-acao" style="width:auto; background:#95a5a6; margin:0" onclick="toggleModeFC('gerenciar')">✏️ Gerenciar</button></div></div><div id="fc-modo-gerenciar" style="display:none"><div class="fc-layout"><div><h4>Cartões Existentes</h4><input type="text" id="fc-filtro-ger" placeholder="Filtrar por texto..." onkeyup="renderListaFC()"><div id="fc-lista" class="fc-lista"></div></div><div style="background:#fafafa; padding:20px; border-radius:8px; border:1px solid #eee"><h4 id="fc-titulo-form">Novo Cartão</h4><form id="fc-form"><input type="hidden" id="fc-id"><label>Disciplina:</label><select id="fc-disciplina" required onchange="carregarAssuntos('fc')"></select><label>Assunto:</label><select id="fc-assunto" required></select><label>Frente (Pergunta):</label><textarea id="fc-frente" rows="3" class="input-com-toolbar" required onfocus="showToolbar(this)"></textarea><label>Verso (Resposta):</label><textarea id="fc-verso" rows="4" class="input-com-toolbar" required onfocus="showToolbar(this)"></textarea><div class="flex" style="margin-top:10px"><button type="button" class="btn-acao" style="background:#95a5a6; width:auto" onclick="limparFormFC()">Cancelar</button><button type="submit" class="btn-acao" style="width:auto">Salvar Cartão</button></div></form></div></div></div><div id="fc-modo-estudo" style="display:none"><div class="filtro-grid" style="justify-content:center; max-width:800px; margin:0 auto"><select id="fc-estudo-disc" onchange="carregarAssuntos('fc-estudo')"></select><select id="fc-estudo-assunto"><option value="">Todos Assuntos</option></select><button class="btn-acao" style="margin:5px 0" onclick="iniciarEstudoFC()">Iniciar Revisão</button></div><div id="fc-area-jogo" style="display:none; text-align:center"><h3 id="fc-progresso"></h3><div class="flip-card-container" id="card-ativo" onclick="virarCarta()"><div class="flip-card-inner"><div class="flip-card-front"><span class="fc-tag" id="fc-front-tag"></span><div id="fc-front-content"></div><span style="font-size:0.8rem; color:#999; margin-top:20px">(Clique para virar)</span></div><div class="flip-card-back"><div id="fc-back-content"></div></div></div></div><div id="fc-botoes" class="fc-botoes-resposta"><button class="btn-acao" style="background:#e74c3c; width:120px" onclick="respFC(false)">Errei 😓</button><button class="btn-acao" style="background:#27ae60; width:120px" onclick="respFC(true)">Acertei 🤩</button></div></div></div></div></section>
+<section id="secao-praticar" class="secao"><div class="container" style="max-width:900px"><h2>Praticar</h2><div id="config-pratica"><div class="filtro-grid"><select id="prat-disciplina" onchange="carregarAssuntos('prat')"></select><select id="prat-assunto"><option value="">Todos Assuntos</option></select><select id="prat-banca"><option value="">Todas as Bancas</option></select><input type="number" id="prat-qtd" value="10" placeholder="Qtd"></div><button class="btn-acao" onclick="iniciarPratica()">Começar Prática</button></div><div id="area-pratica" style="display:none"><div class="flex"><h3 id="prat-progresso"></h3><button onclick="cancelarPratica()" style="background:#e74c3c; border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">Sair</button></div><div class="questao-card"><div class="info-questao" id="prat-meta"></div><div class="enunciado render-html" id="prat-enunciado"></div><div id="prat-alternativas"></div></div><button id="prat-btn-confirma" class="btn-acao" onclick="confirmaPratica()">Confirmar</button><button id="prat-btn-prox" class="btn-acao" onclick="proxPratica()" style="display:none">Próxima</button><div id="prat-feedback" style="margin-top:15px; font-weight:bold; padding:10px; border-radius:4px;"></div></div></div></section>
+<section id="secao-prova" class="secao"><div class="container" style="max-width:900px"><h2>Simulado Real</h2><div id="config-prova"><div class="filtro-grid"><div><label>Total:</label><input type="number" id="prova-total" value="10" min="1" onchange="prepProva();"></div><div><label>Tempo (min):</label><input type="number" id="prova-tempo" value="30" min="1"></div></div><div id="lista-distribuicao" style="background:#f9f9f9; padding:10px; border-radius:6px; margin-bottom:10px;"></div><div id="total-porc" style="text-align:right; font-weight:bold;">Total: 0%</div><button class="btn-acao" onclick="iniciarProva()">Iniciar Prova</button></div><div id="area-prova" style="display:none"><div id="barra-tempo-container"><div id="barra-tempo-fill"></div></div><div class="flex"><h3 id="prova-progresso"></h3><span id="prova-timer" style="font-weight:bold; color:var(--acc)">00:00</span></div><div class="questao-card"><div class="info-questao" id="prova-meta"></div><div class="enunciado render-html" id="prova-enunciado"></div><div id="prova-alternativas"></div></div><button class="btn-acao" onclick="proxProva()">Próxima / Finalizar</button></div><div id="resultado-prova" style="display:none; text-align:center;"><h2>Resultado</h2><div style="font-size:3em; font-weight:bold; color:var(--primary)" id="nota-prova"></div><p id="msg-prova"></p><div id="detalhes-prova" style="text-align:left; margin-top:20px;"></div><button class="btn-acao" onclick="prepProva(); nav('prova');">Novo Simulado</button></div></div></section>
+<section id="secao-estatisticas" class="secao"><div class="container" style="max-width:900px"><h2>Desempenho</h2><canvas id="chart"></canvas></div></section>
+<section id="secao-config" class="secao"><div class="container"><h2>Gerenciar Metadados</h2><div class="filtro-grid" style="margin-bottom:20px"><button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('disciplinas')">Disciplinas</button><button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('assuntos')">Assuntos</button><button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('bancas')">Bancas</button><button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('instituicoes')">Instituições</button></div><div id="painel-config" style="background:#f9f9f9; padding:20px; border-radius:8px;"><h3 id="titulo-config">Selecione uma categoria acima</h3><div class="flex" style="gap:10px; margin-bottom:10px"><select id="cfg-disc-select" style="display:none; max-width:200px"></select><input type="number" id="cfg-ordem" placeholder="Ord." style="display:none; max-width:60px"><input type="text" id="cfg-novo-nome" placeholder="Nome do novo item..."><button id="cfg-btn-acao" class="btn-acao" style="width:auto; margin:0" onclick="addMeta()">Adicionar</button></div><div id="lista-meta-conteudo" class="lista-meta"></div></div></div></section>
 
-<section id="secao-flashcards" class="secao"><div class="container">
-    <div class="flex" style="margin-bottom: 20px;">
-        <h2>🗂️ Flashcards</h2>
-        <div>
-            <button class="btn-acao" style="width:auto; background:#3498db; margin:0 5px" onclick="toggleModeFC('estudo')">🎓 Modo Estudo</button>
-            <button class="btn-acao" style="width:auto; background:#95a5a6; margin:0" onclick="toggleModeFC('gerenciar')">✏️ Gerenciar</button>
-        </div>
-    </div>
-
-    <div id="fc-modo-gerenciar" style="display:none">
-        <div class="fc-layout">
-            <div>
-                <h4>Cartões Existentes</h4>
-                <input type="text" id="fc-filtro-ger" placeholder="Filtrar por texto..." onkeyup="renderListaFC()">
-                <div id="fc-lista" class="fc-lista"></div>
-            </div>
-            <div style="background:#fafafa; padding:20px; border-radius:8px; border:1px solid #eee">
-                <h4 id="fc-titulo-form">Novo Cartão</h4>
-                <form id="fc-form">
-                    <input type="hidden" id="fc-id">
-                    <label>Disciplina:</label><select id="fc-disciplina" required onchange="carregarAssuntos('fc')"></select>
-                    <label>Assunto:</label><select id="fc-assunto" required></select>
-                    <label>Frente (Pergunta):</label>
-                    <textarea id="fc-frente" rows="3" class="input-com-toolbar" required onfocus="showToolbar(this)"></textarea>
-                    <label>Verso (Resposta):</label>
-                    <textarea id="fc-verso" rows="4" class="input-com-toolbar" required onfocus="showToolbar(this)"></textarea>
-                    
-                    <div class="flex" style="margin-top:10px">
-                        <button type="button" class="btn-acao" style="background:#95a5a6; width:auto" onclick="limparFormFC()">Cancelar</button>
-                        <button type="submit" class="btn-acao" style="width:auto">Salvar Cartão</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div id="fc-modo-estudo" style="display:none">
-        <div class="filtro-grid" style="justify-content:center; max-width:800px; margin:0 auto">
-            <select id="fc-estudo-disc" onchange="carregarAssuntos('fc-estudo')"></select>
-            <select id="fc-estudo-assunto"><option value="">Todos Assuntos</option></select>
-            <button class="btn-acao" style="margin:5px 0" onclick="iniciarEstudoFC()">Iniciar Revisão</button>
-        </div>
-        
-        <div id="fc-area-jogo" style="display:none; text-align:center">
-            <h3 id="fc-progresso"></h3>
-            <div class="flip-card-container" id="card-ativo" onclick="virarCarta()">
-                <div class="flip-card-inner">
-                    <div class="flip-card-front">
-                        <span class="fc-tag" id="fc-front-tag"></span>
-                        <div id="fc-front-content"></div>
-                        <span style="font-size:0.8rem; color:#999; margin-top:20px">(Clique para virar)</span>
-                    </div>
-                    <div class="flip-card-back">
-                        <div id="fc-back-content"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div id="fc-botoes" class="fc-botoes-resposta">
-                <button class="btn-acao" style="background:#e74c3c; width:120px" onclick="respFC(false)">Errei 😓</button>
-                <button class="btn-acao" style="background:#27ae60; width:120px" onclick="respFC(true)">Acertei 🤩</button>
-            </div>
-        </div>
-    </div>
-</div></section>
-
-<section id="secao-praticar" class="secao"><div class="container" style="max-width:900px">
-    <h2>Praticar (Feedback Imediato)</h2>
-    <div id="config-pratica">
-        <div class="filtro-grid">
-            <select id="prat-disciplina" onchange="carregarAssuntos('prat')"></select>
-            <select id="prat-assunto"><option value="">Todos Assuntos</option></select>
-            <select id="prat-banca"><option value="">Todas as Bancas</option></select>
-            <input type="number" id="prat-qtd" value="10" placeholder="Qtd">
-        </div>
-        <button class="btn-acao" onclick="iniciarPratica()">Começar Prática</button>
-    </div>
-    <div id="area-pratica" style="display:none">
-        <div class="flex">
-            <h3 id="prat-progresso"></h3>
-            <button onclick="cancelarPratica()" style="background:#e74c3c; border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">Sair</button>
-        </div>
-        <div class="questao-card">
-            <div class="info-questao" id="prat-meta"></div>
-            <div class="enunciado render-html" id="prat-enunciado"></div>
-            <div id="prat-alternativas"></div>
-        </div>
-        <button id="prat-btn-confirma" class="btn-acao" onclick="confirmaPratica()">Confirmar</button>
-        <button id="prat-btn-prox" class="btn-acao" onclick="proxPratica()" style="display:none">Próxima</button>
-        <div id="prat-feedback" style="margin-top:15px; font-weight:bold; padding:10px; border-radius:4px;"></div>
-    </div>
-</div></section>
-
-<section id="secao-prova" class="secao">
-    <div class="container" style="max-width:900px">
-        <h2>Simulado Real (Modo Prova)</h2>
-        <div id="config-prova">
-            <div class="filtro-grid">
-                <div><label>Total de Questões:</label><input type="number" id="prova-total" value="10" min="1" onchange="prepProva();"></div>
-                <div><label>Tempo (minutos):</label><input type="number" id="prova-tempo" value="30" min="1"></div>
-            </div>
-            <label>Distribuição por Disciplina (%):</label>
-            <div id="lista-distribuicao" style="background:#f9f9f9; padding:10px; border-radius:6px; margin-bottom:10px;"></div>
-            <div id="total-porc" style="text-align:right; font-weight:bold;">Total: 0%</div>
-            <button class="btn-acao" onclick="iniciarProva()">Iniciar Prova</button>
-        </div>
-        <div id="area-prova" style="display:none">
-            <div id="barra-tempo-container"><div id="barra-tempo-fill"></div></div>
-            <div class="flex"><h3 id="prova-progresso"></h3><span id="prova-timer" style="font-weight:bold; color:var(--acc)">00:00</span></div>
-            <div class="questao-card">
-                <div class="info-questao" id="prova-meta"></div>
-                <div class="enunciado render-html" id="prova-enunciado"></div>
-                <div id="prova-alternativas"></div>
-            </div>
-            <button class="btn-acao" onclick="proxProva()">Próxima / Finalizar</button>
-        </div>
-        <div id="resultado-prova" style="display:none; text-align:center;">
-            <h2>Resultado da Prova</h2><div style="font-size:3em; font-weight:bold; color:var(--primary)" id="nota-prova"></div>
-            <p id="msg-prova"></p><div id="detalhes-prova" style="text-align:left; margin-top:20px;"></div>
-            <button class="btn-acao" onclick="prepProva(); nav('prova');">Novo Simulado</button>
-        </div>
-    </div>
-</section>
-
-<section id="secao-estatisticas" class="secao"><div class="container" style="max-width:900px"><h2>Desempenho por Disciplina</h2><canvas id="chart"></canvas></div></section>
-
-<section id="secao-config" class="secao"><div class="container">
-    <h2>Gerenciar Metadados</h2>
-    <div class="filtro-grid" style="margin-bottom:20px">
-        <button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('disciplinas')">Disciplinas</button>
-        <button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('assuntos')">Assuntos</button>
-        <button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('bancas')">Bancas</button>
-        <button class="btn-acao" style="background:#3498db; margin:0" onclick="mostrarConfig('instituicoes')">Instituições</button>
-    </div>
-    <div id="painel-config" style="background:#f9f9f9; padding:20px; border-radius:8px;">
-        <h3 id="titulo-config">Selecione uma categoria acima</h3>
-        <div class="flex" style="gap:10px; margin-bottom:10px">
-            <select id="cfg-disc-select" style="display:none; max-width:200px"></select> 
-            <input type="number" id="cfg-ordem" placeholder="Ord." style="display:none; max-width:60px"> 
-            <input type="text" id="cfg-novo-nome" placeholder="Nome do novo item...">
-            <button id="cfg-btn-acao" class="btn-acao" style="width:auto; margin:0" onclick="addMeta()">Adicionar</button>
-        </div>
-        <div id="lista-meta-conteudo" class="lista-meta"></div>
-    </div>
-</div></section>
-
-<div id="modal-edicao" class="modal"><div class="modal-content"><span class="close-modal" onclick="el('modal-edicao').style.display='none'">&times;</span>
-  <h2>Editar</h2><form id="form-edicao"><input type="hidden" id="edit-id">
-  <label>Enunciado:</label><textarea id="edit-enunciado" class="input-com-toolbar" rows="3" required onfocus="showToolbar(this)"></textarea>
-  <div class="filtro-grid">
-    <select id="edit-banca"></select><select id="edit-instituicao"></select><input type="number" id="edit-ano" placeholder="Ano"><select id="edit-disciplina" onchange="carregarAssuntos('edit')"></select>
-  </div>
-  <div class="filtro-grid">
-    <select id="edit-assunto"></select><select id="edit-dificuldade"><option>Fácil</option><option>Médio</option><option>Difícil</option></select>
-  </div>
-  <select id="edit-tipo" onchange="altTipo('edit')"><option value="ME">Múltipla</option><option value="CE">Certo/Errado</option></select>
-  <div id="edit-container-alt">
-    <div class="input-group"><span>A)</span><input type="text" id="edit-alt-a" onfocus="showToolbar(this)"></div>
-    <div class="input-group"><span>B)</span><input type="text" id="edit-alt-b" onfocus="showToolbar(this)"></div>
-    <div class="input-group"><span>C)</span><input type="text" id="edit-alt-c" onfocus="showToolbar(this)"></div>
-    <div class="input-group"><span>D)</span><input type="text" id="edit-alt-d" onfocus="showToolbar(this)"></div>
-    <div class="input-group"><span>E)</span><input type="text" id="edit-alt-e" onfocus="showToolbar(this)"></div>
-  </div>
-  <label>Gabarito:</label><select id="edit-gabarito"></select><button class="btn-acao" style="background:#f39c12">Salvar</button>
-</form></div></div>
+<div id="modal-edicao" class="modal"><div class="modal-content"><span class="close-modal" onclick="el('modal-edicao').style.display='none'">&times;</span><h2>Editar</h2><form id="form-edicao"><input type="hidden" id="edit-id"><label>Enunciado:</label><textarea id="edit-enunciado" class="input-com-toolbar" rows="3" required onfocus="showToolbar(this)"></textarea><div class="filtro-grid"><select id="edit-banca"></select><select id="edit-instituicao"></select><input type="number" id="edit-ano" placeholder="Ano"><select id="edit-disciplina" onchange="carregarAssuntos('edit')"></select></div><div class="filtro-grid"><select id="edit-assunto"></select><select id="edit-dificuldade"><option>Fácil</option><option>Médio</option><option>Difícil</option></select></div><select id="edit-tipo" onchange="altTipo('edit')"><option value="ME">Múltipla</option><option value="CE">Certo/Errado</option></select><div id="edit-container-alt"><div class="input-group"><span>A)</span><input type="text" id="edit-alt-a" onfocus="showToolbar(this)"></div><div class="input-group"><span>B)</span><input type="text" id="edit-alt-b" onfocus="showToolbar(this)"></div><div class="input-group"><span>C)</span><input type="text" id="edit-alt-c" onfocus="showToolbar(this)"></div><div class="input-group"><span>D)</span><input type="text" id="edit-alt-d" onfocus="showToolbar(this)"></div><div class="input-group"><span>E)</span><input type="text" id="edit-alt-e" onfocus="showToolbar(this)"></div></div><label>Gabarito:</label><select id="edit-gabarito"></select><button class="btn-acao" style="background:#f39c12">Salvar</button></form></div></div>
 
 <script>
 const API = "http://localhost:5000";
@@ -383,6 +175,7 @@ let db=[], meta={}, foco=null, ordCol={c:null,d:'asc'};
 let pratPool=[], pratIdx=0, pratAcertos=0;
 let provaPool=[], provaIdx=0, provaRespostas=[], provaTempoTotal=0, provaIntervalo=null;
 let flashDb=[], flashPool=[], flashIdx=0;
+let checkDupTimeout = null; // Timer para debounce
 
 const el = id => document.getElementById(id);
 const header = el("main-header");
@@ -393,11 +186,8 @@ const nav = n => {
     el(`secao-${n}`).style.display='block'; 
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('ativa'));
     el(`nav-${n}`).classList.add('ativa');
-    if(n==='banco') carrTab(); 
-    if(n==='praticar') prepPratica(); 
-    if(n==='prova') prepProva(); 
-    if(n==='estatisticas') graf(); 
-    if(n==='flashcards') initFC();
+    if(n==='banco') carrTab(); if(n==='praticar') prepPratica(); if(n==='prova') prepProva(); 
+    if(n==='estatisticas') graf(); if(n==='flashcards') initFC();
     el("floating-toolbar").style.display = "none";
     window.scrollTo(0,0); 
 };
@@ -429,12 +219,8 @@ document.addEventListener('click', function(e) {
 async function init() {
     try {
         let [r1, r2, r3] = await Promise.all([fetch(`${API}/questoes`), fetch(`${API}/metadados`), fetch(`${API}/flashcards`)]);
-        db = await r1.json();
-        meta = await r2.json();
-        flashDb = await r3.json();
-        popSelGeral();
-        altTipo('cad');
-        nav('cadastro');
+        db = await r1.json(); meta = await r2.json(); flashDb = await r3.json();
+        popSelGeral(); altTipo('cad'); nav('cadastro');
     } catch(e) { alert("Erro ao carregar dados. Verifique o servidor."); }
 }
 function popSelGeral() {
@@ -450,8 +236,7 @@ function pop(sel, arr, def) {
     arr.forEach(x => sel.innerHTML += `<option>${x}</option>`);
 }
 function carregarAssuntos(prefixo) {
-    let disc = el(`${prefixo}-disciplina`).value;
-    let selAss = el(`${prefixo}-assunto`);
+    let disc = el(`${prefixo}-disciplina`).value; let selAss = el(`${prefixo}-assunto`);
     selAss.innerHTML = '<option value="">Todos Assuntos</option>';
     let lista = meta.assuntos.filter(a => a.disciplina === disc);
     lista.forEach(a => { selAss.innerHTML += `<option value="${a.nome}">${a.ordem}. ${a.nome}</option>`; });
@@ -461,58 +246,48 @@ function carregarAssuntos(prefixo) {
 async function lerPDF() {
     let lista = el("imp-lista-questoes");
     if (lista && lista.children.length > 0) {
-        if(!confirm("⚠️ ATENÇÃO: Você já tem questões importadas na lista.\n\nLer um novo PDF irá substituir tudo o que está na tela de prévia.\nDeseja continuar?")) {
-            return; 
-        }
+        if(!confirm("⚠️ ATENÇÃO: Você já tem questões importadas. Ler novo PDF substituirá a lista atual.")) return;
     }
     let inp = el("imp-file"); if(inp.files.length === 0) return alert("Selecione um arquivo PDF");
     let fd = new FormData(); fd.append("file", inp.files[0]);
     el("imp-preview-container").style.display = "none"; el("imp-lista-questoes").innerHTML = "";
-    showLoader("Lendo, Sanitizando e Processando PDF...");
+    showLoader("Lendo e Processando PDF...");
     try {
         let r = await fetch(`${API}/upload-pdf`, { method:"POST", body:fd }); if(!r.ok) throw new Error();
         let questoes = await r.json(); renderPreview(questoes);
     } catch(e) { alert("Erro ao ler PDF."); el("imp-lista-questoes").innerHTML = ""; } finally { hideLoader(); }
 }
+
+// Renderiza prévia com Listeners para checagem dinâmica
 function renderPreview(lista) {
     let div = el("imp-lista-questoes"); div.innerHTML = "";
     el("imp-titulo-preview").innerText = `Prévia (${lista.length} encontradas)`;
     el("imp-preview-container").style.display = "block";
     
     lista.forEach((q, i) => {
-        // --- LÓGICA DE DUPLICIDADE ---
-        let avisoDuplicada = "";
-        let classeRow = "imp-row";
-        let btnSalvar = "";
-        
-        if (q.ja_cadastrada) {
-            avisoDuplicada = `<span style="color:#e74c3c; font-weight:bold; font-size:0.8em; display:block; margin-top:2px;">⚠️ Já Cadastrada</span>`;
-            classeRow += " ja-cadastrada";
-            btnSalvar = `<button class="btn-icon" style="color:#ccc; cursor:not-allowed" title="Já salva no banco">💾</button>`;
-        } else {
-            btnSalvar = `<button class="btn-icon" style="color:#27ae60" onclick="salvarIndividual(${i})" title="Salvar esta questão">💾</button>`;
-        }
-        // -----------------------------
-
+        let statusHtml = q.ja_cadastrada ? `<span class="aviso-dup">⚠️ Já Cadastrada</span>` : "";
+        let classeRow = q.ja_cadastrada ? "imp-row ja-cadastrada" : "imp-row";
+        let btnDisabled = q.ja_cadastrada ? "disabled style='opacity:0.5'" : "";
         let optionsGab = `<option value="">?</option>`;
         ["A","B","C","D","E"].forEach(l => { let sel = q.gabarito === l ? "selected" : ""; optionsGab += `<option value="${l}" ${sel}>${l}</option>`; });
+        
         div.innerHTML += `
         <div class="${classeRow}" id="imp-row-${i}">
             <div style="width:40px; font-weight:bold; text-align:center">
                 ${i+1}
-                ${avisoDuplicada}
+                <div id="status-${i}">${statusHtml}</div>
             </div>
             <div class="imp-meta">
-                <input type="text" class="imp-banca" placeholder="Banca" value="${q.banca}" title="Banca">
-                <input type="text" class="imp-inst" placeholder="Instituição" value="${q.instituicao}" style="font-size:0.85em" title="Instituição">
-                <input type="number" class="imp-ano" placeholder="Ano" value="${q.ano}" title="Ano">
-                <input type="text" class="imp-assunto-ind" placeholder="Assunto" value="${q.assunto}" style="font-size:0.85em; color:var(--purple)" title="Assunto">
+                <input type="text" class="imp-banca" placeholder="Banca" value="${q.banca}">
+                <input type="text" class="imp-inst" placeholder="Instituição" value="${q.instituicao}" style="font-size:0.85em">
+                <input type="number" class="imp-ano" placeholder="Ano" value="${q.ano}">
+                <input type="text" class="imp-assunto-ind" placeholder="Assunto" value="${q.assunto}" style="font-size:0.85em; color:var(--purple)">
                 <select class="imp-dif"><option value="Médio">Médio</option><option value="Fácil">Fácil</option><option value="Difícil">Difícil</option></select>
             </div>
             <div class="imp-content">
-                <textarea class="imp-textarea imp-enunciado" rows="3" placeholder="Enunciado" onfocus="showToolbar(this)">${q.enunciado}</textarea>
+                <textarea class="imp-textarea imp-enunciado" rows="3" placeholder="Enunciado" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})">${q.enunciado}</textarea>
                 <div style="margin-top:5px; display:grid; gap:5px">
-                    <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${q.alt_a}" onfocus="showToolbar(this)"></div>
+                    <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${q.alt_a}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
                     <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${q.alt_b}" onfocus="showToolbar(this)"></div>
                     <div class="input-group"><span>C)</span><input type="text" class="imp-alt-c" value="${q.alt_c}" onfocus="showToolbar(this)"></div>
                     <div class="input-group"><span>D)</span><input type="text" class="imp-alt-d" value="${q.alt_d}" onfocus="showToolbar(this)"></div>
@@ -521,14 +296,49 @@ function renderPreview(lista) {
             </div>
             <div class="imp-gab"><select class="imp-gabarito">${optionsGab}</select></div>
             <div class="imp-acoes">
-                ${btnSalvar}
-                <button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()" title="Remover da lista">✖</button>
+                <button id="btn-save-${i}" class="btn-icon" style="color:#27ae60" onclick="salvarIndividual(${i})" title="Salvar" ${btnDisabled}>💾</button>
+                <button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()">✖</button>
             </div>
         </div>`;
     });
 }
 
-// --- SALVAR INDIVIDUAL ---
+// Verifica duplicidade enquanto digita (Debounce 500ms)
+function verificarDuplicidadeDinamica(index) {
+    clearTimeout(checkDupTimeout);
+    checkDupTimeout = setTimeout(async () => {
+        let row = el(`imp-row-${index}`);
+        let enu = row.querySelector(".imp-enunciado").value;
+        let alta = row.querySelector(".imp-alt-a").value;
+        
+        if (!enu) return;
+
+        try {
+            const resp = await fetch(`${API}/check-duplicidade`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ enunciado: enu, alt_a: alta })
+            });
+            const data = await resp.json();
+            
+            let statusDiv = el(`status-${index}`);
+            let btnSave = el(`btn-save-${index}`);
+            
+            if (data.existe) {
+                statusDiv.innerHTML = `<span class="aviso-dup">⚠️ Já Cadastrada</span>`;
+                row.classList.add("ja-cadastrada");
+                btnSave.disabled = true;
+                btnSave.style.opacity = "0.5";
+            } else {
+                statusDiv.innerHTML = "";
+                row.classList.remove("ja-cadastrada");
+                btnSave.disabled = false;
+                btnSave.style.opacity = "1";
+            }
+        } catch(e) { console.error("Erro check dup", e); }
+    }, 500);
+}
+
 async function salvarIndividual(index) {
     let r = el(`imp-row-${index}`);
     let disc = el("imp-disciplina").value;
@@ -549,45 +359,31 @@ async function salvarIndividual(index) {
         alt_d: r.querySelector(".imp-alt-d").value,
         alt_e: r.querySelector(".imp-alt-e").value,
         gabarito: r.querySelector(".imp-gabarito").value,
-        tipo: "ME",
-        disciplina: disc,
-        assunto: assuntoFinal
+        tipo: "ME", disciplina: disc, assunto: assuntoFinal
     };
 
     if(!obj.enunciado || !obj.gabarito) return alert("Enunciado e Gabarito são obrigatórios.");
 
     try {
-        const response = await fetch(`${API}/questoes`, { 
-            method: "POST", 
-            headers: {"Content-Type":"application/json"}, 
-            body: JSON.stringify(obj) 
-        });
-
+        const response = await fetch(`${API}/questoes`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(obj) });
         if (response.status === 200 || response.status === 201) {
-            // Sucesso Visual
+            r.classList.remove("ja-cadastrada");
             r.classList.add("sucesso-salvo");
             r.querySelector(".imp-acoes").innerHTML = `<span style="color:green; font-weight:bold">Salva!</span> <button class="btn-icon" style="color:red" onclick="el('imp-row-${index}').remove()">✖</button>`;
         } else if (response.status === 409) {
             alert("Esta questão já existe no banco!");
-            r.classList.add("ja-cadastrada");
-        } else {
-            alert("Erro ao salvar.");
-        }
-    } catch(e) { 
-        alert("Erro de conexão."); 
-    }
+            verificarDuplicidadeDinamica(index); // Atualiza visual
+        } else { alert("Erro ao salvar."); }
+    } catch(e) { alert("Erro de conexão."); }
 }
-// -------------------------
 
 async function salvarLote() {
     let rows = document.querySelectorAll(".imp-row"); let disc = el("imp-disciplina").value; let assGlobal = el("imp-assunto").value;
     if(!disc) return alert("Selecione a Disciplina base (acima da lista).");
     let lote = [];
     rows.forEach(r => {
-        // Ignora as que já foram salvas individualmente (classe sucesso-salvo)
-        if(r.classList.contains("sucesso-salvo")) return;
-
-        let assuntoFinal = r.querySelector(".imp-assunto-ind").value || assGlobal; if(!assuntoFinal) assuntoFinal = "Geral";
+        if(r.classList.contains("sucesso-salvo") || r.classList.contains("ja-cadastrada")) return; // Pula as que já existem
+        let assuntoFinal = r.querySelector(".imp-assunto-ind").value || assGlobal || "Geral";
         let obj = {
             banca: r.querySelector(".imp-banca").value, instituicao: r.querySelector(".imp-inst").value, 
             ano: r.querySelector(".imp-ano").value, dificuldade: r.querySelector(".imp-dif").value,
@@ -597,386 +393,69 @@ async function salvarLote() {
         };
         if(obj.enunciado && obj.gabarito) lote.push(obj);
     });
-    if(lote.length === 0) return alert("Nenhuma questão nova para salvar.");
-    if(!confirm(`Tentar salvar ${lote.length} questões na disciplina ${disc}?`)) return;
+    if(lote.length === 0) return alert("Nenhuma questão nova e válida para salvar.");
+    if(!confirm(`Tentar salvar ${lote.length} questões?`)) return;
     showLoader("Salvando questões...");
-    let contadores = { salvos: 0, duplicados: 0, erros: 0 };
+    let contadores = { salvos: 0, erros: 0 };
     for(let q of lote) {
         try {
             const response = await fetch(`${API}/questoes`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(q) });
-            if (response.status === 200 || response.status === 201) contadores.salvos++;
-            else if (response.status === 409) contadores.duplicados++;
-            else contadores.erros++;
+            if (response.ok) contadores.salvos++; else contadores.erros++;
         } catch(e) { contadores.erros++; }
     }
     hideLoader();
-    alert(`Finalizado!\n✅ Salvas: ${contadores.salvos}\n⚠️ Duplicadas: ${contadores.duplicados}\n❌ Erros: ${contadores.erros}`);
+    alert(`Finalizado!\n✅ Salvas: ${contadores.salvos}\n❌ Erros: ${contadores.erros}`);
     if(contadores.salvos > 0) { el("imp-preview-container").style.display="none"; el("imp-lista-questoes").innerHTML=""; init(); }
 }
 
-window.onscroll = function() { fixHeader() };
-function fixHeader() {
-  if (window.scrollY > headerOffset) { header.classList.add("sticky"); document.body.classList.add("header-espaco"); } 
-  else { header.classList.remove("sticky"); document.body.classList.remove("header-espaco"); }
-}
-
-// --- FLASHCARDS LOGIC ---
+// Configurações e Inicialização
+window.onscroll = function() { if (window.scrollY > headerOffset) { header.classList.add("sticky"); document.body.classList.add("header-espaco"); } else { header.classList.remove("sticky"); document.body.classList.remove("header-espaco"); } };
 function initFC() { toggleModeFC('estudo'); }
-function toggleModeFC(modo) {
-    el("fc-modo-gerenciar").style.display = modo === 'gerenciar' ? 'block' : 'none';
-    el("fc-modo-estudo").style.display = modo === 'estudo' ? 'block' : 'none';
-    if(modo === 'gerenciar') renderListaFC();
-}
-// Gerenciar FC
-function renderListaFC() {
-    let div = el("fc-lista"), filtro = el("fc-filtro-ger").value.toLowerCase();
-    div.innerHTML = "";
-    flashDb.filter(f => f.frente.toLowerCase().includes(filtro) || f.verso.toLowerCase().includes(filtro))
-    .forEach(f => {
-        div.innerHTML += `
-        <div class="fc-item-lista">
-            <div style="flex-grow:1" onclick="editarFC('${f.id}')">
-                <div style="font-weight:bold; font-size:0.85em; color:var(--sec)">${f.disciplina} > ${f.assunto}</div>
-                <div>${f.frente.substring(0,40)}...</div>
-            </div>
-            <button class="btn-icon" style="color:red" onclick="delFC('${f.id}')">✖</button>
-        </div>`;
-    });
-}
-function editarFC(id) {
-    let f = flashDb.find(x => String(x.id) === String(id)); if(!f) return;
-    el("fc-id").value = f.id; el("fc-disciplina").value = f.disciplina;
-    carregarAssuntos('fc'); el("fc-assunto").value = f.assunto;
-    el("fc-frente").value = f.frente; el("fc-verso").value = f.verso;
-    el("fc-titulo-form").innerText = "Editar Cartão";
-}
-function limparFormFC() {
-    el("fc-form").reset(); el("fc-id").value=""; el("fc-titulo-form").innerText = "Novo Cartão";
-}
-async function delFC(id) {
-    if(confirm("Excluir Flashcard?")) {
-        await fetch(`${API}/flashcards/${id}`, {method:"DELETE"});
-        flashDb = await (await fetch(`${API}/flashcards`)).json();
-        renderListaFC();
-    }
-}
-el("fc-form").onsubmit = async e => {
-    e.preventDefault();
-    let obj = {
-        id: el("fc-id").value, disciplina: el("fc-disciplina").value, assunto: el("fc-assunto").value,
-        frente: el("fc-frente").value, verso: el("fc-verso").value
-    };
-    let method = obj.id ? "PUT" : "POST";
-    await fetch(`${API}/flashcards`, {method:method, headers:{"Content-Type":"application/json"}, body:JSON.stringify(obj)});
-    flashDb = await (await fetch(`${API}/flashcards`)).json();
-    limparFormFC(); renderListaFC(); alert("Salvo!");
-};
-// Estudo FC
-function iniciarEstudoFC() {
-    let disc = el("fc-estudo-disc").value, ass = el("fc-estudo-assunto").value;
-    flashPool = flashDb.filter(f => (disc===""||f.disciplina===disc) && (ass===""||f.assunto===ass));
-    if(flashPool.length === 0) return alert("Nenhum cartão encontrado.");
-    flashPool = flashPool.sort(() => 0.5 - Math.random());
-    flashIdx = 0; el("fc-area-jogo").style.display="block";
-    renderCard();
-}
-function renderCard() {
-    if(flashIdx >= flashPool.length) { el("fc-area-jogo").style.display="none"; return alert("Revisão Concluída!"); }
-    let c = flashPool[flashIdx];
-    el("fc-progresso").innerText = `Cartão ${flashIdx+1} de ${flashPool.length}`;
-    el("fc-front-tag").innerText = `${c.disciplina} > ${c.assunto}`;
-    el("fc-front-content").innerHTML = c.frente.replace(/\n/g, "<br>");
-    el("fc-back-content").innerHTML = c.verso.replace(/\n/g, "<br>");
-    el("card-ativo").classList.remove("virado");
-    el("fc-botoes").classList.remove("visivel");
-}
-function virarCarta() {
-    el("card-ativo").classList.toggle("virado");
-    if(el("card-ativo").classList.contains("virado")) el("fc-botoes").classList.add("visivel");
-}
-async function respFC(acertou) {
-    let c = flashPool[flashIdx];
-    c[acertou ? 'acertos' : 'erros']++;
-    await fetch(`${API}/flashcards`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(c)});
-    flashIdx++; renderCard();
-}
-
-// --- CONFIGURAÇÕES METADADOS ---
+function toggleModeFC(modo) { el("fc-modo-gerenciar").style.display = modo === 'gerenciar' ? 'block' : 'none'; el("fc-modo-estudo").style.display = modo === 'estudo' ? 'block' : 'none'; if(modo === 'gerenciar') renderListaFC(); }
+function renderListaFC() { let div = el("fc-lista"), filtro = el("fc-filtro-ger").value.toLowerCase(); div.innerHTML = ""; flashDb.filter(f => f.frente.toLowerCase().includes(filtro) || f.verso.toLowerCase().includes(filtro)).forEach(f => { div.innerHTML += `<div class="fc-item-lista"><div style="flex-grow:1" onclick="editarFC('${f.id}')"><div style="font-weight:bold; font-size:0.85em; color:var(--sec)">${f.disciplina} > ${f.assunto}</div><div>${f.frente.substring(0,40)}...</div></div><button class="btn-icon" style="color:red" onclick="delFC('${f.id}')">✖</button></div>`; }); }
+function editarFC(id) { let f = flashDb.find(x => String(x.id) === String(id)); if(!f) return; el("fc-id").value = f.id; el("fc-disciplina").value = f.disciplina; carregarAssuntos('fc'); el("fc-assunto").value = f.assunto; el("fc-frente").value = f.frente; el("fc-verso").value = f.verso; el("fc-titulo-form").innerText = "Editar Cartão"; }
+function limparFormFC() { el("fc-form").reset(); el("fc-id").value=""; el("fc-titulo-form").innerText = "Novo Cartão"; }
+async function delFC(id) { if(confirm("Excluir Flashcard?")) { await fetch(`${API}/flashcards/${id}`, {method:"DELETE"}); flashDb = await (await fetch(`${API}/flashcards`)).json(); renderListaFC(); } }
+el("fc-form").onsubmit = async e => { e.preventDefault(); let obj = { id: el("fc-id").value, disciplina: el("fc-disciplina").value, assunto: el("fc-assunto").value, frente: el("fc-frente").value, verso: el("fc-verso").value }; let method = obj.id ? "PUT" : "POST"; await fetch(`${API}/flashcards`, {method:method, headers:{"Content-Type":"application/json"}, body:JSON.stringify(obj)}); flashDb = await (await fetch(`${API}/flashcards`)).json(); limparFormFC(); renderListaFC(); alert("Salvo!"); };
+function iniciarEstudoFC() { let disc = el("fc-estudo-disc").value, ass = el("fc-estudo-assunto").value; flashPool = flashDb.filter(f => (disc===""||f.disciplina===disc) && (ass===""||f.assunto===ass)); if(flashPool.length === 0) return alert("Nenhum cartão encontrado."); flashPool = flashPool.sort(() => 0.5 - Math.random()); flashIdx = 0; el("fc-area-jogo").style.display="block"; renderCard(); }
+function renderCard() { if(flashIdx >= flashPool.length) { el("fc-area-jogo").style.display="none"; return alert("Revisão Concluída!"); } let c = flashPool[flashIdx]; el("fc-progresso").innerText = `Cartão ${flashIdx+1} de ${flashPool.length}`; el("fc-front-tag").innerText = `${c.disciplina} > ${c.assunto}`; el("fc-front-content").innerHTML = c.frente.replace(/\n/g, "<br>"); el("fc-back-content").innerHTML = c.verso.replace(/\n/g, "<br>"); el("card-ativo").classList.remove("virado"); el("fc-botoes").classList.remove("visivel"); }
+function virarCarta() { el("card-ativo").classList.toggle("virado"); if(el("card-ativo").classList.contains("virado")) el("fc-botoes").classList.add("visivel"); }
+async function respFC(acertou) { let c = flashPool[flashIdx]; c[acertou ? 'acertos' : 'erros']++; await fetch(`${API}/flashcards`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(c)}); flashIdx++; renderCard(); }
 let catAtual = "", editandoMeta = null;
-function mostrarConfig(cat) {
-    catAtual = cat; cancelarEdicaoMeta(); el("titulo-config").innerText = "Gerenciando: " + cat.toUpperCase();
-    let isAssunto = cat === 'assuntos';
-    el("cfg-disc-select").style.display = isAssunto ? "block" : "none";
-    el("cfg-ordem").style.display = isAssunto ? "block" : "none";
-    if(isAssunto) pop(el("cfg-disc-select"), meta.disciplinas, "Escolha a Disciplina"); 
-    renderListaMeta();
-}
-function renderListaMeta() {
-    let div = el("lista-meta-conteudo"); div.innerHTML = ""; let lista = meta[catAtual] || [];
-    if(catAtual === 'assuntos') {
-        lista.forEach(item => {
-            let itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
-            div.innerHTML += `<div class="item-meta"><span>[${item.disciplina}] ${item.ordem}. <b>${item.nome}</b></span><div><button class="btn-icon" style="color:#f39c12; margin-right:5px" onclick="iniciarEdicaoMeta(${itemJson})">✏️</button><button class="btn-icon" style="color:#e74c3c" onclick="delMeta('${item.nome}')">✖</button></div></div>`;
-        });
-    } else {
-        lista.forEach(item => { div.innerHTML += `<div class="item-meta"><span>${item}</span><div><button class="btn-icon" style="color:#f39c12; margin-right:5px" onclick="iniciarEdicaoMeta('${item}')">✏️</button><button class="btn-icon" style="color:#e74c3c" onclick="delMeta('${item}')">✖</button></div></div>`; });
-    }
-}
-function iniciarEdicaoMeta(dado) {
-    el("cfg-btn-acao").innerText = "Salvar Alteração"; el("cfg-btn-acao").style.background = "#f39c12"; 
-    if(catAtual === 'assuntos') { editandoMeta = dado.nome; el("cfg-novo-nome").value = dado.nome; el("cfg-disc-select").value = dado.disciplina; el("cfg-ordem").value = dado.ordem; } 
-    else { editandoMeta = dado; el("cfg-novo-nome").value = dado; }
-    el("cfg-novo-nome").focus();
-}
-function cancelarEdicaoMeta() {
-    editandoMeta = null; el("cfg-novo-nome").value = ""; el("cfg-ordem").value = ""; 
-    if (catAtual === 'assuntos' && el("cfg-disc-select").options.length > 0) el("cfg-disc-select").value = el("cfg-disc-select").options[0].value;
-    el("cfg-btn-acao").innerText = "Adicionar"; el("cfg-btn-acao").style.background = ""; 
-}
-async function addMeta() {
-    let nome = el("cfg-novo-nome").value; if(!nome) return alert("Digite um nome");
-    let novoItem = { nome: nome };
-    if(catAtual === 'assuntos') {
-        let disc = el("cfg-disc-select").value, ord = el("cfg-ordem").value;
-        if(!disc) return alert("Para assuntos, selecione a disciplina.");
-        novoItem.disciplina = disc; novoItem.ordem = ord ? parseInt(ord) : null;
-    }
-    try {
-        let payload = editandoMeta ? { antigo: editandoMeta, novo: novoItem } : novoItem;
-        let method = editandoMeta ? "PUT" : "POST";
-        await fetch(`${API}/metadados/${catAtual}`, { method: method, headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
-        let r = await fetch(`${API}/metadados`); meta = await r.json();
-        cancelarEdicaoMeta(); renderListaMeta(); popSelGeral();
-    } catch (e) { alert("Erro ao salvar metadado."); }
-}
-async function delMeta(nome) {
-    if(!confirm(`Excluir ${nome} de ${catAtual}?`)) return;
-    await fetch(`${API}/metadados/${catAtual}?nome=${encodeURIComponent(nome)}`, {method:"DELETE"});
-    let r = await fetch(`${API}/metadados`); meta = await r.json(); renderListaMeta(); popSelGeral();
-}
-
-// --- QUESTÕES E CRUD ---
-function altTipo(p) {
-    let t = el(`${p}-tipo`).value, d = el(`${p}-container-alt`), s = el(`${p}-gabarito`); s.innerHTML="";
-    if(t==="ME"){ d.style.display="block"; ["A","B","C","D","E"].forEach(l=>s.innerHTML+=`<option value="${l}">${l}</option>`); }
-    else { d.style.display="none"; s.innerHTML=`<option value="C">Certo</option><option value="E">Errado</option>`; }
-}
-el("form-cadastro").onsubmit = async e => {
-    e.preventDefault(); 
-    const obj = {
-        banca: el("cad-banca").value, instituicao: el("cad-instituicao").value, ano: el("cad-ano").value,
-        enunciado: el("cad-enunciado").value, disciplina: el("cad-disciplina").value, assunto: el("cad-assunto").value,
-        dificuldade: el("cad-dificuldade").value, tipo: el("cad-tipo").value, gabarito: el("cad-gabarito").value,
-        alt_a: el("cad-alt-a").value, alt_b: el("cad-alt-b").value, alt_c: el("cad-alt-c").value, alt_d: el("cad-alt-d").value, alt_e: el("cad-alt-e").value
-    };
-    try {
-        const r = await fetch(`${API}/questoes`, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(obj)});
-        if(r.status === 409) return alert("Questão duplicada!");
-        if(r.ok) { alert("Salvo!"); e.target.reset(); altTipo("cad"); init(); } else throw new Error();
-    } catch(err) { alert("Erro ao salvar."); }
-};
+function mostrarConfig(cat) { catAtual = cat; cancelarEdicaoMeta(); el("titulo-config").innerText = "Gerenciando: " + cat.toUpperCase(); let isAssunto = cat === 'assuntos'; el("cfg-disc-select").style.display = isAssunto ? "block" : "none"; el("cfg-ordem").style.display = isAssunto ? "block" : "none"; if(isAssunto) pop(el("cfg-disc-select"), meta.disciplinas, "Escolha a Disciplina"); renderListaMeta(); }
+function renderListaMeta() { let div = el("lista-meta-conteudo"); div.innerHTML = ""; let lista = meta[catAtual] || []; if(catAtual === 'assuntos') { lista.forEach(item => { let itemJson = JSON.stringify(item).replace(/"/g, '&quot;'); div.innerHTML += `<div class="item-meta"><span>[${item.disciplina}] ${item.ordem}. <b>${item.nome}</b></span><div><button class="btn-icon" style="color:#f39c12; margin-right:5px" onclick="iniciarEdicaoMeta(${itemJson})">✏️</button><button class="btn-icon" style="color:#e74c3c" onclick="delMeta('${item.nome}')">✖</button></div></div>`; }); } else { lista.forEach(item => { div.innerHTML += `<div class="item-meta"><span>${item}</span><div><button class="btn-icon" style="color:#f39c12; margin-right:5px" onclick="iniciarEdicaoMeta('${item}')">✏️</button><button class="btn-icon" style="color:#e74c3c" onclick="delMeta('${item}')">✖</button></div></div>`; }); } }
+function iniciarEdicaoMeta(dado) { el("cfg-btn-acao").innerText = "Salvar Alteração"; el("cfg-btn-acao").style.background = "#f39c12"; if(catAtual === 'assuntos') { editandoMeta = dado.nome; el("cfg-novo-nome").value = dado.nome; el("cfg-disc-select").value = dado.disciplina; el("cfg-ordem").value = dado.ordem; } else { editandoMeta = dado; el("cfg-novo-nome").value = dado; } el("cfg-novo-nome").focus(); }
+function cancelarEdicaoMeta() { editandoMeta = null; el("cfg-novo-nome").value = ""; el("cfg-ordem").value = ""; if (catAtual === 'assuntos' && el("cfg-disc-select").options.length > 0) el("cfg-disc-select").value = el("cfg-disc-select").options[0].value; el("cfg-btn-acao").innerText = "Adicionar"; el("cfg-btn-acao").style.background = ""; }
+async function addMeta() { let nome = el("cfg-novo-nome").value; if(!nome) return alert("Digite um nome"); let novoItem = { nome: nome }; if(catAtual === 'assuntos') { let disc = el("cfg-disc-select").value, ord = el("cfg-ordem").value; if(!disc) return alert("Para assuntos, selecione a disciplina."); novoItem.disciplina = disc; novoItem.ordem = ord ? parseInt(ord) : null; } try { let payload = editandoMeta ? { antigo: editandoMeta, novo: novoItem } : novoItem; let method = editandoMeta ? "PUT" : "POST"; await fetch(`${API}/metadados/${catAtual}`, { method: method, headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) }); let r = await fetch(`${API}/metadados`); meta = await r.json(); cancelarEdicaoMeta(); renderListaMeta(); popSelGeral(); } catch (e) { alert("Erro ao salvar metadado."); } }
+async function delMeta(nome) { if(!confirm(`Excluir ${nome} de ${catAtual}?`)) return; await fetch(`${API}/metadados/${catAtual}?nome=${encodeURIComponent(nome)}`, {method:"DELETE"}); let r = await fetch(`${API}/metadados`); meta = await r.json(); renderListaMeta(); popSelGeral(); }
+function altTipo(p) { let t = el(`${p}-tipo`).value, d = el(`${p}-container-alt`), s = el(`${p}-gabarito`); s.innerHTML=""; if(t==="ME"){ d.style.display="block"; ["A","B","C","D","E"].forEach(l=>s.innerHTML+=`<option value="${l}">${l}</option>`); } else { d.style.display="none"; s.innerHTML=`<option value="C">Certo</option><option value="E">Errado</option>`; } }
+el("form-cadastro").onsubmit = async e => { e.preventDefault(); const obj = { banca: el("cad-banca").value, instituicao: el("cad-instituicao").value, ano: el("cad-ano").value, enunciado: el("cad-enunciado").value, disciplina: el("cad-disciplina").value, assunto: el("cad-assunto").value, dificuldade: el("cad-dificuldade").value, tipo: el("cad-tipo").value, gabarito: el("cad-gabarito").value, alt_a: el("cad-alt-a").value, alt_b: el("cad-alt-b").value, alt_c: el("cad-alt-c").value, alt_d: el("cad-alt-d").value, alt_e: el("cad-alt-e").value }; try { const r = await fetch(`${API}/questoes`, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(obj)}); if(r.status === 409) return alert("Questão duplicada!"); if(r.ok) { alert("Salvo!"); e.target.reset(); altTipo("cad"); init(); } else throw new Error(); } catch(err) { alert("Erro ao salvar."); } };
 function carrTab() { el("total-db").innerText = `${db.length} questões`; filtrar(); }
-function filtrar() {
-    let txt=el("busca-texto").value.toLowerCase(), ban=el("busca-banca").value, dis=el("busca-disciplina").value, ass=el("busca-assunto").value, dif=el("busca-dificuldade").value;
-    let filtrados = db.filter(q => q.enunciado.toLowerCase().includes(txt) && (ban===""||q.banca===ban) && (dis===""||q.disciplina===dis) && (ass===""||q.assunto===ass) && (dif===""||q.dificuldade===dif));
-    let tb = document.querySelector("#tabela-questoes tbody"); tb.innerHTML="";
-    filtrados.forEach(q => {
-        let difClass = q.dificuldade==='Fácil'?'color-facil':(q.dificuldade==='Médio'?'color-medio':'color-dificil');
-        let dots = q.dificuldade==='Fácil'?'●':(q.dificuldade==='Médio'?'●●':'●●●');
-        tb.innerHTML += `<tr><td>${q.id}</td><td>${q.banca}</td><td>${q.ano||'-'}</td><td>${q.disciplina}</td><td title="${q.enunciado.replace(/"/g,'&quot;')}">${q.enunciado.substring(0,40)}...</td><td>${q.assunto}</td><td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td><td>${q.gabarito}</td><td><button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button><button class="btn-icon" onclick="del('${q.id}')">🗑️</button></td></tr>`;
-    });
-}
+function filtrar() { let txt=el("busca-texto").value.toLowerCase(), ban=el("busca-banca").value, dis=el("busca-disciplina").value, ass=el("busca-assunto").value, dif=el("busca-dificuldade").value; let filtrados = db.filter(q => q.enunciado.toLowerCase().includes(txt) && (ban===""||q.banca===ban) && (dis===""||q.disciplina===dis) && (ass===""||q.assunto===ass) && (dif===""||q.dificuldade===dif)); let tb = document.querySelector("#tabela-questoes tbody"); tb.innerHTML=""; filtrados.forEach(q => { let difClass = q.dificuldade==='Fácil'?'color-facil':(q.dificuldade==='Médio'?'color-medio':'color-dificil'); let dots = q.dificuldade==='Fácil'?'●':(q.dificuldade==='Médio'?'●●':'●●●'); tb.innerHTML += `<tr><td>${q.id}</td><td>${q.banca}</td><td>${q.ano||'-'}</td><td>${q.disciplina}</td><td title="${q.enunciado.replace(/"/g,'&quot;')}">${q.enunciado.substring(0,40)}...</td><td>${q.assunto}</td><td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td><td>${q.gabarito}</td><td><button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button><button class="btn-icon" onclick="del('${q.id}')">🗑️</button></td></tr>`; }); }
 function del(id) { if(confirm("Excluir Questão?")) fetch(`${API}/questoes/${id}`, {method:"DELETE"}).then(init); }
 function ord(c) { ordCol.d = (ordCol.c===c && ordCol.d==='asc') ? 'desc':'asc'; ordCol.c=c; aplOrd(); filtrar(); }
-function aplOrd() {
-    let {c,d} = ordCol; let m = d==='asc'?1:-1;
-    db.sort((a,b) => {
-        let va=a[c]?a[c].toString().toLowerCase():"", vb=b[c]?b[c].toString().toLowerCase():"";
-        if(c==='id'){ va=parseInt(a[c]); vb=parseInt(b[c]); } return va<vb ? -1*m : (va>vb ? 1*m : 0);
-    });
-}
-function abrirEd(id) {
-    let q = db.find(x=>String(x.id)===String(id)); if(!q)return;
-    el("edit-id").value=q.id; el("edit-enunciado").value=q.enunciado; el("edit-assunto").value=q.assunto;
-    el("edit-instituicao").value=q.instituicao||""; el("edit-ano").value=q.ano||""; el("edit-dificuldade").value=q.dificuldade; el("edit-tipo").value=q.tipo;
-    el("edit-banca").value=q.banca; el("edit-disciplina").value=q.disciplina; carregarAssuntos('edit'); el("edit-assunto").value=q.assunto;
-    altTipo("edit");
-    if(q.tipo==="ME"){ el("edit-alt-a").value=q.alt_a||""; el("edit-alt-b").value=q.alt_b||""; el("edit-alt-c").value=q.alt_c||""; el("edit-alt-d").value=q.alt_d||""; el("edit-alt-e").value=q.alt_e||""; }
-    el("edit-gabarito").value=q.gabarito; el("modal-edicao").style.display="block";
-}
-el("form-edicao").onsubmit = async e => {
-    e.preventDefault(); 
-    const obj = {
-        id: el("edit-id").value, banca: el("edit-banca").value, instituicao: el("edit-instituicao").value, ano: el("edit-ano").value,
-        enunciado: el("edit-enunciado").value, disciplina: el("edit-disciplina").value, assunto: el("edit-assunto").value,
-        dificuldade: el("edit-dificuldade").value, tipo: el("edit-tipo").value, gabarito: el("edit-gabarito").value,
-        alt_a: el("edit-alt-a").value, alt_b: el("edit-alt-b").value, alt_c: el("edit-alt-c").value, alt_d: el("edit-alt-d").value, alt_e: el("edit-alt-e").value
-    };
-    await fetch(`${API}/questoes`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(obj)});
-    el("modal-edicao").style.display="none"; init();
-};
-
-// --- PRATICAR e PROVA --- 
+function aplOrd() { let {c,d} = ordCol; let m = d==='asc'?1:-1; db.sort((a,b) => { let va=a[c]?a[c].toString().toLowerCase():"", vb=b[c]?b[c].toString().toLowerCase():""; if(c==='id'){ va=parseInt(a[c]); vb=parseInt(b[c]); } return va<vb ? -1*m : (va>vb ? 1*m : 0); }); }
+function abrirEd(id) { let q = db.find(x=>String(x.id)===String(id)); if(!q)return; el("edit-id").value=q.id; el("edit-enunciado").value=q.enunciado; el("edit-assunto").value=q.assunto; el("edit-instituicao").value=q.instituicao||""; el("edit-ano").value=q.ano||""; el("edit-dificuldade").value=q.dificuldade; el("edit-tipo").value=q.tipo; el("edit-banca").value=q.banca; el("edit-disciplina").value=q.disciplina; carregarAssuntos('edit'); el("edit-assunto").value=q.assunto; altTipo("edit"); if(q.tipo==="ME"){ el("edit-alt-a").value=q.alt_a||""; el("edit-alt-b").value=q.alt_b||""; el("edit-alt-c").value=q.alt_c||""; el("edit-alt-d").value=q.alt_d||""; el("edit-alt-e").value=q.alt_e||""; } el("edit-gabarito").value=q.gabarito; el("modal-edicao").style.display="block"; }
+el("form-edicao").onsubmit = async e => { e.preventDefault(); const obj = { id: el("edit-id").value, banca: el("edit-banca").value, instituicao: el("edit-instituicao").value, ano: el("edit-ano").value, enunciado: el("edit-enunciado").value, disciplina: el("edit-disciplina").value, assunto: el("edit-assunto").value, dificuldade: el("edit-dificuldade").value, tipo: el("edit-tipo").value, gabarito: el("edit-gabarito").value, alt_a: el("edit-alt-a").value, alt_b: el("edit-alt-b").value, alt_c: el("edit-alt-c").value, alt_d: el("edit-alt-d").value, alt_e: el("edit-alt-e").value }; await fetch(`${API}/questoes`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(obj)}); el("modal-edicao").style.display="none"; init(); };
 function prepPratica() { el("config-pratica").style.display="block"; el("area-pratica").style.display="none"; }
-function iniciarPratica() {
-    let dis=el("prat-disciplina").value, ban=el("prat-banca").value, ass=el("prat-assunto").value, qtd=el("prat-qtd").value;
-    let pool = db.filter(q => (dis===""||q.disciplina===dis) && (ban===""||q.banca===ban) && (ass===""||q.assunto===ass));
-    if(pool.length===0) return alert("Nenhuma questão encontrada");
-    pratPool = pool.sort(()=>0.5-Math.random()).slice(0, qtd);
-    pratIdx = 0; pratAcertos = 0;
-    el("config-pratica").style.display="none"; el("area-pratica").style.display="block"; renPratica();
-}
-function renPratica() {
-    let q = pratPool[pratIdx];
-    el("prat-progresso").innerText = `Questão ${pratIdx+1} de ${pratPool.length}`;
-    el("prat-meta").innerHTML = `<b>${q.banca}</b> (${q.ano||'-'}) | ${q.instituicao||'-'} | ${q.disciplina} > ${q.assunto}`;
-    el("prat-enunciado").innerHTML = q.enunciado;
-    let div = el("prat-alternativas"); div.innerHTML="";
-    if(q.tipo==="CE"){ radio(div,"C","Certo","prat"); radio(div,"E","Errado","prat"); } else ["A","B","C","D","E"].forEach(l=>{ if(q[`alt_${l.toLowerCase()}`]) radio(div,l,q[`alt_${l.toLowerCase()}`],"prat"); });
-    el("prat-feedback").innerHTML=""; el("prat-feedback").style.background="transparent";
-    el("prat-btn-confirma").style.display="block"; el("prat-btn-prox").style.display="none";
-}
+function iniciarPratica() { let dis=el("prat-disciplina").value, ban=el("prat-banca").value, ass=el("prat-assunto").value, qtd=el("prat-qtd").value; let pool = db.filter(q => (dis===""||q.disciplina===dis) && (ban===""||q.banca===ban) && (ass===""||q.assunto===ass)); if(pool.length===0) return alert("Nenhuma questão encontrada"); pratPool = pool.sort(()=>0.5-Math.random()).slice(0, qtd); pratIdx = 0; pratAcertos = 0; el("config-pratica").style.display="none"; el("area-pratica").style.display="block"; renPratica(); }
+function renPratica() { let q = pratPool[pratIdx]; el("prat-progresso").innerText = `Questão ${pratIdx+1} de ${pratPool.length}`; el("prat-meta").innerHTML = `<b>${q.banca}</b> (${q.ano||'-'}) | ${q.instituicao||'-'} | ${q.disciplina} > ${q.assunto}`; el("prat-enunciado").innerHTML = q.enunciado; let div = el("prat-alternativas"); div.innerHTML=""; if(q.tipo==="CE"){ radio(div,"C","Certo","prat"); radio(div,"E","Errado","prat"); } else ["A","B","C","D","E"].forEach(l=>{ if(q[`alt_${l.toLowerCase()}`]) radio(div,l,q[`alt_${l.toLowerCase()}`],"prat"); }); el("prat-feedback").innerHTML=""; el("prat-feedback").style.background="transparent"; el("prat-btn-confirma").style.display="block"; el("prat-btn-prox").style.display="none"; }
 function radio(d,v,t,n) { d.innerHTML+=`<div class="alternativa-wrapper" onclick="selecionarAlternativa(this, '${n}', '${v}')"><span class="btn-riscar" onclick="event.stopPropagation();this.parentElement.classList.toggle('riscado-ativo')">✖</span><input type="radio" name="${n}" value="${v}" style="margin:0 10px; pointer-events:none"><span class="render-html">${v}) ${t}</span></div>`; }
-function selecionarAlternativa(elWrapper, name, val) {
-    document.querySelectorAll(`input[name='${name}']`).forEach(i => i.checked = false);
-    document.querySelectorAll(`#area-${name} .alternativa-wrapper`).forEach(e => e.classList.remove("selected"));
-    elWrapper.classList.add("selected"); elWrapper.querySelector("input").checked = true;
-    if(name === 'prova') provaRespostas[provaIdx] = val;
-}
-function confirmaPratica() {
-    let s=document.querySelector('input[name="prat"]:checked'); if(!s) return alert("Selecione");
-    let q=pratPool[pratIdx], acertou=s.value===q.gabarito, f=el("prat-feedback");
-    f.innerHTML = acertou ? "Correto! ✅" : `Errado! ❌ Gabarito: ${q.gabarito}`;
-    f.style.background = acertou ? "#d4edda" : "#f8d7da";
-    if(acertou) { pratAcertos++; }
-    let qOriginal = db.find(d => d.id === q.id);
-    if (qOriginal) {
-        qOriginal.respondidas = (qOriginal.respondidas || 0) + 1; if (acertou) qOriginal.acertos = (qOriginal.acertos || 0) + 1;
-        fetch(`${API}/questoes`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(qOriginal)});
-    }
-    el("prat-btn-confirma").style.display="none"; el("prat-btn-prox").style.display="block";
-}
+function selecionarAlternativa(elWrapper, name, val) { document.querySelectorAll(`input[name='${name}']`).forEach(i => i.checked = false); document.querySelectorAll(`#area-${name} .alternativa-wrapper`).forEach(e => e.classList.remove("selected")); elWrapper.classList.add("selected"); elWrapper.querySelector("input").checked = true; if(name === 'prova') provaRespostas[provaIdx] = val; }
+function confirmaPratica() { let s=document.querySelector('input[name="prat"]:checked'); if(!s) return alert("Selecione"); let q=pratPool[pratIdx], acertou=s.value===q.gabarito, f=el("prat-feedback"); f.innerHTML = acertou ? "Correto! ✅" : `Errado! ❌ Gabarito: ${q.gabarito}`; f.style.background = acertou ? "#d4edda" : "#f8d7da"; if(acertou) { pratAcertos++; } let qOriginal = db.find(d => d.id === q.id); if (qOriginal) { qOriginal.respondidas = (qOriginal.respondidas || 0) + 1; if (acertou) qOriginal.acertos = (qOriginal.acertos || 0) + 1; fetch(`${API}/questoes`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(qOriginal)}); } el("prat-btn-confirma").style.display="none"; el("prat-btn-prox").style.display="block"; }
 function proxPratica() { pratIdx++; if(pratIdx<pratPool.length) renPratica(); else { alert(`Fim! Acertos: ${pratAcertos}/${pratPool.length}`); nav('praticar'); } }
 function cancelarPratica() { if(confirm("Sair?")) nav('praticar'); }
-
-function prepProva() {
-    el("resultado-prova").style.display="none";
-    let dis=meta.disciplinas, div=el("lista-distribuicao"); div.innerHTML="";
-    dis.forEach(d => { div.innerHTML += `<div class="config-row" style="display:flex; gap:10px; align-items:center;"><label>${d}:</label><input type="number" class="inp-dist" data-disc="${d}" value="0" min="0" max="100" onchange="calcDistribuicao()" style="width:60px"> %</div>`; });
-    calcDistribuicao();
-}
-function calcDistribuicao() {
-    let total=0; document.querySelectorAll(".inp-dist").forEach(i => total += parseInt(i.value||0));
-    el("total-porc").innerText = `Total: ${total}%`; el("total-porc").style.color = total===100 ? "green" : "red";
-}
-function iniciarProva() {
-    let totalPerc=0; document.querySelectorAll(".inp-dist").forEach(i => totalPerc += parseInt(i.value||0));
-    if(totalPerc!==100) return alert("A soma das porcentagens deve ser 100%");
-    let qtdTotal = parseInt(el("prova-total").value); provaTempoTotal = parseInt(el("prova-tempo").value) * 60;
-    provaPool = [];
-    document.querySelectorAll(".inp-dist").forEach(i => {
-        let perc = parseInt(i.value||0); if(perc > 0) {
-            let disc = i.dataset.disc; let qtdDisc = Math.round((perc/100) * qtdTotal);
-            let questoesDisc = db.filter(q => q.disciplina === disc).sort(()=>0.5-Math.random()).slice(0, qtdDisc);
-            provaPool = provaPool.concat(questoesDisc);
-        }
-    });
-    if(provaPool.length === 0) return alert("Nenhuma questão disponível.");
-    provaPool = provaPool.sort(()=>0.5-Math.random()); provaIdx = 0; provaRespostas = [];
-    el("config-prova").style.display="none"; el("area-prova").style.display="block"; el("barra-tempo-container").style.display="block"; iniciarTimer(); renProva();
-}
-function iniciarTimer() {
-    let tempoRestante = provaTempoTotal; if(provaIntervalo) clearInterval(provaIntervalo);
-    provaIntervalo = setInterval(() => {
-        tempoRestante--; let min = Math.floor(tempoRestante/60), sec = tempoRestante%60;
-        el("prova-timer").innerText = `${min}:${sec<10?'0'+sec:sec}`;
-        el("barra-tempo-fill").style.width = `${(tempoRestante/provaTempoTotal)*100}%`;
-        if(tempoRestante <= 0) { clearInterval(provaIntervalo); finalizarProva(); }
-    }, 1000);
-}
-function renProva() {
-    let q = provaPool[provaIdx];
-    el("prova-progresso").innerText = `Questão ${provaIdx+1} de ${provaPool.length}`;
-    el("prova-meta").innerText = `${q.banca} (${q.ano||'-'}) | ${q.instituicao||'-'} | ${q.disciplina} > ${q.assunto}`;
-    el("prova-enunciado").innerHTML = q.enunciado;
-    let div = el("prova-alternativas"); div.innerHTML="";
-    let respSalva = provaRespostas[provaIdx] || null;
-    if(q.tipo==="CE"){ radioProva(div,"C","Certo", respSalva); radioProva(div,"E","Errado", respSalva); } 
-    else ["A","B","C","D","E"].forEach(l=>{ if(q[`alt_${l.toLowerCase()}`]) radioProva(div,l,q[`alt_${l.toLowerCase()}`], respSalva); });
-}
-function radioProva(div, val, txt, selecionado) {
-    let cls = selecionado === val ? "selected" : "";
-    div.innerHTML += `<div class="alternativa-wrapper ${cls}" onclick="selecionarAlternativa(this, 'prova', '${val}')"><span class="btn-riscar" onclick="event.stopPropagation();this.parentElement.classList.toggle('riscado-ativo')">✖</span><input type="radio" name="prova" value="${val}" ${selecionado === val ? 'checked' : ''} style="margin:0 10px; pointer-events:none"><span class="render-html">${val}) ${txt}</span></div>`;
-}
+function prepProva() { el("resultado-prova").style.display="none"; let dis=meta.disciplinas, div=el("lista-distribuicao"); div.innerHTML=""; dis.forEach(d => { div.innerHTML += `<div class="config-row" style="display:flex; gap:10px; align-items:center;"><label>${d}:</label><input type="number" class="inp-dist" data-disc="${d}" value="0" min="0" max="100" onchange="calcDistribuicao()" style="width:60px"> %</div>`; }); calcDistribuicao(); }
+function calcDistribuicao() { let total=0; document.querySelectorAll(".inp-dist").forEach(i => total += parseInt(i.value||0)); el("total-porc").innerText = `Total: ${total}%`; el("total-porc").style.color = total===100 ? "green" : "red"; }
+function iniciarProva() { let totalPerc=0; document.querySelectorAll(".inp-dist").forEach(i => totalPerc += parseInt(i.value||0)); if(totalPerc!==100) return alert("A soma das porcentagens deve ser 100%"); let qtdTotal = parseInt(el("prova-total").value); provaTempoTotal = parseInt(el("prova-tempo").value) * 60; provaPool = []; document.querySelectorAll(".inp-dist").forEach(i => { let perc = parseInt(i.value||0); if(perc > 0) { let disc = i.dataset.disc; let qtdDisc = Math.round((perc/100) * qtdTotal); let questoesDisc = db.filter(q => q.disciplina === disc).sort(()=>0.5-Math.random()).slice(0, qtdDisc); provaPool = provaPool.concat(questoesDisc); } }); if(provaPool.length === 0) return alert("Nenhuma questão disponível."); provaPool = provaPool.sort(()=>0.5-Math.random()); provaIdx = 0; provaRespostas = []; el("config-prova").style.display="none"; el("area-prova").style.display="block"; el("barra-tempo-container").style.display="block"; iniciarTimer(); renProva(); }
+function iniciarTimer() { let tempoRestante = provaTempoTotal; if(provaIntervalo) clearInterval(provaIntervalo); provaIntervalo = setInterval(() => { tempoRestante--; let min = Math.floor(tempoRestante/60), sec = tempoRestante%60; el("prova-timer").innerText = `${min}:${sec<10?'0'+sec:sec}`; el("barra-tempo-fill").style.width = `${(tempoRestante/provaTempoTotal)*100}%`; if(tempoRestante <= 0) { clearInterval(provaIntervalo); finalizarProva(); } }, 1000); }
+function renProva() { let q = provaPool[provaIdx]; el("prova-progresso").innerText = `Questão ${provaIdx+1} de ${provaPool.length}`; el("prova-meta").innerText = `${q.banca} (${q.ano||'-'}) | ${q.instituicao||'-'} | ${q.disciplina} > ${q.assunto}`; el("prova-enunciado").innerHTML = q.enunciado; let div = el("prova-alternativas"); div.innerHTML=""; let respSalva = provaRespostas[provaIdx] || null; if(q.tipo==="CE"){ radioProva(div,"C","Certo", respSalva); radioProva(div,"E","Errado", respSalva); } else ["A","B","C","D","E"].forEach(l=>{ if(q[`alt_${l.toLowerCase()}`]) radioProva(div,l,q[`alt_${l.toLowerCase()}`], respSalva); }); }
+function radioProva(div, val, txt, selecionado) { let cls = selecionado === val ? "selected" : ""; div.innerHTML += `<div class="alternativa-wrapper ${cls}" onclick="selecionarAlternativa(this, 'prova', '${val}')"><span class="btn-riscar" onclick="event.stopPropagation();this.parentElement.classList.toggle('riscado-ativo')">✖</span><input type="radio" name="prova" value="${val}" ${selecionado === val ? 'checked' : ''} style="margin:0 10px; pointer-events:none"><span class="render-html">${val}) ${txt}</span></div>`; }
 function proxProva() { provaIdx++; if(provaIdx < provaPool.length) { renProva(); } else { if(confirm("Finalizar Prova?")) finalizarProva(); else provaIdx--; } }
-function finalizarProva() {
-    clearInterval(provaIntervalo);
-    el("area-prova").style.display="none"; el("resultado-prova").style.display="block";
-    let acertos = 0; let html = "<ul style='list-style:none; padding:0'>"; let acertosPorDisc = {};
-    provaPool.forEach((q, i) => {
-        let resp = provaRespostas[i], correta = q.gabarito, isCorrect = resp === correta;
-        if(isCorrect) acertos++;
-        if (!acertosPorDisc[q.disciplina]) acertosPorDisc[q.disciplina] = { total: 0, acertos: 0 };
-        acertosPorDisc[q.disciplina].total++; if (isCorrect) acertosPorDisc[q.disciplina].acertos++;
-        let realQ = db.find(d => d.id === q.id);
-        if(realQ) { realQ.respondidas = (realQ.respondidas || 0) + 1; if(isCorrect) realQ.acertos = (realQ.acertos || 0) + 1; fetch(`${API}/questoes`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(realQ)}); }
-        html += `<li style="margin-bottom:10px; border-bottom:1px solid #eee; padding:5px;"><b>Q${i+1} (${q.disciplina}):</b> Sua: <b style="color:${isCorrect?'green':'red'}">${resp||'-'}</b> | Gab: <b>${correta}</b></li>`;
-    });
-    let discHtml = '<h3>Desempenho por Disciplina</h3><ul style="list-style:none; padding:0;">';
-    for (const disc in acertosPorDisc) { let stats = acertosPorDisc[disc]; let perc = (stats.acertos / stats.total) * 100; discHtml += `<li style="margin-bottom:5px;"><b>${disc}:</b> ${stats.acertos} / ${stats.total} (${perc.toFixed(1)}%)</li>`; }
-    discHtml += '</ul>';
-    el("nota-prova").innerText = `${acertos}/${provaPool.length}`;
-    el("msg-prova").innerText = acertos/provaPool.length >= 0.7 ? "Aprovado! 🚀" : "Continue Estudando 📚";
-    el("detalhes-prova").innerHTML = discHtml + html; init(); 
-}
-function graf() {
-    let ctx=el("chart").getContext("2d"); if(window.myChart)window.myChart.destroy();
-    let stats={}; db.forEach(q=>{ if(!stats[q.disciplina]) stats[q.disciplina]={r:0,a:0}; stats[q.disciplina].r+=q.respondidas; stats[q.disciplina].a+=q.acertos; });
-    let l=[], d=[], c=[];
-    for(let k in stats){ if(stats[k].r>0){ l.push(k); let p=(stats[k].a/stats[k].r)*100; d.push(p.toFixed(1)); c.push(p>=50?'#27ae60':'#e74c3c'); } }
-    window.myChart=new Chart(ctx,{type:'bar',data:{labels:l,datasets:[{label:'%',data:d,backgroundColor:c}]},options:{scales:{y:{beginAtZero:true,max:100}}}});
-}
-
-// --- DRAG AND DROP LOGIC ---
-function setupDragDrop() {
-    const dropZone = el("area-drop");
-    const fileInput = el("imp-file");
-
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
-    });
-
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
-    });
-
-    dropZone.addEventListener('drop', handleDrop, false);
-
-    function handleDrop(e) {
-        let dt = e.dataTransfer;
-        let files = dt.files;
-
-        if (files.length > 0) {
-            fileInput.files = files;
-        }
-    }
-}
-
-// Inicialização
-window.onload = () => { 
-    init(); 
-    headerOffset = el('secao-cadastro').offsetTop;
-    setupDragDrop();
-};
+function finalizarProva() { clearInterval(provaIntervalo); el("area-prova").style.display="none"; el("resultado-prova").style.display="block"; let acertos = 0; let html = "<ul style='list-style:none; padding:0'>"; let acertosPorDisc = {}; provaPool.forEach((q, i) => { let resp = provaRespostas[i], correta = q.gabarito, isCorrect = resp === correta; if(isCorrect) acertos++; if (!acertosPorDisc[q.disciplina]) acertosPorDisc[q.disciplina] = { total: 0, acertos: 0 }; acertosPorDisc[q.disciplina].total++; if (isCorrect) acertosPorDisc[q.disciplina].acertos++; let realQ = db.find(d => d.id === q.id); if(realQ) { realQ.respondidas = (realQ.respondidas || 0) + 1; if(isCorrect) realQ.acertos = (realQ.acertos || 0) + 1; fetch(`${API}/questoes`, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(realQ)}); } html += `<li style="margin-bottom:10px; border-bottom:1px solid #eee; padding:5px;"><b>Q${i+1} (${q.disciplina}):</b> Sua: <b style="color:${isCorrect?'green':'red'}">${resp||'-'}</b> | Gab: <b>${correta}</b></li>`; }); let discHtml = '<h3>Desempenho por Disciplina</h3><ul style="list-style:none; padding:0;">'; for (const disc in acertosPorDisc) { let stats = acertosPorDisc[disc]; let perc = (stats.acertos / stats.total) * 100; discHtml += `<li style="margin-bottom:5px;"><b>${disc}:</b> ${stats.acertos} / ${stats.total} (${perc.toFixed(1)}%)</li>`; } discHtml += '</ul>'; el("nota-prova").innerText = `${acertos}/${provaPool.length}`; el("msg-prova").innerText = acertos/provaPool.length >= 0.7 ? "Aprovado! 🚀" : "Continue Estudando 📚"; el("detalhes-prova").innerHTML = discHtml + html; init(); }
+function graf() { let ctx=el("chart").getContext("2d"); if(window.myChart)window.myChart.destroy(); let stats={}; db.forEach(q=>{ if(!stats[q.disciplina]) stats[q.disciplina]={r:0,a:0}; stats[q.disciplina].r+=q.respondidas; stats[q.disciplina].a+=q.acertos; }); let l=[], d=[], c=[]; for(let k in stats){ if(stats[k].r>0){ l.push(k); let p=(stats[k].a/stats[k].r)*100; d.push(p.toFixed(1)); c.push(p>=50?'#27ae60':'#e74c3c'); } } window.myChart=new Chart(ctx,{type:'bar',data:{labels:l,datasets:[{label:'%',data:d,backgroundColor:c}]},options:{scales:{y:{beginAtZero:true,max:100}}}}); }
+function setupDragDrop() { const dropZone = el("area-drop"); const fileInput = el("imp-file"); ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { dropZone.addEventListener(eventName, preventDefaults, false); }); function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); } ['dragenter', 'dragover'].forEach(eventName => { dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false); }); ['dragleave', 'drop'].forEach(eventName => { dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false); }); dropZone.addEventListener('drop', handleDrop, false); function handleDrop(e) { let dt = e.dataTransfer; let files = dt.files; if (files.length > 0) { fileInput.files = files; } } }
+window.onload = () => { init(); headerOffset = el('secao-cadastro').offsetTop; setupDragDrop(); };
 </script>
 </body>
 </html>
