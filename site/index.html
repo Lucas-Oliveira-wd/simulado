@@ -304,10 +304,10 @@ function renderPreview(lista) {
                 </div>
                 <div style="margin-top:5px; display:grid; gap:5px">
                     <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${q.alt_a}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
-                    <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${q.alt_b}" onfocus="showToolbar(this)"></div>
-                    <div class="input-group"><span>C)</span><input type="text" class="imp-alt-c" value="${q.alt_c}" onfocus="showToolbar(this)"></div>
-                    <div class="input-group"><span>D)</span><input type="text" class="imp-alt-d" value="${q.alt_d}" onfocus="showToolbar(this)"></div>
-                    <div class="input-group"><span>E)</span><input type="text" class="imp-alt-e" value="${q.alt_e}" onfocus="showToolbar(this)"></div>
+                    <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${q.alt_b}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
+                    <div class="input-group"><span>C)</span><input type="text" class="imp-alt-c" value="${q.alt_c}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
+                    <div class="input-group"><span>D)</span><input type="text" class="imp-alt-d" value="${q.alt_d}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
+                    <div class="input-group"><span>E)</span><input type="text" class="imp-alt-e" value="${q.alt_e}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
                 </div>
             </div>
             <div class="imp-gab"><select class="imp-gabarito">${optionsGab}</select></div>
@@ -323,12 +323,23 @@ function verificarDuplicidadeDinamica(index) {
     clearTimeout(checkDupTimeout);
     checkDupTimeout = setTimeout(async () => {
         let row = el(`imp-row-${index}`);
-        let enu = row.querySelector(".imp-enunciado").value;
-        let alta = row.querySelector(".imp-alt-a").value;
-        if (!enu) return;
+        
+        // Agora pega TUDO
+        let payload = {
+            enunciado: row.querySelector(".imp-enunciado").value,
+            alt_a: row.querySelector(".imp-alt-a").value,
+            alt_b: row.querySelector(".imp-alt-b").value,
+            alt_c: row.querySelector(".imp-alt-c").value,
+            alt_d: row.querySelector(".imp-alt-d").value,
+            alt_e: row.querySelector(".imp-alt-e").value
+        };
+        
+        if (!payload.enunciado) return;
+
         try {
             const resp = await fetch(`${API}/check-duplicidade`, {
-                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enunciado: enu, alt_a: alta })
+                method: "POST", headers: { "Content-Type": "application/json" }, 
+                body: JSON.stringify(payload)
             });
             const data = await resp.json();
             let statusDiv = el(`status-${index}`), btnSave = el(`btn-save-${index}`);

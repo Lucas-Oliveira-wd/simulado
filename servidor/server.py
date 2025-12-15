@@ -9,41 +9,36 @@ import uuid
 app = Flask(__name__)
 CORS(app)
 
-# --- CONFIGURAÇÕES DE CAMINHOS ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(BASE_DIR, "../banco_de_dados")
-# Caminho solicitado: .../banco_de_dados/img/q_img
 UPLOAD_FOLDER = os.path.join(DB_DIR, "img", "q_img")
 ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
 ARQ_METADADOS = os.path.join(DB_DIR, "metadados.xlsx")
 ARQ_FLASHCARDS = os.path.join(DB_DIR, "flashcards.xlsx")
 
-# Garante a existência das pastas
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+if not os.path.exists(UPLOAD_FOLDER): os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# --- MAPA DE CORREÇÃO DE TÓPICOS (OCR) ---
 CORRECAO_ASSUNTOS = {
-    "MPREGO OS EMPOS ODOS": "Emprego de Tempos e Modos",
-    "ODO NDICATIVO": "Modo Indicativo",
-    "ERBOS TRAIÇOEIROS": "Verbos Traiçoeiros",
-    "MPREGO OS EMPOS E ODOS": "Emprego de Tempos e Modos",
-    "UBSTANTIVO": "Substantivo", "DJETIVO": "Adjetivo", "DVÉRBIO": "Advérbio",
-    "RTIGO": "Artigo", "NTERJEIÇÃO": "Interjeição", "UMERAL": "Numeral",
-    "RONOME": "Pronome", "ERBO": "Verbo", "ONJUNÇÃO": "Conjunção",
-    "REPOSIÇÃO": "Preposição", "ALAVRAS SPECIAIS": "Palavras Especiais",
-    "OLOCAÇÃO RONOMINAL": "Colocação Pronominal", "RONOMES": "Pronomes",
-    "OLOCAÇÃO PRONOMINAL": "Colocação Pronominal"
+    "MPREGO OS EMPOS ODOS": "Emprego de Tempos e Modos", "ODO NDICATIVO": "Modo Indicativo",
+    "ERBOS TRAIÇOEIROS": "Verbos Traiçoeiros", "MPREGO OS EMPOS E ODOS": "Emprego de Tempos e Modos",
+    "UBSTANTIVO": "Substantivo", "DJETIVO": "Adjetivo", "DVÉRBIO": "Advérbio", "RTIGO": "Artigo",
+    "NTERJEIÇÃO": "Interjeição", "UMERAL": "Numeral", "RONOME": "Pronome", "ERBO": "Verbo",
+    "ONJUNÇÃO": "Conjunção", "REPOSIÇÃO": "Preposição", "ALAVRAS SPECIAIS": "Palavras Especiais",
+    "OLOCAÇÃO RONOMINAL": "Colocação Pronominal", "RONOMES": "Pronomes", "OLOCAÇÃO PRONOMINAL": "Colocação Pronominal",
 }
 
+# Lista de palavras que identificam um CARGO, para não confundir com Instituição
+BLACKLIST_CARGOS = [
+    "ANALISTA", "TÉCNICO", "ENGENHEIRO", "MÉDICO", "ADVOGADO", "AGENTE", "ESCRITURÁRIO",
+    "PROFESSOR", "ESPECIALISTA", "AUDITOR", "DEFENSOR", "PROMOTOR", "JUIZ", "DELEGADO",
+    "INSPETOR", "SOLDADO", "OFICIAL", "ASSISTENTE", "CONSULTOR", "COORDENADOR", "DIRETOR",
+    "GERENTE", "SUPERVISOR", "PEDAGOGO", "PSICÓLOGO", "CONTADOR", "ADMINISTRADOR", "ECONOMISTA",
+    "ARQUITETO", "ENFERMEIRO", "FARMACÊUTICO", "NUTRICIONISTA", "DENTISTA", "TECNOLOGIA"
+]
 
-# --- FUNÇÕES UTILITÁRIAS ---
+
 def garantir_diretorio():
     if not os.path.exists(DB_DIR): os.makedirs(DB_DIR, exist_ok=True)
-
-
-def limpar(texto):
-    return str(texto).strip() if texto else ""
 
 
 def normalizar_para_comparacao(texto):
@@ -73,33 +68,31 @@ def sanitizar_texto(texto):
     return "".join(resultado)
 
 
-# --- LÓGICA DE EXTRAÇÃO E PARSING ---
+def gerar_assinatura(q):
+    return (
+        normalizar_para_comparacao(q.get('enunciado')),
+        normalizar_para_comparacao(q.get('alt_a')),
+        normalizar_para_comparacao(q.get('alt_b')),
+        normalizar_para_comparacao(q.get('alt_c')),
+        normalizar_para_comparacao(q.get('alt_d')),
+        normalizar_para_comparacao(q.get('alt_e'))
+    )
+
+
 def limpar_ruido(texto):
-    patterns_to_remove = [
-        r"PETROBRAS \(Nível Superior\) Português\s*\d*",
-        r"www\.estrategiaconcursos\.com\.br\s*\d*",
-        r"\d{11}\s*-\s*Ricardo Aciole",
-        r"Equipe Português Estratégia Concursos, Felipe Luccas",
-        r"Aula \d+",
-        r"==\w+==",
-        r"^\s*\d+\s*$"
+    patterns = [
+        r"PETROBRAS \(Nível Superior\) Português\s*\d*", r"www\.estrategiaconcursos\.com\.br\s*\d*",
+        r"\d{11}\s*-\s*Ricardo Aciole", r"Equipe Português Estratégia Concursos, Felipe Luccas",
+        r"Aula \d+", r"==\w+==", r"^\s*\d+\s*$"
     ]
-    cleaned_text = texto
-    for pattern in patterns_to_remove:
-        cleaned_text = re.sub(pattern, "", cleaned_text, flags=re.MULTILINE | re.IGNORECASE)
-    cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)
-    return cleaned_text
+    for p in patterns: texto = re.sub(p, "", texto, flags=re.MULTILINE | re.IGNORECASE)
+    return re.sub(r'\n{3,}', '\n\n', texto)
 
 
 def extrair_mapa_gabaritos(texto):
-    """Busca tabelas de gabarito no final do arquivo (ex: 1. LETRA C)."""
     mapa = {}
-    padrao_tabela = r'(?:^|\n)\s*(\d+)\.?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)'
-    matches = re.finditer(padrao_tabela, texto, re.IGNORECASE)
-    for m in matches:
-        num = m.group(1)
-        letra = m.group(2).upper()
-        mapa[num] = letra
+    matches = re.finditer(r'(?:^|\n)\s*(\d+)\.?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)', texto, re.IGNORECASE)
+    for m in matches: mapa[m.group(1)] = m.group(2).upper()
     return mapa
 
 
@@ -109,129 +102,95 @@ def parsear_questoes(texto_bruto):
     questoes = []
     mapa_assuntos = []
 
-    # 1. Mapeamento de Assuntos
-    regex_topicos = re.compile(
-        r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES).*?([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s\-]+?)\s*(?:C\s*)?ESGRANRIO',
-        re.IGNORECASE | re.DOTALL
-    )
-    for match in regex_topicos.finditer(texto):
-        trecho_assunto = match.group(1).replace('\n', ' ').replace('-', '').strip()
-        assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto)
-        if not assunto_corrigido:
-            assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto.replace("  ", " "))
-        if not assunto_corrigido and len(trecho_assunto) > 3:
-            assunto_corrigido = trecho_assunto.title()
-        if assunto_corrigido:
-            mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_corrigido})
+    # Mapeamento Assuntos
+    for match in re.finditer(
+            r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES).*?([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s\-]+?)\s*(?:C\s*)?ESGRANRIO', texto,
+            re.IGNORECASE | re.DOTALL):
+        trecho = match.group(1).replace('\n', ' ').replace('-', '').strip()
+        assunto = CORRECAO_ASSUNTOS.get(trecho) or CORRECAO_ASSUNTOS.get(trecho.replace("  ", " "))
+        if not assunto and len(trecho) > 3: assunto = trecho.title()
+        if assunto: mapa_assuntos.append({"inicio": match.start(), "assunto": assunto})
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    # 2. Scanner de Questões
-    question_split_pattern = r"(\d+)\.\s*\((CESGRANRIO.*?)\)"
-    parts = re.split(question_split_pattern, texto)
-
+    parts = re.split(r'(\d+)\.\s*\((CESGRANRIO.*?)\)', texto)
     if len(parts) > 1:
-        current_pos_tracker = len(parts[0])
-
+        tracker = len(parts[0])
         for i in range(1, len(parts), 3):
             if (i + 2) >= len(parts): break
+            q_num, q_meta, q_content = parts[i].strip(), parts[i + 1].strip(), parts[i + 2]
+            tracker += len(q_num) + len(q_meta) + len(q_content)
 
-            q_numero = parts[i].strip()
-            q_meta = parts[i + 1].strip()
-            q_conteudo_bruto = parts[i + 2]
-
-            current_pos_tracker += len(q_numero) + len(q_meta) + len(q_conteudo_bruto)
-
-            # Define Assunto
-            assunto_atual = "Geral"
+            assunto = "Geral"
             if mapa_assuntos:
-                anteriores = [m for m in mapa_assuntos if m["inicio"] < current_pos_tracker]
-                if anteriores: assunto_atual = anteriores[-1]["assunto"]
+                anteriores = [m for m in mapa_assuntos if m["inicio"] < tracker]
+                if anteriores: assunto = anteriores[-1]["assunto"]
 
-            # --- PROCESSAMENTO DE METADADOS CORRIGIDO ---
-            # Objetivo: Separar 'CESGRANRIO / INSTITUICAO / CARGO / ANO' e pegar só a Instituição
-
-            # Normaliza separadores (hífens viram barras) e remove parênteses externos
-            meta_limpa = q_meta.replace("–", "/").replace("-", "/")
-
-            # Divide em partes
-            partes_meta = [p.strip() for p in meta_limpa.split('/') if p.strip()]
+            # --- PROCESSAMENTO INTELIGENTE DE METADADOS ---
+            # Remove parênteses e traços extras
+            meta_clean = q_meta.replace("–", "/").replace("-", "/")
+            partes = [p.strip() for p in meta_clean.split('/') if p.strip()]
 
             banca = "CESGRANRIO"
             ano = "2025"
             instituicao = ""
 
-            # Lista temporária para armazenar o que não for Banca nem Ano
-            sobras = []
+            for p in partes:
+                p_upper = p.upper()
+                if re.match(r'^\d{4}$', p): ano = p; continue
+                if "CESGRANRIO" in p_upper: continue
+                # Filtra se for cargo
+                if any(c in p_upper for c in BLACKLIST_CARGOS): continue
+                # Filtra códigos curtos que não são siglas conhecidas
+                if len(p) < 4 and p_upper not in ["BB", "ANP", "STJ", "STF", "AGU", "MPE", "TJ", "TRE", "TRT", "MP",
+                                                  "CNJ"]: continue
 
-            for p in partes_meta:
-                # Verifica Ano (4 dígitos isolados)
-                if re.match(r'^\d{4}$', p):
-                    ano = p
-                    continue
+                # Se sobreviveu aos filtros, é a instituição
+                # Damos preferência à maior string (ex: "ELETRONUCLEAR" > "PNMO")
+                if not instituicao or len(p) > len(instituicao):
+                    instituicao = p
 
-                # Verifica Banca
-                if "CESGRANRIO" in p.upper():
-                    continue  # Já sabemos que é Cesgranrio
-
-                # O que sobrar é Instituição ou Cargo
-                sobras.append(p)
-
-            # A lógica é: O primeiro item da sobra é a Instituição. O resto (Cargo) descartamos.
-            if sobras:
-                instituicao = sobras[0]
-                # Se quisesse cargo, ele estaria em sobras[1] se existisse
-
-            # --- BUSCA DE GABARITO ---
+            # Gabarito
             gabarito = ""
-            # A) Tenta no comentário local
-            gabarito_pattern_local = r'(?:Gabarito|GABARITO|Correta|Letra)(?:.{0,30}?)(?:[Ll]etra|[Oo]pção|[Aa]lternativa)?\s*([A-E])(?=[\.\s]|$)'
-            matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto, re.IGNORECASE))
-            if matches_gab:
-                gabarito = matches_gab[-1].group(1).upper()
+            matches_gab = list(re.finditer(
+                r'(?:Gabarito|GABARITO|Correta|Letra)(?:.{0,30}?)(?:[Ll]etra|[Oo]pção|[Aa]lternativa)?\s*([A-E])(?=[\.\s]|$)',
+                q_content, re.IGNORECASE))
+            if matches_gab: gabarito = matches_gab[-1].group(1).upper()
+            if not gabarito and q_num in mapa_gabaritos: gabarito = mapa_gabaritos[q_num]
 
-            # B) Tenta no Mapa Global (Listas)
-            if not gabarito and q_numero in mapa_gabaritos:
-                gabarito = mapa_gabaritos[q_numero]
+            # Enunciado e Alternativas
+            content_limpo = re.split(r"(Comentários?|Comentário:)", q_content, maxsplit=1, flags=re.IGNORECASE)[0]
+            content_limpo = re.split(r'\n\s*(?:L\s*I\s*S\s*T\s*A|GABARITO)', content_limpo, flags=re.IGNORECASE)[0]
 
-            # Separação de Conteúdo
-            content_no_comments = \
-            re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
-            content_no_comments = \
-            re.split(r'\n\s*(?:L\s*I\s*S\s*T\s*A|GABARITO)', content_no_comments, flags=re.IGNORECASE)[0]
-
-            parts_alt = re.split(r'\b([A-E])\)', content_no_comments)
+            parts_alt = re.split(r'\b([A-E])\)', content_limpo)
             enunciado = sanitizar_texto(parts_alt[0].strip())
-
             alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
             if len(parts_alt) > 1:
                 for k in range(1, len(parts_alt), 2):
                     letra = parts_alt[k].upper()
-                    if k + 1 < len(parts_alt):
-                        alts[letra] = sanitizar_texto(parts_alt[k + 1].strip().rstrip('.;'))
+                    if k + 1 < len(parts_alt): alts[letra] = sanitizar_texto(parts_alt[k + 1].strip().rstrip('.;'))
 
             if enunciado and (alts["A"] or alts["B"]):
                 questoes.append({
-                    "temp_id": q_numero, "banca": banca, "instituicao": instituicao, "ano": ano,
-                    "assunto": assunto_atual, "enunciado": enunciado,
+                    "temp_id": q_num, "banca": banca, "instituicao": instituicao, "ano": ano,
+                    "assunto": assunto, "enunciado": enunciado,
                     "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
                     "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME", "imagem": ""
                 })
     return questoes
 
 
-def extrair_texto_pdf(caminho_arquivo):
-    texto = ""
-    with pdfplumber.open(caminho_arquivo) as pdf:
-        for page in pdf.pages:
-            texto += (page.extract_text() or "") + "\n"
-    return texto
+def extrair_texto_pdf(path):
+    txt = ""
+    with pdfplumber.open(path) as pdf:
+        for page in pdf.pages: txt += (page.extract_text() or "") + "\n"
+    return txt
 
 
-# --- CRUD QUESTÕES ---
+# --- CRUD BASE ---
 def verificar_questoes():
     garantir_diretorio()
     if not os.path.exists(ARQ_QUESTOES):
-        wb = Workbook()
+        wb = Workbook();
         ws = wb.active;
         ws.title = "questoes"
         ws.append(
@@ -241,7 +200,7 @@ def verificar_questoes():
 
 
 def carregar_questoes():
-    verificar_questoes()
+    verificar_questoes();
     wb = load_workbook(ARQ_QUESTOES);
     ws = wb.active
     dados = []
@@ -253,8 +212,7 @@ def carregar_questoes():
             "enunciado": row[4], "disciplina": row[5], "assunto": row[6],
             "dificuldade": row[7], "tipo": row[8],
             "alt_a": row[9], "alt_b": row[10], "alt_c": row[11], "alt_d": row[12], "alt_e": row[13],
-            "gabarito": row[14], "respondidas": row[15] or 0, "acertos": row[16] or 0,
-            "imagem": img
+            "gabarito": row[14], "respondidas": row[15] or 0, "acertos": row[16] or 0, "imagem": img
         })
     return dados
 
@@ -265,128 +223,87 @@ def salvar_questoes(dados):
     ws.append(
         ["id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto", "dificuldade", "tipo", "alt_a",
          "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem"])
-    for item in dados:
-        ws.append([
-            item["id"], item.get("banca"), item.get("instituicao"), item.get("ano"), item["enunciado"],
-            item["disciplina"], item["assunto"], item["dificuldade"], item["tipo"], item.get("alt_a"),
-            item.get("alt_b"), item.get("alt_c"), item.get("alt_d"), item.get("alt_e"), item["gabarito"],
-            item["respondidas"], item["acertos"], item.get("imagem", "")
-        ])
+    for i in dados:
+        ws.append(
+            [i["id"], i.get("banca"), i.get("instituicao"), i.get("ano"), i["enunciado"], i["disciplina"], i["assunto"],
+             i["dificuldade"], i["tipo"], i.get("alt_a"), i.get("alt_b"), i.get("alt_c"), i.get("alt_d"),
+             i.get("alt_e"), i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", "")])
     wb.save(ARQ_QUESTOES)
 
 
-# --- CRUD FLASHCARDS (Mantido) ---
 def verificar_flashcards():
     garantir_diretorio()
     if not os.path.exists(ARQ_FLASHCARDS):
         wb = Workbook();
         ws = wb.active;
         ws.title = "flashcards"
-        ws.append(["id", "disciplina", "assunto", "frente", "verso", "acertos", "erros"])
+        ws.append(["id", "disciplina", "assunto", "frente", "verso", "acertos", "erros"]);
         wb.save(ARQ_FLASHCARDS)
 
 
 def carregar_flashcards():
-    verificar_flashcards()
+    verificar_flashcards();
     wb = load_workbook(ARQ_FLASHCARDS);
-    ws = wb.active
+    ws = wb.active;
     dados = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if row[0] is None: continue
-        dados.append({"id": row[0], "disciplina": row[1], "assunto": row[2], "frente": row[3], "verso": row[4],
-                      "acertos": row[5] or 0, "erros": row[6] or 0})
+    for r in ws.iter_rows(min_row=2, values_only=True):
+        if r[0]: dados.append(
+            {"id": r[0], "disciplina": r[1], "assunto": r[2], "frente": r[3], "verso": r[4], "acertos": r[5] or 0,
+             "erros": r[6] or 0})
     return dados
 
 
 def salvar_flashcards_dados(dados):
     wb = Workbook();
-    ws = wb.active
+    ws = wb.active;
     ws.append(["id", "disciplina", "assunto", "frente", "verso", "acertos", "erros"])
-    for item in dados: ws.append(
-        [item["id"], item["disciplina"], item["assunto"], item["frente"], item["verso"], item["acertos"],
-         item["erros"]])
+    for i in dados: ws.append(
+        [i["id"], i["disciplina"], i["assunto"], i["frente"], i["verso"], i["acertos"], i["erros"]])
     wb.save(ARQ_FLASHCARDS)
 
 
-# --- METADADOS (Mantido) ---
 def verificar_metadados():
     garantir_diretorio()
     if not os.path.exists(ARQ_METADADOS):
-        wb = Workbook()
-        ws1 = wb.active;
-        ws1.title = "bancas";
-        ws1.append(["nome"])
-        for b in ["Cesgranrio", "Cebraspe", "FGV", "Vunesp", "FCC"]: ws1.append([b])
-        ws2 = wb.create_sheet("instituicoes");
-        ws2.append(["nome"])
-        for i in ["Petrobras", "Transpetro", "Banco do Brasil", "Caixa"]: ws2.append([i])
-        ws3 = wb.create_sheet("disciplinas");
-        ws3.append(["nome"])
-        for d in ["Português", "Matemática", "Raciocínio Lógico", "Informática",
-                  "Conhecimentos Específicos"]: ws3.append([d])
-        ws4 = wb.create_sheet("assuntos");
-        ws4.append(["nome", "disciplina", "ordem"])
-        ws4.append(["Crase", "Português", 1]);
-        ws4.append(["Pontuação", "Português", 2])
+        wb = Workbook();
+        [wb.create_sheet(n).append(["nome"]) for n in ["bancas", "instituicoes", "disciplinas"]]
+        wb.create_sheet("assuntos").append(["nome", "disciplina", "ordem"])
         wb.save(ARQ_METADADOS)
 
 
 def carregar_meta_dict():
-    verificar_metadados()
+    verificar_metadados();
     wb = load_workbook(ARQ_METADADOS)
     dados = {"bancas": [], "instituicoes": [], "disciplinas": [], "assuntos": []}
-    if "bancas" in wb.sheetnames:
-        for r in wb["bancas"].iter_rows(min_row=2, values_only=True):
-            if r[0]: dados["bancas"].append(str(r[0]))
-    if "instituicoes" in wb.sheetnames:
-        for r in wb["instituicoes"].iter_rows(min_row=2, values_only=True):
-            if r[0]: dados["instituicoes"].append(str(r[0]))
-    if "disciplinas" in wb.sheetnames:
-        for r in wb["disciplinas"].iter_rows(min_row=2, values_only=True):
-            if r[0]: dados["disciplinas"].append(str(r[0]))
-    if "assuntos" in wb.sheetnames:
-        for r in wb["assuntos"].iter_rows(min_row=2, values_only=True):
-            if r[0]: dados["assuntos"].append(
-                {"nome": str(r[0]), "disciplina": str(r[1]), "ordem": int(r[2]) if r[2] is not None else 999})
-    dados["bancas"].sort();
-    dados["instituicoes"].sort();
-    dados["disciplinas"].sort()
-    dados["assuntos"].sort(key=lambda x: (x["disciplina"], x["ordem"]))
+    for k in ["bancas", "instituicoes", "disciplinas"]:
+        if k in wb.sheetnames: [dados[k].append(str(r[0])) for r in wb[k].iter_rows(min_row=2, values_only=True) if
+                                r[0]]
+    if "assuntos" in wb.sheetnames: [
+        dados["assuntos"].append({"nome": str(r[0]), "disciplina": str(r[1]), "ordem": int(r[2]) if r[2] else 999}) for
+        r in wb["assuntos"].iter_rows(min_row=2, values_only=True) if r[0]]
+    for k in dados: dados[k].sort(key=lambda x: (x["disciplina"], x["ordem"]) if isinstance(x, dict) else x)
     return dados
+
+
+def salvar_meta_simples(cat, item):
+    wb = load_workbook(ARQ_METADADOS);
+    ws = wb[cat];
+    ws.append([item["nome"]]);
+    wb.save(ARQ_METADADOS)
 
 
 def gerenciar_assunto(acao, payload, nome_antigo=None):
     wb = load_workbook(ARQ_METADADOS);
     ws = wb["assuntos"]
-    todos = [{"nome": str(r[0]), "disciplina": str(r[1]), "ordem": int(r[2]) if r[2] is not None else 999} for r in
+    todos = [{"nome": str(r[0]), "disciplina": str(r[1]), "ordem": int(r[2]) if r[2] else 999} for r in
              ws.iter_rows(min_row=2, values_only=True) if r[0]]
-    if acao == 'editar' and nome_antigo: todos = [a for a in todos if a["nome"] != nome_antigo]
-    novo = payload;
-    raw_ord = novo.get("ordem")
-    if raw_ord is None or raw_ord == "":
-        ords = {a["ordem"] for a in todos if a["disciplina"] == novo["disciplina"]}
-        cand = 1;
-        while cand in ords: cand += 1
-        novo["ordem"] = cand
-    else:
-        novo["ordem"] = int(raw_ord)
-    todos.append(novo)
+    if acao == 'editar': todos = [a for a in todos if a["nome"] != nome_antigo]
+    todos.append(payload)
     wb.remove(wb["assuntos"]);
     ws_new = wb.create_sheet("assuntos");
     ws_new.append(["nome", "disciplina", "ordem"])
-    todos.sort(key=lambda x: (x["disciplina"], x["ordem"]))
-    for a in todos: ws_new.append([a["nome"], a["disciplina"], a["ordem"]])
-    wb.save(ARQ_METADADOS)
-
-
-def salvar_meta_simples(cat, item, ant=None):
-    wb = load_workbook(ARQ_METADADOS);
-    ws = wb[cat]
-    if ant:
-        for r in ws.iter_rows(min_row=2):
-            if r[0].value == ant: r[0].value = item["nome"]; break
-    else:
-        ws.append([item["nome"]])
+    todos.sort(key=lambda x: (x["disciplina"], x["ordem"]));
+    [ws_new.append([a["nome"], a["disciplina"], a["ordem"]]) for a in todos];
     wb.save(ARQ_METADADOS)
 
 
@@ -399,11 +316,8 @@ def deletar_meta_item(cat, nome):
 
 
 # --- ROTAS ---
-
-# Rota de Imagem
 @app.route('/img/q_img/<filename>')
-def serve_image(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
+def serve_image(filename): return send_from_directory(UPLOAD_FOLDER, filename)
 
 
 @app.route("/questoes", methods=["GET"])
@@ -412,154 +326,113 @@ def get_q(): return jsonify(carregar_questoes())
 
 @app.route("/questoes", methods=["POST"])
 def post_q():
-    nova = {}
-    arquivo = None
-    if request.content_type.startswith('multipart/form-data'):
-        nova = request.form.to_dict()
-        if 'imagem_file' in request.files:
-            arquivo = request.files['imagem_file']
+    nova = {};
+    arq = None
+    if request.content_type.startswith('multipart'):
+        nova = request.form.to_dict(); arq = request.files.get('imagem_file')
     else:
         nova = request.json
-
     dados = carregar_questoes()
 
-    # Processa Imagem
-    nome_img = ""
-    if arquivo and arquivo.filename != '':
-        ext = arquivo.filename.rsplit('.', 1)[1].lower()
-        nome_img = f"{uuid.uuid4()}.{ext}"
-        arquivo.save(os.path.join(UPLOAD_FOLDER, nome_img))
+    if arq and arq.filename:
+        ext = arq.filename.rsplit('.', 1)[1].lower();
+        nome = f"{uuid.uuid4()}.{ext}"
+        arq.save(os.path.join(UPLOAD_FOLDER, nome));
+        nova["imagem"] = nome
+    else:
+        nova["imagem"] = ""
 
-    nova["imagem"] = nome_img
-
-    # Validação
-    ne = normalizar_para_comparacao(nova.get("enunciado"))
-    na = normalizar_para_comparacao(nova.get("alt_a"))
-    if any(normalizar_para_comparacao(q["enunciado"]) == ne and normalizar_para_comparacao(q["alt_a"]) == na for q in
-           dados):
-        return jsonify({"erro": "Duplicada"}), 409
+    sig = gerar_assinatura(nova)
+    if any(gerar_assinatura(q) == sig for q in dados): return jsonify({"erro": "Duplicada"}), 409
 
     if not nova.get("id"):
         ids = sorted([int(q["id"]) for q in dados if str(q["id"]).isdigit()])
         nova["id"] = 1 if not ids else (ids[-1] + 1)
 
-    nova.update({"respondidas": 0, "acertos": 0})
-    dados.append(nova)
+    nova.update({"respondidas": 0, "acertos": 0});
+    dados.append(nova);
     salvar_questoes(dados)
     return jsonify({"mensagem": "Salvo", "id": nova["id"]}), 201
 
 
 @app.route("/questoes", methods=["PUT"])
 def put_q():
-    load = {}
-    arquivo = None
-    if request.content_type and request.content_type.startswith('multipart/form-data'):
-        load = request.form.to_dict()
-        if 'imagem_file' in request.files:
-            arquivo = request.files['imagem_file']
+    load = {};
+    arq = None
+    if request.content_type and request.content_type.startswith('multipart'):
+        load = request.form.to_dict(); arq = request.files.get('imagem_file')
     else:
-        load = request.json
-        if isinstance(load, list):
-            salvar_questoes(load)
-            return jsonify({"status": "ok"})
+        load = request.json;
+    if isinstance(load, list): salvar_questoes(load); return jsonify({"status": "ok"})
 
     dados = carregar_questoes()
     for i, q in enumerate(dados):
         if str(q["id"]) == str(load["id"]):
-            img_antiga = q.get("imagem", "")
+            img_antiga = q.get("imagem", "");
             q.update(load)
-
-            if arquivo and arquivo.filename != '':
-                ext = arquivo.filename.rsplit('.', 1)[1].lower()
-                nome_img = f"{uuid.uuid4()}.{ext}"
-                arquivo.save(os.path.join(UPLOAD_FOLDER, nome_img))
-                q["imagem"] = nome_img
-            else:
-                if not load.get("imagem"):
-                    q["imagem"] = img_antiga
-
-            dados[i] = q
-            salvar_questoes(dados)
+            if arq and arq.filename:
+                ext = arq.filename.rsplit('.', 1)[1].lower();
+                nome = f"{uuid.uuid4()}.{ext}"
+                arq.save(os.path.join(UPLOAD_FOLDER, nome));
+                q["imagem"] = nome
+            elif not load.get("imagem"):
+                q["imagem"] = img_antiga
+            dados[i] = q;
+            salvar_questoes(dados);
             return jsonify({"status": "Atualizado"})
     return jsonify({"erro": "404"}), 404
 
 
 @app.route("/check-duplicidade", methods=["POST"])
-def check_duplicidade():
-    payload = request.json
-    enunciado = normalizar_para_comparacao(payload.get("enunciado"))
-    alt_a = normalizar_para_comparacao(payload.get("alt_a"))
-    if not enunciado: return jsonify({"existe": False})
-    questoes_banco = carregar_questoes()
-    for q in questoes_banco:
-        if normalizar_para_comparacao(q['enunciado']) == enunciado and normalizar_para_comparacao(q['alt_a']) == alt_a:
-            return jsonify({"existe": True})
-    return jsonify({"existe": False})
+def check_dup():
+    payload = request.json;
+    sig = gerar_assinatura(payload)
+    if not payload.get("enunciado"): return jsonify({"existe": False})
+    dados = carregar_questoes()
+    return jsonify({"existe": any(gerar_assinatura(q) == sig for q in dados)})
 
 
 @app.route("/questoes/<string:id>", methods=["DELETE"])
-def del_q(id):
-    dados = [q for q in carregar_questoes() if str(q["id"]) != str(id)]
-    salvar_questoes(dados);
-    return jsonify({"status": "Removido"})
+def del_q(id): dados = [q for q in carregar_questoes() if str(q["id"]) != str(id)]; salvar_questoes(
+    dados); return jsonify({"status": "Removido"})
 
 
-@app.route("/flashcards", methods=["GET"])
-def get_fc(): return jsonify(carregar_flashcards())
-
-
-@app.route("/flashcards", methods=["POST"])
-def post_fc():
-    nova = request.json;
-    dados = carregar_flashcards()
-    if not nova.get("id"):
-        ids = sorted([int(f["id"]) for f in dados if str(f["id"]).isdigit()])
-        nova["id"] = 1 if not ids else (ids[-1] + 1)
-    nova.update({"acertos": 0, "erros": 0});
-    dados.append(nova);
-    salvar_flashcards_dados(dados)
-    return jsonify({"mensagem": "Salvo", "id": nova["id"]}), 201
-
-
-@app.route("/flashcards", methods=["PUT"])
-def put_fc():
-    load = request.json;
-    dados = carregar_flashcards()
-    for i, f in enumerate(dados):
-        if str(f["id"]) == str(load["id"]):
-            dados[i] = load;
-            salvar_flashcards_dados(dados);
-            return jsonify({"status": "Atualizado"})
+@app.route("/flashcards", methods=["GET", "POST", "PUT"])
+def handle_fc():
+    if request.method == "GET": return jsonify(carregar_flashcards())
+    dados = carregar_flashcards();
+    load = request.json
+    if request.method == "POST":
+        if not load.get("id"): ids = sorted([int(f["id"]) for f in dados if str(f["id"]).isdigit()]); load[
+            "id"] = 1 if not ids else (ids[-1] + 1)
+        load.update({"acertos": 0, "erros": 0});
+        dados.append(load);
+        salvar_flashcards_dados(dados);
+        return jsonify({"mensagem": "Salvo", "id": load["id"]}), 201
+    if request.method == "PUT":
+        for i, f in enumerate(dados):
+            if str(f["id"]) == str(load["id"]): dados[i] = load; salvar_flashcards_dados(dados); return jsonify(
+                {"status": "Ok"})
     return jsonify({"erro": "404"}), 404
 
 
 @app.route("/flashcards/<string:id>", methods=["DELETE"])
-def del_fc(id):
-    dados = [f for f in carregar_flashcards() if str(f["id"]) != str(id)]
-    salvar_flashcards_dados(dados);
-    return jsonify({"status": "Removido"})
+def del_fc(id): dados = [f for f in carregar_flashcards() if str(f["id"]) != str(id)]; salvar_flashcards_dados(
+    dados); return jsonify({"status": "Ok"})
 
 
 @app.route("/upload-pdf", methods=["POST"])
 def upload_pdf():
-    if 'file' not in request.files: return jsonify({"erro": "Sem arquivo"}), 400
-    f = request.files['file']
-    p = os.path.join(BASE_DIR, "temp.pdf")
+    f = request.files.get('file');
+    if not f: return jsonify({"erro": "Sem arquivo"}), 400
+    p = os.path.join(BASE_DIR, "temp.pdf");
     f.save(p)
     try:
-        novas_questoes = parsear_questoes(extrair_texto_pdf(p))
-        questoes_banco = carregar_questoes()
-        assinaturas_banco = set()
-        for q in questoes_banco:
-            sig = (normalizar_para_comparacao(q['enunciado']), normalizar_para_comparacao(q['alt_a']))
-            assinaturas_banco.add(sig)
-        for nova in novas_questoes:
-            sig_nova = (normalizar_para_comparacao(nova['enunciado']), normalizar_para_comparacao(nova['alt_a']))
-            if sig_nova in assinaturas_banco:
-                nova['ja_cadastrada'] = True
-            else:
-                nova['ja_cadastrada'] = False
-        return jsonify(novas_questoes)
+        novas = parsear_questoes(extrair_texto_pdf(p));
+        banco = carregar_questoes()
+        sigs = {gerar_assinatura(q) for q in banco}
+        for n in novas: n['ja_cadastrada'] = gerar_assinatura(n) in sigs
+        return jsonify(novas)
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
     finally:
@@ -570,31 +443,22 @@ def upload_pdf():
 def get_meta(): return jsonify(carregar_meta_dict())
 
 
-@app.route("/metadados/<string:cat>", methods=["POST"])
-def add_meta(cat):
-    item = request.json
-    if cat == "assuntos":
-        gerenciar_assunto('criar', item)
-    else:
-        salvar_meta_simples(cat, item)
+@app.route("/metadados/<string:cat>", methods=["POST", "PUT", "DELETE"])
+def handle_meta(cat):
+    if request.method == "DELETE": return jsonify({"status": "ok"}) if deletar_meta_item(cat, request.args.get(
+        "nome")) else (jsonify({"erro": "404"}), 404)
+    data = request.json
+    if request.method == "POST":
+        if cat == "assuntos":
+            gerenciar_assunto('criar', data)
+        else:
+            salvar_meta_simples(cat, data)
+    if request.method == "PUT":
+        if cat == "assuntos":
+            gerenciar_assunto('editar', data["novo"], data["antigo"])
+        else:
+            salvar_meta_simples(cat, data["novo"])
     return jsonify({"status": "ok"})
 
 
-@app.route("/metadados/<string:cat>", methods=["PUT"])
-def edit_meta(cat):
-    d = request.json
-    if cat == "assuntos":
-        gerenciar_assunto('editar', d["novo"], d["antigo"])
-    else:
-        salvar_meta_simples(cat, d["novo"], d["antigo"])
-    return jsonify({"status": "ok"})
-
-
-@app.route("/metadados/<string:cat>", methods=["DELETE"])
-def del_meta(cat):
-    if deletar_meta_item(cat, request.args.get("nome")): return jsonify({"status": "ok"})
-    return jsonify({"erro": "404"}), 404
-
-
-if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+if __name__ == "__main__": app.run(debug=True, port=5000)
