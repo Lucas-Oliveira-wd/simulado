@@ -16,6 +16,10 @@ ARQ_FLASHCARDS = os.path.join(DB_DIR, "flashcards.xlsx")
 
 # --- MAPA DE CORREÇÃO DE TÓPICOS ---
 CORRECAO_ASSUNTOS = {
+    "MPREGO OS EMPOS ODOS": "Emprego de Tempos e Modos",
+    "ODO NDICATIVO": "Modo Indicativo",
+    "ERBOS TRAIÇOEIROS": "Verbos Traiçoeiros",
+    "MPREGO OS EMPOS E ODOS": "Emprego de Tempos e Modos",
     "UBSTANTIVO": "Substantivo", "DJETIVO": "Adjetivo", "DVÉRBIO": "Advérbio",
     "RTIGO": "Artigo", "NTERJEIÇÃO": "Interjeição", "UMERAL": "Numeral",
     "RONOME": "Pronome", "ERBO": "Verbo", "ONJUNÇÃO": "Conjunção",
@@ -40,60 +44,45 @@ def normalizar_para_comparacao(texto):
     return re.sub(r'[\W_]+', '', texto_sem_tags).lower()
 
 
-# --- NOVO: FUNÇÃO INTELIGENTE DE REFLOW DE TEXTO ---
 def sanitizar_texto(texto):
-    """
-    Transforma quebras de linha visuais em espaços, mas preserva parágrafos reais.
-    Resolve o problema 'detecnólogo' e mantém a estrutura do texto.
-    """
     if not texto: return ""
-
-    # 1. Remove hifenização de quebra de linha (ex: "tec-\nnologia" -> "tecnologia")
-    # Regex: Hifen seguido de quebra de linha e espaços, seguido de letra minúscula
-    texto = re.sub(r'-\s*\n\s*(?=[a-zà-ú])', '', texto)
-
-    # Separa em linhas para análise linha a linha
+    # Corrige hifenização
+    texto = re.sub(r'-\s*\n\s*', '', texto)
+    # Lógica de Parágrafos
     linhas = [l.strip() for l in texto.split('\n') if l.strip()]
     if not linhas: return ""
-
     resultado = []
     for i in range(len(linhas)):
         atual = linhas[i]
-
         if i < len(linhas) - 1:
             proxima = linhas[i + 1]
-
-            # LÓGICA DE PARÁGRAFO vs ESPAÇO:
-            # É parágrafo se:
-            # 1. Atual termina com pontuação forte (. ? ! :)
-            # 2. Próxima começa com Maiúscula, aspas ou parênteses
-            # 3. OU Próxima parece ser um item de lista (I -, 1., a))
-
             pontuacao_final = re.search(r'[.:?!;]$', atual)
-            comeca_maiuscula = re.match(r'^[A-Z"\'\(]', proxima)
-            is_topico = re.match(r'^(?:[Ikvx]+|\d+|[a-e])[\.\)\-]', proxima, re.I)
-
-            if (pontuacao_final and comeca_maiuscula) or is_topico:
-                # Mantém a quebra de linha (Novo Parágrafo)
+            comeca_novo_bloco = re.match(r'^(?:[A-Z"\'\(]|\d+\.|[a-e]\))', proxima)
+            if pontuacao_final and comeca_novo_bloco:
                 resultado.append(atual + "\n")
             else:
-                # Junta as linhas com um ESPAÇO (Fluxo de texto)
                 resultado.append(atual + " ")
         else:
-            # Última linha
             resultado.append(atual)
-
     return "".join(resultado)
 
 
-# --- LÓGICA PDF ---
+# --- LÓGICA DE EXTRAÇÃO ---
 def limpar_ruido(texto):
-    texto = re.sub(r'\n\s*\d+(\s*de\s*\d+)?\s*\n', '\n', texto)
-    texto = re.sub(r'\n\s*\d{11}\s*-\s*Ricardo Aciole.*?\n', '\n', texto, flags=re.IGNORECASE)
-    padroes = [r"PETROBRAS \(Nível Superior\) Português", r"www\.estrategiaconcursos\.com\.br",
-               r"Equipe Português Estratégia Concursos", r"Aula \d+"]
-    for p in padroes: texto = re.sub(fr'\n\s*{p}.*?\n', '\n', texto, flags=re.IGNORECASE)
-    return texto
+    patterns_to_remove = [
+        r"PETROBRAS \(Nível Superior\) Português\s*\d*",
+        r"www\.estrategiaconcursos\.com\.br\s*\d*",
+        r"\d{11}\s*-\s*Ricardo Aciole",
+        r"Equipe Português Estratégia Concursos, Felipe Luccas",
+        r"Aula \d+",
+        r"==\w+==",
+        r"^\s*\d+\s*$"
+    ]
+    cleaned_text = texto
+    for pattern in patterns_to_remove:
+        cleaned_text = re.sub(pattern, "", cleaned_text, flags=re.MULTILINE | re.IGNORECASE)
+    cleaned_text = re.sub(r'\n{3,}', '\n\n', cleaned_text)
+    return cleaned_text
 
 
 def parsear_questoes(texto_bruto):
@@ -101,107 +90,103 @@ def parsear_questoes(texto_bruto):
     questoes = []
     mapa_assuntos = []
 
-    # Mapeamento de Assuntos
-    regex_normal = re.compile(r'(?:QUESTÕES|LISTA DE).*?[-–—]\s*([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s]+?)\s*[-–—]\s*CESGRANRIO',
-                              re.IGNORECASE | re.DOTALL)
-    for match in regex_normal.finditer(texto):
-        assunto = match.group(1).replace('\n', ' ').strip().title()
-        if len(assunto) > 3: mapa_assuntos.append({"inicio": match.start(), "assunto": assunto})
-
-    regex_quebrado = re.compile(
-        r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES)\s+([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s]+?)\s+(?:C\s*)?ESGRANRIO',
-        re.IGNORECASE | re.DOTALL)
-    for match in regex_quebrado.finditer(texto):
-        trecho_assunto = match.group(1).replace('\n', ' ').strip()
-        assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto) or CORRECAO_ASSUNTOS.get(
-            trecho_assunto.replace(" ", ""))
-        if assunto_corrigido: mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_corrigido})
-
+    # 1. CAPTURA DE ASSUNTOS
+    regex_topicos = re.compile(
+        r'(?:UESTÕES\s+OMENTADAS|ISTA\s+E\s+UESTÕES).*?([A-ZÃÕÁÉÍÓÚÇÂÊÔÀ\s\-]+?)\s*(?:C\s*)?ESGRANRIO',
+        re.IGNORECASE | re.DOTALL
+    )
+    for match in regex_topicos.finditer(texto):
+        trecho_assunto = match.group(1).replace('\n', ' ').replace('-', '').strip()
+        assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto)
+        if not assunto_corrigido:
+            assunto_corrigido = CORRECAO_ASSUNTOS.get(trecho_assunto.replace("  ", " "))
+        if not assunto_corrigido and len(trecho_assunto) > 3:
+            assunto_corrigido = trecho_assunto.title()
+        if assunto_corrigido:
+            mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_corrigido})
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    # Scanner de Questões
-    regex_quest = re.compile(r'(?:^|\n)\s*(\d+)\.\s*\(?(.*?)\)\s*(.*?)(?=\n\s*\d+\.\s*\(|$)', re.DOTALL)
+    # 2. CAPTURA DE QUESTÕES
+    question_split_pattern = r"(\d+)\.\s*\((CESGRANRIO.*?)\)"
+    parts = re.split(question_split_pattern, texto)
 
-    for match in regex_quest.finditer(texto):
-        pos_inicio = match.start();
-        pos_fim = match.end()
-        numero = match.group(1);
-        cabecalho_cru = match.group(2);
-        conteudo_bruto = match.group(3)
+    if len(parts) > 1:
+        current_pos_tracker = len(parts[0])
 
-        if 'CESGRANRIO' not in cabecalho_cru.upper() and '/' not in cabecalho_cru: continue
+        for i in range(1, len(parts), 3):
+            if (i + 2) >= len(parts): break
 
-        assunto_atual = "Geral"
-        if mapa_assuntos:
-            anteriores = [m for m in mapa_assuntos if m["inicio"] < pos_inicio]
-            if anteriores: assunto_atual = anteriores[-1]["assunto"]
+            q_numero = parts[i].strip()
+            q_meta = parts[i + 1].strip()
+            q_conteudo_bruto = parts[i + 2]
 
-        clean_header = cabecalho_cru.replace('(', '').replace(')', '')
-        partes = [p.strip() for p in clean_header.split('/')]
-        banca = partes[0].split('-')[0].strip() or "CESGRANRIO"
-        instituicao = ""
-        ano = "2025"
-        for p in partes:
-            if re.search(r'\b20\d{2}\b', p):
-                ano = re.search(r'20\d{2}', p).group(0)
-            elif p != partes[0] and not instituicao and len(p) > 2:
-                instituicao = p
+            current_pos_tracker += len(q_numero) + len(q_meta) + len(q_conteudo_bruto)
 
-        # Gabarito
-        gabarito = ""
-        regex_padrao_lista = fr'(?:^|\s){numero}\.\s*(?:LETRA|Gabarito)?\s*([A-E])'
-        regex_discursiva = r'(?:Gabarito|gabarito)\s*(?:é|foi|será|correto\s+é)?\s*(?::|a)?\s*(?:Letra|letra|opção|alternativa)?\s*([A-E])(?=[\.\s]|$)'
+            # Assunto
+            assunto_atual = "Geral"
+            if mapa_assuntos:
+                anteriores = [m for m in mapa_assuntos if m["inicio"] < current_pos_tracker]
+                if anteriores: assunto_atual = anteriores[-1]["assunto"]
 
-        match_gab_comentado = re.search(regex_discursiva, conteudo_bruto, re.IGNORECASE)
-        if match_gab_comentado:
-            gabarito = match_gab_comentado.group(1).upper()
-        else:
-            match_interno = re.search(regex_padrao_lista, conteudo_bruto, re.IGNORECASE)
-            if match_interno:
-                gabarito = match_interno.group(1).upper()
-            else:
-                texto_futuro = texto[pos_fim:]
-                match_gl = re.search(regex_padrao_lista, texto_futuro, re.IGNORECASE)
-                if match_gl: gabarito = match_gl.group(1).upper()
+            # Metadados
+            banca = "CESGRANRIO"
+            ano = "2025"
+            instituicao = ""
+            ano_match = re.search(r'\b20\d{2}\b', q_meta)
+            if ano_match: ano = ano_match.group(0)
+            meta_clean = q_meta.replace(banca, "").replace(ano, "").replace("-", "").strip()
+            instituicao = meta_clean.strip(" /")
 
-        # Limpeza e Separação
-        padrao_corte = r'(?:\n\s*Comentári(?:o|os)|(?:\.|(?<=[a-z]))\s*Comentári(?:o|os)|\n\s*Gabarito\s+[A-Z]|\n\s*G\s*A\s*B\s*A\s*R\s*I\s*T\s*O)'
-        conteudo_limpo = re.split(padrao_corte, conteudo_bruto, flags=re.IGNORECASE)[0]
-        conteudo_limpo = re.split(r'\n\s*(?:L\s*I\s*S\s*T\s*A\s*D\s*E)', conteudo_limpo, flags=re.IGNORECASE)[0]
+            # --- CAPTURA DE GABARITO APRIMORADA ---
+            # Procura por "Gabarito" seguido de qualquer coisa (até 30 chars) e depois uma Letra isolada ou fim de frase
+            # Ex: "Gabarito letra C.", "Gabarito: C", "Gabarito C"
+            gabarito = ""
+            # Regex explicada:
+            # 1. (?:Gabarito|GABARITO) -> Encontra a palavra chave
+            # 2. (?:.{0,30}?) -> Aceita até 30 caracteres de "sujeira" (ex: ": ", " letra ", " a resposta correta é ")
+            # 3. (?:[Ll]etra|[Oo]pção|[Aa]lternativa)? -> Opcionalmente a palavra letra/opção
+            # 4. \s*([A-E]) -> Espaços e a letra de A a E
+            # 5. (?=[\.\s]|$|$) -> Lookahead para garantir que terminou em ponto, espaço ou fim do texto
+            gabarito_pattern = r'(?:Gabarito|GABARITO)(?:.{0,30}?)(?:[Ll]etra|[Oo]pção|[Aa]lternativa)?\s*([A-E])(?=[\.\s]|$)'
 
-        partes_alt = re.split(r'(?:^|\s+)([a-eA-E])\)\s+', conteudo_limpo)
+            # Buscamos em TODO o conteúdo bruto, pois o gabarito costuma estar no final
+            matches_gab = list(re.finditer(gabarito_pattern, q_conteudo_bruto, re.IGNORECASE))
+            if matches_gab:
+                # Pega o último match encontrado no bloco, pois geralmente é a conclusão do comentário
+                gabarito = matches_gab[-1].group(1).upper()
 
-        # AQUI APLICA A SANITIZAÇÃO (CORREÇÃO DE TEXTO)
-        enunciado_raw = partes_alt[0].strip()
-        enunciado = sanitizar_texto(enunciado_raw)  # <--- Aplica no enunciado
+            # Separação de Conteúdo (Remove comentários para não pegar texto de explicação como alternativa)
+            content_no_comments = \
+            re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
+            content_no_comments = \
+            re.split(r'\n\s*(?:L\s*I\s*S\s*T\s*A|GABARITO)', content_no_comments, flags=re.IGNORECASE)[0]
 
-        alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
+            parts_alt = re.split(r'\b([A-E])\)', content_no_comments)
+            enunciado = sanitizar_texto(parts_alt[0].strip())
 
-        if len(partes_alt) > 1:
-            for k in range(1, len(partes_alt), 2):
-                letra = partes_alt[k].upper()
-                if k + 1 < len(partes_alt):
-                    txt_raw = partes_alt[k + 1].strip()
-                    txt_raw = re.sub(r'(?:Gabarito|Comentári(?:o|os)).*$', '', txt_raw,
-                                     flags=re.IGNORECASE).strip().rstrip('.;-')
+            alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
+            if len(parts_alt) > 1:
+                for k in range(1, len(parts_alt), 2):
+                    letra = parts_alt[k].upper()
+                    if k + 1 < len(parts_alt):
+                        alts[letra] = sanitizar_texto(parts_alt[k + 1].strip().rstrip('.;'))
 
-                    # Aplica sanitização em cada alternativa
-                    alts[letra] = sanitizar_texto(txt_raw)
+            if enunciado and (alts["A"] or alts["B"]):
+                questoes.append({
+                    "temp_id": q_numero, "banca": banca, "instituicao": instituicao, "ano": ano,
+                    "assunto": assunto_atual, "enunciado": enunciado,
+                    "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
+                    "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME"
+                })
 
-        if enunciado and (alts["A"] or alts["B"]):
-            questoes.append({
-                "temp_id": numero, "banca": banca, "instituicao": instituicao, "ano": ano,
-                "assunto": assunto_atual, "enunciado": enunciado,
-                "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
-                "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME"
-            })
     return questoes
 
 
 def extrair_texto_pdf(caminho_arquivo):
     texto = ""
     with pdfplumber.open(caminho_arquivo) as pdf:
-        for page in pdf.pages: texto += (page.extract_text() or "") + "\n"
+        for page in pdf.pages:
+            texto += (page.extract_text() or "") + "\n"
     return texto
 
 
@@ -209,7 +194,7 @@ def extrair_texto_pdf(caminho_arquivo):
 def verificar_questoes():
     garantir_diretorio()
     if not os.path.exists(ARQ_QUESTOES):
-        wb = Workbook();
+        wb = Workbook()
         ws = wb.active;
         ws.title = "questoes"
         ws.append(
@@ -221,12 +206,12 @@ def verificar_questoes():
 def carregar_questoes():
     verificar_questoes()
     wb = load_workbook(ARQ_QUESTOES);
-    ws = wb.active;
+    ws = wb.active
     dados = []
     for row in ws.iter_rows(min_row=2, values_only=True):
         if row[0] is None: continue
         dados.append({
-            "id": row[0], "banca": row[1] or "", "instituicao": row[2] or "", "ano": row[3] or "",
+            "id": row[0], "banca": row[1], "instituicao": row[2], "ano": row[3],
             "enunciado": row[4], "disciplina": row[5], "assunto": row[6],
             "dificuldade": row[7], "tipo": row[8],
             "alt_a": row[9], "alt_b": row[10], "alt_c": row[11], "alt_d": row[12], "alt_e": row[13],
@@ -249,7 +234,7 @@ def salvar_questoes(dados):
     wb.save(ARQ_QUESTOES)
 
 
-# --- CRUD FLASHCARDS (Mantido conforme solicitado) ---
+# --- CRUD FLASHCARDS ---
 def verificar_flashcards():
     garantir_diretorio()
     if not os.path.exists(ARQ_FLASHCARDS):
@@ -263,7 +248,7 @@ def verificar_flashcards():
 def carregar_flashcards():
     verificar_flashcards()
     wb = load_workbook(ARQ_FLASHCARDS);
-    ws = wb.active;
+    ws = wb.active
     dados = []
     for row in ws.iter_rows(min_row=2, values_only=True):
         if row[0] is None: continue
@@ -286,7 +271,7 @@ def salvar_flashcards_dados(dados):
 def verificar_metadados():
     garantir_diretorio()
     if not os.path.exists(ARQ_METADADOS):
-        wb = Workbook();
+        wb = Workbook()
         ws1 = wb.active;
         ws1.title = "bancas";
         ws1.append(["nome"])

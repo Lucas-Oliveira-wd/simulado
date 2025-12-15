@@ -110,6 +110,12 @@
     .spinner { border: 8px solid #f3f3f3; border-top: 8px solid var(--sec); border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin-bottom: 15px; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     #loader-msg { font-size: 1.2rem; color: var(--primary); font-weight: 600; }
+
+    /* --- DRAG AND DROP --- */
+    #area-drop { transition: all 0.3s ease; border: 2px solid transparent; }
+    #area-drop.drag-over { background-color: #e8f6f3 !important; border: 2px dashed #27ae60 !important; transform: scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    #msg-drop { pointer-events: none; font-weight: bold; color: #27ae60; display: none; }
+    #area-drop.drag-over #msg-drop { display: block; }
   </style>
 </head>
 <body>
@@ -161,26 +167,35 @@
   </form>
 </div></section>
 
-<section id="secao-importar" class="secao"><div class="container">
-    <h2>Importar de PDF</h2>
-    <div class="filtro-grid" style="background:#f9f9f9; padding:15px; border-radius:6px; margin-bottom:20px;">
-        <div style="grid-column: span 2; display: flex; gap: 10px;">
-            <input type="file" id="imp-file" accept="application/pdf" style="background:#fff">
-            <button class="btn-acao" onclick="lerPDF()" style="margin:5px 0; width:150px; background:#27ae60">Ler PDF</button>
+<section id="secao-importar" class="secao">
+    <div class="container">
+        <h2>Importar de PDF</h2>
+        
+        <div id="area-drop" class="filtro-grid" style="background:#f9f9f9; padding:25px; border-radius:6px; margin-bottom:20px; position:relative;">
+            
+            <div id="msg-drop" style="position:absolute; top:-15px; left:50%; transform:translateX(-50%); background:#27ae60; color:white; padding:2px 10px; border-radius:4px; font-size:0.8rem;">
+                Solte o arquivo aqui!
+            </div>
+
+            <div style="grid-column: span 2; display: flex; gap: 10px; align-items: center;">
+                <input type="file" id="imp-file" accept="application/pdf" style="background:#fff; width:100%">
+                <button class="btn-acao" onclick="lerPDF()" style="margin:5px 0; width:150px; background:#27ae60">Ler PDF</button>
+            </div>
+            <select id="imp-disciplina" onchange="carregarAssuntos('imp')"></select>
+            <select id="imp-assunto"><option value="">Assunto Global...</option></select>
         </div>
-        <select id="imp-disciplina" onchange="carregarAssuntos('imp')"></select>
-        <select id="imp-assunto"><option value="">Assunto Global...</option></select>
-    </div>
-    <div id="imp-preview-container" style="display:none">
-        <h3 id="imp-titulo-preview">Prévia</h3>
-        <button class="btn-acao" onclick="salvarLote()" style="margin-bottom:15px;">💾 Salvar Todas no Banco</button>
-        <div class="preview-header">
-            <div style="width:40px">#</div><div style="width:150px; margin-right:10px">Banca/Ano</div>
-            <div style="flex-grow:1">Enunciado / Alternativas (Editável)</div><div style="width:60px; text-align:center">Gab</div><div style="width:30px">Del</div>
+
+        <div id="imp-preview-container" style="display:none">
+            <h3 id="imp-titulo-preview">Prévia</h3>
+            <button class="btn-acao" onclick="salvarLote()" style="margin-bottom:15px;">💾 Salvar Todas no Banco</button>
+            <div class="preview-header">
+                <div style="width:40px">#</div><div style="width:150px; margin-right:10px">Banca/Ano</div>
+                <div style="flex-grow:1">Enunciado / Alternativas (Editável)</div><div style="width:60px; text-align:center">Gab</div><div style="width:30px">Del</div>
+            </div>
+            <div id="imp-lista-questoes" style="background:#f4f4f9; padding:10px; max-height:600px; overflow-y:auto; border:1px solid #ccc"></div>
         </div>
-        <div id="imp-lista-questoes" style="background:#f4f4f9; padding:10px; max-height:600px; overflow-y:auto; border:1px solid #ccc"></div>
     </div>
-</div></section>
+</section>
 
 <section id="secao-banco" class="secao"><div class="container">
   <div class="flex"><h2>Banco de Questões</h2><span id="total-db" style="color:#777"></span></div>
@@ -442,10 +457,19 @@ function carregarAssuntos(prefixo) {
 
 // --- IMPORTAÇÃO PDF ---
 async function lerPDF() {
+    // --- TRAVA DE SEGURANÇA INTELIGENTE ---
+    let lista = el("imp-lista-questoes");
+    if (lista && lista.children.length > 0) {
+        if(!confirm("⚠️ ATENÇÃO: Você já tem questões importadas na lista.\n\nLer um novo PDF irá substituir tudo o que está na tela de prévia.\nDeseja continuar?")) {
+            return; 
+        }
+    }
+    // ---------------------------------------
+
     let inp = el("imp-file"); if(inp.files.length === 0) return alert("Selecione um arquivo PDF");
     let fd = new FormData(); fd.append("file", inp.files[0]);
     el("imp-preview-container").style.display = "none"; el("imp-lista-questoes").innerHTML = "";
-    showLoader("Lendo e Processando PDF...");
+    showLoader("Lendo, Sanitizando e Processando PDF...");
     try {
         let r = await fetch(`${API}/upload-pdf`, { method:"POST", body:fd }); if(!r.ok) throw new Error();
         let questoes = await r.json(); renderPreview(questoes);
@@ -520,7 +544,6 @@ function fixHeader() {
   if (window.scrollY > headerOffset) { header.classList.add("sticky"); document.body.classList.add("header-espaco"); } 
   else { header.classList.remove("sticky"); document.body.classList.remove("header-espaco"); }
 }
-window.onload=()=>{ init(); headerOffset = el('secao-cadastro').offsetTop; };
 
 // --- FLASHCARDS LOGIC ---
 function initFC() { toggleModeFC('estudo'); }
@@ -838,6 +861,47 @@ function graf() {
     for(let k in stats){ if(stats[k].r>0){ l.push(k); let p=(stats[k].a/stats[k].r)*100; d.push(p.toFixed(1)); c.push(p>=50?'#27ae60':'#e74c3c'); } }
     window.myChart=new Chart(ctx,{type:'bar',data:{labels:l,datasets:[{label:'%',data:d,backgroundColor:c}]},options:{scales:{y:{beginAtZero:true,max:100}}}});
 }
+
+// --- DRAG AND DROP LOGIC ---
+function setupDragDrop() {
+    const dropZone = el("area-drop");
+    const fileInput = el("imp-file");
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+    });
+
+    dropZone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        let dt = e.dataTransfer;
+        let files = dt.files;
+
+        if (files.length > 0) {
+            fileInput.files = files;
+        }
+    }
+}
+
+// Inicialização
+window.onload = () => { 
+    init(); 
+    headerOffset = el('secao-cadastro').offsetTop;
+    setupDragDrop();
+};
 </script>
 </body>
 </html>
