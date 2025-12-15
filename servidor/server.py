@@ -299,33 +299,50 @@ def extrair_opcoes_do_banco():
     assuntos_map = {}  # { "Portugues": ["Crase", "Sintaxe"], ... }
 
     for q in questoes:
-        if q['banca']: bancas.add(str(q['banca']).strip())
-        if q['instituicao']: instituicoes.add(str(q['instituicao']).strip())
-        disc = str(q['disciplina']).strip()
-        assunto = str(q['assunto']).strip()
+        # BANCA: Normaliza para MAIÚSCULAS para evitar duplicatas (ex: Cesgranrio e CESGRANRIO viram CESGRANRIO)
+        if q['banca']:
+            banca_norm = str(q['banca']).strip().upper()
+            bancas.add(banca_norm)
 
-        if disc:
-            disciplinas.add(disc)
-            if disc not in assuntos_map: assuntos_map[disc] = set()
-            if assunto: assuntos_map[disc].add(assunto)
+        # INSTITUIÇÃO: Normaliza para MAIÚSCULAS
+        if q['instituicao']:
+            inst_norm = str(q['instituicao']).strip().upper()
+            instituicoes.add(inst_norm)
+
+        # DISCIPLINA: Normaliza para Title Case (Primeira Letra Maiúscula) para padronizar a lista
+        disc_raw = str(q['disciplina']).strip()
+        disc_norm = disc_raw.title() if disc_raw else ""
+
+        assunto_raw = str(q['assunto']).strip()
+
+        if disc_norm:
+            disciplinas.add(disc_norm)
+
+            if disc_norm not in assuntos_map:
+                assuntos_map[disc_norm] = set()
+
+            # ASSUNTO: Mantido ORIGINAL (Case Sensitive) conforme solicitado
+            # Apenas removemos espaços extras com strip()
+            if assunto_raw:
+                assuntos_map[disc_norm].add(assunto_raw)
 
     # Converter sets para listas ordenadas
     assuntos_final = []
     for disc, lista_assuntos in assuntos_map.items():
-        for a in lista_assuntos:
+        # Ordena os assuntos alfabeticamente, mas mantém a caixa original
+        for a in sorted(list(lista_assuntos), key=str.lower):
             assuntos_final.append({'nome': a, 'disciplina': disc})
 
-    # Adicionar opção "Geral" para disciplinas que não tem assuntos ainda, ou se DB vazio
+    # Adicionar opções padrão caso a lista esteja vazia
     if not disciplinas: disciplinas.add("Geral")
-    if not bancas: bancas.add("Banca Padrão")
+    if not bancas: bancas.add("BANCA PADRÃO")
 
     return {
         "bancas": sorted(list(bancas)),
         "instituicoes": sorted(list(instituicoes)),
         "disciplinas": sorted(list(disciplinas)),
-        "assuntos": sorted(assuntos_final, key=lambda x: (x['disciplina'], x['nome']))
+        "assuntos": assuntos_final  # Já ordenado no loop acima
     }
-
 
 # --- ROTAS ---
 @app.route('/img/q_img/<filename>')
