@@ -5,7 +5,6 @@ import os
 import pdfplumber
 import re
 import uuid
-import difflib
 
 app = Flask(__name__)
 CORS(app)
@@ -21,21 +20,7 @@ ARQ_FLASHCARDS = os.path.join(DB_DIR, "flashcards.xlsx")
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# --- LISTA MESTRA ---
-ASSUNTOS_CONHECIDOS = [
-    "Correlação Verbal", "Tempos e Modos Verbais", "Vozes Verbais",
-    "Emprego de Tempos e Modos", "Modo Indicativo", "Modo Subjuntivo", "Modo Imperativo",
-    "Verbos Traiçoeiros", "Locução Verbal", "Formas Nominais",
-    "Substantivo", "Adjetivo", "Advérbio", "Artigo", "Interjeição",
-    "Numeral", "Pronome", "Verbo", "Conjunção", "Preposição",
-    "Colocação Pronominal", "Acentuação Gráfica", "Ortografia", "Crase", "Pontuação",
-    "Concordância Verbal", "Concordância Nominal", "Regência Verbal", "Regência Nominal",
-    "Sintaxe", "Semântica", "Interpretação de Texto", "Tipologia Textual",
-    "Gêneros Textuais", "Coesão e Coerência", "Figuras de Linguagem",
-    "Funções da Linguagem", "Variação Linguística", "Funções Sintáticas",
-    "Orações Adverbiais", "Paralelismo", "Palavra Que", "Palavra Se"
-]
-
+# --- PALAVRAS CHAVE DE CARGO (Apenas para limpeza de metadados da questão) ---
 PALAVRAS_CHAVE_CARGO = [
     "ANALISTA", "TÉCNICO", "ENGENHEIRO", "MÉDICO", "ADVOGADO", "AGENTE", "ESCRITURÁRIO",
     "PROFESSOR", "ESPECIALISTA", "AUDITOR", "DEFENSOR", "PROMOTOR", "JUIZ", "DELEGADO",
@@ -64,7 +49,6 @@ def sanitizar_texto(texto):
     if not texto: return ""
     texto = re.sub(r'-\s*\n\s*', '', texto)
     texto = re.sub(r'\n\s*Gabarito:?\s*Letra\s*[A-E]\s*\n', '\n', texto, flags=re.IGNORECASE)
-
     linhas = [l.strip() for l in texto.split('\n') if l.strip()]
     if not linhas: return ""
     resultado = []
@@ -74,7 +58,6 @@ def sanitizar_texto(texto):
             proxima = linhas[i + 1]
             pontuacao_final = re.search(r'[.:?!;]$', atual)
             comeca_novo_bloco = re.match(r'^(?:[A-Z"\'\(]|\d+\.|[a-e]\))', proxima)
-
             if not pontuacao_final and not comeca_novo_bloco:
                 resultado.append(atual + " ")
             elif pontuacao_final and comeca_novo_bloco:
@@ -95,55 +78,64 @@ def gerar_assinatura(q):
     )
 
 
-# --- LÓGICA DE RECONSTRUÇÃO (RESTAURADA E CORRIGIDA) ---
-def reconstruir_cabecalho_inteligente(texto):
+# --- RECONSTRUÇÃO LÓGICA (MATEMÁTICA) ---
+def reconstruir_header_logico(texto):
     """
-    Reconstrói cabeçalhos como 'Q C - C - C' sobre 'UESTÕES OMENTADAS ORRELAÇÃO VERBAL ESGRANRIO'.
-    CORREÇÃO: Adicionada lista de 'palavras_cheias' para evitar descompasso.
+    Reconstrói o cabeçalho usando a lógica: Iniciais da Linha 1 + Palavras da Linha 2.
     """
-    pattern = r"([A-Z\s\-\–]+)\n\s*((?:UESTÕES|ISTA|OMENTADAS|ORRELAÇÃO|ESGRANRIO).*)"
+    # Regex ajustado para capturar as duas linhas do padrão
+    pattern = r"([A-Z\s\-\–]+)\n\s*((?:UESTÕES|ISTA|OMENTADAS|ORRELAÇÃO|ESGRANRIO|MPREGO).*)"
 
-    def reparar(match):
-        linha_letras = match.group(1).strip()
-        linha_palavras = match.group(2).strip()
+    def resolver_match(m):
+        # Extrai apenas as letras da primeira linha (ex: ['Q', 'C', 'C', 'V'])
+        letras_header = [c for c in m.group(1) if c.isalpha()]
+        palavras_quebradas = m.group(2).split()
 
-        # Divide as letras pelos hífens (ex: ['Q C', 'C', 'C']) e limpa espaços
-        blocos_letras = [b.strip().replace(" ", "") for b in re.split(r'[\-\–]', linha_letras) if b.strip()]
-        palavras = linha_palavras.split()
-
-        if not blocos_letras: return match.group(0)
+        # Lista de palavras "inteiras" que devem ser puladas (não consomem letra inicial)
+        palavras_inteiras = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS"]
 
         resultado = []
-        pool_letras = list("".join(blocos_letras))
+        idx_letra = 0
 
-        # LISTA DE PALAVRAS QUE NÃO DEVEM CONSUMIR LETRAS DO POOL
-        palavras_cheias = ['VERBAL', 'DE', 'DO', 'DA', 'DOS', 'DAS', 'E', 'EM', 'PARA', 'COM']
+        for palavra in palavras_quebradas:
+            p_upper = palavra.upper().strip(".,:;")
 
-        for palavra in palavras:
-            palavra_upper = palavra.upper().strip(".,:;")
-
-            # Se for uma palavra inteira (ex: VERBAL), apenas adiciona e continua
-            if palavra_upper in palavras_cheias:
+            # Se for palavra inteira conhecida ou número, mantém e pula
+            if p_upper in palavras_inteiras or re.match(r'^\d+$', p_upper):
                 resultado.append(palavra)
                 continue
 
-            # Se ainda tem letra para colar, cola
-            if pool_letras:
-                letra = pool_letras.pop(0)
-                resultado.append(letra + palavra)
-            else:
+            # Se não tem mais letras no header para usar, mantém a palavra quebrada (melhor que crashar)
+            if idx_letra >= len(letras_header):
                 resultado.append(palavra)
+                continue
 
-        frase_final = " ".join(resultado)
-        return "\n" + frase_final + "\n"
+            letra_atual = letras_header[idx_letra]
 
-    return re.sub(pattern, reparar, texto)
+            # CASO ESPECIAL 'E': (ex: Tempos E Modos)
+            # Se a letra é 'E' e a palavra atual começa com vogal, é provável que seja um conector isolado
+            if letra_atual == 'E' and palavra[0].upper() in "AEIOU":
+                # Insere o 'E' como palavra separada e avança para a próxima letra do header
+                resultado.append("E")
+                idx_letra += 1
+                if idx_letra < len(letras_header):
+                    letra_atual = letras_header[idx_letra]
+
+            # Junta a letra na palavra
+            nova_palavra = letra_atual + palavra
+            resultado.append(nova_palavra)
+            idx_letra += 1
+
+        return "\n" + " ".join(resultado) + "\n"
+
+    return re.sub(pattern, resolver_match, texto)
 
 
 def limpar_ruido(texto):
-    # Chama sua função original, agora corrigida
-    texto = reconstruir_cabecalho_inteligente(texto)
+    # 1. Reconstrói o cabeçalho ANTES de qualquer outra limpeza
+    texto = reconstruir_header_logico(texto)
 
+    # 2. Remove lixo conhecido
     patterns_to_remove = [
         r"PETROBRAS \(Nível Superior\) Português\s*\d*",
         r"www\.estrategiaconcursos\.com\.br\s*\d*",
@@ -151,7 +143,6 @@ def limpar_ruido(texto):
         r"Equipe Português Estratégia Concursos, Felipe Luccas",
         r"Aula \d+",
         r"==\w+==",
-        r"^\s*\d+\s*$",
         r"^\.\d+\.\.\)\.",
     ]
     for pattern in patterns_to_remove:
@@ -170,15 +161,15 @@ def extrair_mapa_gabaritos(texto):
 
 
 def parsear_questoes(texto_bruto):
-    # Usa a sanitização robusta restaurada
     texto = limpar_ruido(texto_bruto)
     mapa_gabaritos = extrair_mapa_gabaritos(texto)
     questoes = []
     mapa_assuntos = []
 
-    # 1. Identificação de Assuntos (Com o texto agora corrigido corretamente)
+    # 1. IDENTIFICAÇÃO DE ASSUNTOS (SEM PADRONIZAÇÃO FORÇADA)
+    # Procura linhas reconstruídas que pareçam cabeçalhos de lista
     regex_topicos = re.compile(
-        r'(?:QUESTÕES\s+COMENTADAS|LISTA\s+DE\s+QUESTÕES|LISTA\s+E\s+QUESTÕES|PORTUGUÊS).*?[-–—\s]\s*(.*?)\s*(?:[-–—]|$)(?:C\s*)?ESGRANRIO',
+        r'(?:QUESTÕES\s+COMENTADAS|LISTA\s+DE\s+QUESTÕES|LISTA\s+E\s+QUESTÕES).*?[-–—\s]\s*(.*?)\s*(?:[-–—]|$)(?:C\s*)?ESGRANRIO',
         re.IGNORECASE | re.DOTALL
     )
 
@@ -186,27 +177,33 @@ def parsear_questoes(texto_bruto):
         trecho_limpo = match.group(1).strip()
         trecho_limpo = trecho_limpo.replace('-', '').replace('–', '').strip()
 
-        match_fuzzy = difflib.get_close_matches(trecho_limpo, ASSUNTOS_CONHECIDOS, n=1, cutoff=0.5)
+        # Remove a palavra CESGRANRIO se ela tiver "grudado" no final
+        trecho_limpo = re.sub(r'\s*CESGRANRIO$', '', trecho_limpo, flags=re.IGNORECASE).strip()
 
-        if "CORRELAÇÃO" in trecho_limpo.upper():
-            assunto_final = "Correlação Verbal"
-        elif "VOZES" in trecho_limpo.upper():
-            assunto_final = "Vozes Verbais"
-        else:
-            assunto_final = match_fuzzy[0] if match_fuzzy else trecho_limpo.title()
+        # Usa o texto EXATO que foi reconstruído, apenas formatando para Title Case
+        assunto_final = trecho_limpo.title()
 
-        mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_final})
+        # Trava de segurança: Se o assunto reconstruído for muito longo (>60 chars), ignora
+        if len(assunto_final) < 60 and len(assunto_final) > 3:
+            mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_final})
+
+    # Fallback: Se não achou nenhum cabeçalho, procura termos chave brutos no início do arquivo
+    if not mapa_assuntos:
+        if "CORRELAÇÃO" in texto.upper()[:3000]:
+            mapa_assuntos.append({"inicio": 0, "assunto": "Correlação Verbal"})
 
     mapa_assuntos.sort(key=lambda x: x["inicio"])
 
-    # 2. Scanner de Questões (Usa finditer para precisão de posição)
-    pattern_questao = re.compile(r'(\d+)\.\s*\(((?:CESGRANRIO|FGV|CEBRASPE|FCC).*?)\)', re.IGNORECASE)
+    # 2. SCANNER DE QUESTÕES
+    pattern_questao = re.compile(r'^\s*(\d+)\.\s*\((.+?)\)', re.MULTILINE)
     matches_questoes = list(pattern_questao.finditer(texto))
 
     for i, m in enumerate(matches_questoes):
         start_index = m.start()
         q_numero = m.group(1)
         q_meta = m.group(2)
+
+        if len(q_meta) < 3 or len(q_meta) > 100: continue
 
         if i + 1 < len(matches_questoes):
             end_index = matches_questoes[i + 1].start()
@@ -215,6 +212,7 @@ def parsear_questoes(texto_bruto):
 
         q_conteudo_bruto = texto[m.end():end_index]
 
+        # Define Assunto baseado na posição
         assunto_atual = "Geral"
         if mapa_assuntos:
             anteriores = [ma for ma in mapa_assuntos if ma["inicio"] < start_index]
@@ -230,7 +228,7 @@ def parsear_questoes(texto_bruto):
         for p in partes_meta:
             p_upper = p.upper()
             if re.match(r'^\d{4}$', p): ano = p; continue
-            if "CESGRANRIO" in p_upper: banca = "CESGRANRIO"; continue
+            if "CESGRANRIO" in p_upper or "ESGRANRIO" in p_upper: banca = "CESGRANRIO"; continue
             if any(cargo in p_upper for cargo in PALAVRAS_CHAVE_CARGO): continue
             if len(p) < 4 and p_upper not in ["BB", "ANP", "STJ", "STF", "AGU", "MPE", "TJ", "TRE", "TRT", "DPE", "PGE",
                                               "PC"]: continue
@@ -239,11 +237,8 @@ def parsear_questoes(texto_bruto):
         gabarito = ""
         gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)\s*:?\s*([A-E])\s*$'
         matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
-        if matches_gab:
-            gabarito = matches_gab[-1].group(1).upper()
-
-        if not gabarito and q_numero in mapa_gabaritos:
-            gabarito = mapa_gabaritos[q_numero]
+        if matches_gab: gabarito = matches_gab[-1].group(1).upper()
+        if not gabarito and q_numero in mapa_gabaritos: gabarito = mapa_gabaritos[q_numero]
 
         content_no_comments = \
         re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
