@@ -87,6 +87,65 @@
     #area-drop.drag-over { background-color: #e8f6f3 !important; border: 2px dashed #27ae60 !important; transform: scale(1.02); }
     #msg-drop { pointer-events: none; font-weight: bold; color: #27ae60; display: none; }
     #area-drop.drag-over #msg-drop { display: block; }
+    /* --- CORREÇÃO DO LAYOUT DE PRATICAR/PROVA --- */
+
+    /* Transforma o container da alternativa em uma linha flexível */
+    .alternativa-wrapper {
+        display: flex;
+        align-items: center; /* Alinha verticalmente ao centro */
+        padding: 10px;
+        border: 1px solid #eee;
+        margin-bottom: 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        background: #fff;
+        transition: background 0.2s;
+    }
+
+    /* Efeito ao passar o mouse */
+    .alternativa-wrapper:hover {
+        background: #f9f9f9;
+        border-color: #ddd;
+    }
+
+    /* Corrige o input (Radio) para não ocupar 100% da largura */
+    .alternativa-wrapper input[type="radio"] {
+        width: auto !important; /* Força largura automática */
+        margin: 0 10px 0 10px !important; /* Espaçamento nas laterais */
+        cursor: pointer;
+    }
+
+    /* Estilo do botão "X" de riscar */
+    .btn-riscar {
+        color: #e74c3c;
+        font-weight: bold;
+        font-size: 1.2rem;
+        padding: 0 5px;
+        border-radius: 4px;
+        transition: 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-riscar:hover {
+        background-color: #fce4e4;
+    }
+
+    /* Estilo visual para quando a alternativa for "riscada" */
+    .alternativa-wrapper.riscado-ativo {
+        opacity: 0.5;
+        background-color: #eee;
+    }
+    .alternativa-wrapper.riscado-ativo .render-html {
+        text-decoration: line-through;
+    }
+
+    /* Destaque para a alternativa selecionada */
+    .alternativa-wrapper.selected {
+        background-color: #e3f2fd;
+        border-color: #2196f3;
+    }
   </style>
 </head>
 <body>
