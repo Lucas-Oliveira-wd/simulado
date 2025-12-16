@@ -5,7 +5,6 @@ import os
 import pdfplumber
 import re
 import uuid
-import difflib
 
 app = Flask(__name__)
 CORS(app)
@@ -38,8 +37,13 @@ def normalizar_para_comparacao(texto):
 
 def sanitizar_texto(texto):
     if not texto: return ""
+    # Remove hifens soltos de quebra de página
     texto = re.sub(r'-\s*\n\s*', '', texto)
+
+    # Remove linhas isoladas de gabarito que possam ter sobrado (ex: em questões comentadas)
+    # Mas cuidado para não remover partes do enunciado. O foco aqui é limpar "sujeira"
     texto = re.sub(r'\n\s*Gabarito:?\s*Letra\s*[A-E]\s*\n', '\n', texto, flags=re.IGNORECASE)
+
     linhas = [l.strip() for l in texto.split('\n') if l.strip()]
     if not linhas: return ""
     resultado = []
@@ -48,6 +52,7 @@ def sanitizar_texto(texto):
         if i < len(linhas) - 1:
             proxima = linhas[i + 1]
             pontuacao_final = re.search(r'[.:?!;]$', atual)
+            # Verifica se a próxima linha parece um novo bloco (começa com letra maiúscula ou número)
             comeca_novo_bloco = re.match(r'^(?:[A-Z"\'\(]|\d+\.|[a-e]\))', proxima)
             if not pontuacao_final and not comeca_novo_bloco:
                 resultado.append(atual + " ")
@@ -110,6 +115,9 @@ def reconstruir_header_logico(texto):
 
 def limpar_ruido(texto):
     texto = reconstruir_header_logico(texto)
+    # Normaliza a palavra GABARITO que pode vir espaçada ou quebrada
+    texto = re.sub(r'G\s*\n?\s*A\s*B\s*A\s*R\s*I\s*T\s*O', 'Gabarito', texto, flags=re.IGNORECASE)
+
     patterns_to_remove = [
         r"PETROBRAS \(Nível Superior\) Português\s*\d*", r"www\.estrategiaconcursos\.com\.br\s*\d*",
         r"\d{11}\s*-\s*Ricardo Aciole", r"Equipe Português Estratégia Concursos, Felipe Luccas",
@@ -121,93 +129,147 @@ def limpar_ruido(texto):
     return texto
 
 
-def extrair_mapa_gabaritos(texto):
+def extrair_mapa_gabaritos_local(texto_bloco):
+    """
+    Extrai gabaritos do bloco atual.
+    CORREÇÃO: Usa regex baseada em limites de palavra (\b) para permitir
+    vários gabaritos na mesma linha (ex: "1. A 2. B 3. C").
+    """
     mapa = {}
-    padrao_tabela = r'(?:^|\n)\s*(\d+)\s*[\.\-]?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s+([A-E])(?=\s|$)'
-    matches = re.finditer(padrao_tabela, texto, re.IGNORECASE)
-    for m in matches: mapa[m.group(1)] = m.group(2).upper()
+    # Procura por número + (ponto/traço opcional) + (LETRA opcional) + A-E
+    # Ex: "1. A", "1. Letra A", "01 - A"
+    padrao_tabela = r'\b(\d+)\s*[\.\-]?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s*([A-E])\b'
+    matches = re.finditer(padrao_tabela, texto_bloco, re.IGNORECASE)
+    for m in matches:
+        mapa[m.group(1)] = m.group(2).upper()
     return mapa
 
 
 def parsear_questoes(texto_bruto):
-    texto = limpar_ruido(texto_bruto)
-    mapa_gabaritos = extrair_mapa_gabaritos(texto)
+    texto_limpo = limpar_ruido(texto_bruto)
     questoes = []
-    mapa_assuntos = []
-    regex_linha = re.compile(r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)', re.IGNORECASE)
-    for match in regex_linha.finditer(texto):
-        linha_completa = match.group(1).strip()
-        idx_primeiro_hifen = linha_completa.find('-')
-        idx_ultimo_hifen = linha_completa.rfind('-')
-        if idx_primeiro_hifen != -1 and idx_ultimo_hifen != -1 and idx_primeiro_hifen < idx_ultimo_hifen:
-            assunto_raw = linha_completa[idx_primeiro_hifen + 1: idx_ultimo_hifen].strip()
-            assunto_final = re.sub(r'Cesgranrio', '', assunto_raw.title(), flags=re.IGNORECASE).strip()
-            if 3 < len(assunto_final) < 80: mapa_assuntos.append({"inicio": match.start(), "assunto": assunto_final})
 
-    if not mapa_assuntos:
-        if "CORRELAÇÃO" in texto.upper()[:3000]:
-            mapa_assuntos.append({"inicio": 0, "assunto": "Correlação Verbal"})
-        elif "FUNÇÕES SINTÁTICAS" in texto.upper()[:3000]:
-            mapa_assuntos.append({"inicio": 0, "assunto": "Funções Sintáticas"})
-        elif "ORAÇÕES ADVERBIAIS" in texto.upper()[:3000]:
-            mapa_assuntos.append({"inicio": 0, "assunto": "Orações Adverbiais"})
-    mapa_assuntos.sort(key=lambda x: x["inicio"])
+    # Segmentação por Blocos Lógicos
+    # "GABARITO" foi removido da divisão para garantir que a tabela fique junto com a lista de questões
+    regex_divisao_blocos = re.compile(
+        r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)(?:.|\n)+?)(?=(?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)|$)',
+        re.IGNORECASE)
 
-    pattern_questao = re.compile(r'^\s*(\d+)\.\s*(?:\(?)\s*(.+?)\s*(?:\)?)\s*$', re.MULTILINE)
-    matches_questoes = list(pattern_questao.finditer(texto))
+    blocos = [m.group(1) for m in regex_divisao_blocos.finditer(texto_limpo)]
 
-    for i, m in enumerate(matches_questoes):
-        start_index = m.start()
-        q_numero = m.group(1);
-        q_meta = m.group(2)
-        if not re.search(r'\d{4}|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS',
-                         q_meta.upper()): continue
-        if len(q_meta) < 3: continue
-        end_index = matches_questoes[i + 1].start() if i + 1 < len(matches_questoes) else len(texto)
-        q_conteudo_bruto = texto[m.end():end_index]
-        assunto_atual = "Geral"
-        if mapa_assuntos:
-            anteriores = [ma for ma in mapa_assuntos if ma["inicio"] < start_index]
-            if anteriores: assunto_atual = anteriores[-1]["assunto"]
-        elif mapa_assuntos:
-            assunto_atual = mapa_assuntos[0]["assunto"]
+    if not blocos:
+        blocos = [texto_limpo]
 
-        meta_limpa = q_meta.replace("–", "/").replace("-", "/")
-        partes_meta = [p.strip() for p in meta_limpa.split('/') if p.strip()]
-        banca = "CESGRANRIO";
-        instituicao = "";
-        ano = "2025"
-        for idx, p in enumerate(partes_meta):
-            if re.match(r'^\d{4}$', p): ano = p; partes_meta.pop(idx); break
-        if len(partes_meta) > 0: banca = partes_meta[0]
-        if len(partes_meta) > 1: instituicao = partes_meta[1]
+    assunto_atual = "Geral"
 
-        gabarito = ""
-        gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
-        matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
-        if matches_gab: gabarito = matches_gab[-1].group(1).upper()
-        if not gabarito and q_numero in mapa_gabaritos:
-            if "Comentário" not in q_conteudo_bruto and "COMENTÁRIO" not in q_conteudo_bruto.upper(): gabarito = \
-            mapa_gabaritos[q_numero]
+    for bloco in blocos:
+        # Detecta o assunto do bloco pelo título
+        match_titulo = re.match(r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)', bloco,
+                                re.IGNORECASE)
+        if match_titulo:
+            linha_completa = match_titulo.group(1).strip()
+            idx_primeiro_hifen = linha_completa.find('-')
+            idx_ultimo_hifen = linha_completa.rfind('-')
+            if idx_primeiro_hifen != -1 and idx_ultimo_hifen != -1 and idx_primeiro_hifen < idx_ultimo_hifen:
+                assunto_raw = linha_completa[idx_primeiro_hifen + 1: idx_ultimo_hifen].strip()
+                assunto_atual = re.sub(r'Cesgranrio', '', assunto_raw.title(), flags=re.IGNORECASE).strip()
+            elif "CORRELAÇÃO" in linha_completa.upper():
+                assunto_atual = "Correlação Verbal"
+            elif "SINTÁTICAS" in linha_completa.upper():
+                assunto_atual = "Funções Sintáticas"
+            elif "SEMÂNTICO" in linha_completa.upper():
+                assunto_atual = "Campo Semântico"
+            elif "SINÔNIMO" in linha_completa.upper():
+                assunto_atual = "Sinônimos e Antônimos"
+            elif "DENOTAÇÃO" in linha_completa.upper():
+                assunto_atual = "Denotação e Conotação"
 
-        content_no_comments = \
-        re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
-        content_no_comments = re.sub(r'www\.estrategia.*', '', content_no_comments)
-        parts_alt = re.split(r'\b([A-E])\)', content_no_comments)
-        enunciado = sanitizar_texto(parts_alt[0].strip())
-        alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
-        if len(parts_alt) > 1:
-            for k in range(1, len(parts_alt), 2):
-                letra = parts_alt[k].upper()
-                if k + 1 < len(parts_alt): alts[letra] = sanitizar_texto(parts_alt[k + 1].strip())
+        # Extrai o mapa de respostas contido neste bloco (agora pega inline também)
+        mapa_gabaritos_local = extrair_mapa_gabaritos_local(bloco)
 
-        if enunciado and (alts["A"] or alts["B"]):
-            questoes.append({
-                "temp_id": q_numero, "banca": banca, "instituicao": instituicao, "ano": ano,
-                "assunto": assunto_atual, "enunciado": enunciado,
-                "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
-                "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME", "imagem": ""
-            })
+        # Regex estrita para identificar início de questão
+        pattern_questao = re.compile(
+            r'^\s*(\d+)\.\s*(?:\(?)\s*((?:\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|EQUIPE|[A-Z][a-zçãõâêô]+).+?)\s*(?:\)?)\s*$',
+            re.MULTILINE
+        )
+
+        matches_questoes = list(pattern_questao.finditer(bloco))
+
+        for i, m in enumerate(matches_questoes):
+            q_numero = m.group(1)
+            q_meta = m.group(2)
+
+            # Filtro para evitar falsos positivos (como "1. Noções..." no índice)
+            if not re.search(r'^\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS',
+                             q_meta.upper().strip()):
+                continue
+
+            start_index = m.end()
+            end_index = matches_questoes[i + 1].start() if i + 1 < len(matches_questoes) else len(bloco)
+
+            q_conteudo_bruto = bloco[start_index:end_index]
+
+            # CORREÇÃO CRÍTICA: Remover tabela de gabarito do final do texto da questão
+            # Se encontrar "Gabarito 1." ou "Gabarito 1 ", corta o texto ali.
+            # Isso evita que a tabela vá para a Alternativa E da última questão.
+            q_conteudo_bruto = re.split(r'\n\s*Gabarito\s+1[\.\s]', q_conteudo_bruto, flags=re.IGNORECASE)[0]
+
+            # Processamento de metadados (Banca, Ano, etc)
+            meta_limpa = q_meta.replace("–", "/").replace("-", "/")
+            partes_meta = [p.strip() for p in meta_limpa.split('/') if p.strip()]
+            banca = "CESGRANRIO"
+            instituicao = ""
+            ano = "2025"
+
+            for idx, p in enumerate(partes_meta):
+                if re.match(r'^\(?\d{4}\)?$', p.strip()):
+                    ano = p.replace('(', '').replace(')', '');
+                    if idx < len(partes_meta): partes_meta.pop(idx);
+                    break
+
+            if len(partes_meta) > 0:
+                banca_cand = partes_meta[0].replace('(', '')
+                if len(banca_cand) > 2: banca = banca_cand
+            if len(partes_meta) > 1: instituicao = partes_meta[1].replace(')', '')
+
+            # Busca Gabarito
+            gabarito = ""
+            # 1. Prioridade: Comentário local (questões comentadas)
+            gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
+            matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
+            if matches_gab:
+                gabarito = matches_gab[-1].group(1).upper()
+
+            # 2. Fallback: Mapa local (listas de questões)
+            # Só usa se não achou no comentário E se não parece ter comentário no texto
+            if not gabarito and q_numero in mapa_gabaritos_local:
+                if "Comentário" not in q_conteudo_bruto and "COMENTÁRIO" not in q_conteudo_bruto.upper():
+                    gabarito = mapa_gabaritos_local[q_numero]
+
+            # Separa Enunciado e Alternativas
+            content_no_comments = \
+            re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
+            content_no_comments = re.sub(r'www\.estrategia.*', '', content_no_comments)
+
+            parts_alt = re.split(r'\b([A-E])\)', content_no_comments)
+            enunciado = sanitizar_texto(parts_alt[0].strip())
+
+            alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
+            if len(parts_alt) > 1:
+                for k in range(1, len(parts_alt), 2):
+                    letra = parts_alt[k].upper()
+                    if k + 1 < len(parts_alt):
+                        alts[letra] = sanitizar_texto(parts_alt[k + 1].strip())
+
+            if enunciado and (alts["A"] or alts["B"]):
+                questoes.append({
+                    "temp_id": str(uuid.uuid4()),
+                    "banca": banca, "instituicao": instituicao, "ano": ano,
+                    "assunto": assunto_atual, "enunciado": enunciado,
+                    "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
+                    "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME", "imagem": ""
+                })
+
     return questoes
 
 
@@ -290,50 +352,30 @@ def salvar_flashcards_dados(dados):
     wb.save(ARQ_FLASHCARDS)
 
 
-# --- FUNÇÃO NOVA: EXTRAÇÃO DINÂMICA DO DB ---
 def extrair_opcoes_do_banco():
     questoes = carregar_questoes()
     bancas = set()
     instituicoes = set()
     disciplinas = set()
-    assuntos_map = {}  # { "Portugues": ["Crase", "Sintaxe"], ... }
+    assuntos_map = {}
 
     for q in questoes:
-        # BANCA: Normaliza para MAIÚSCULAS para evitar duplicatas (ex: Cesgranrio e CESGRANRIO viram CESGRANRIO)
-        if q['banca']:
-            banca_norm = str(q['banca']).strip().upper()
-            bancas.add(banca_norm)
-
-        # INSTITUIÇÃO: Normaliza para MAIÚSCULAS
-        if q['instituicao']:
-            inst_norm = str(q['instituicao']).strip().upper()
-            instituicoes.add(inst_norm)
-
-        # DISCIPLINA: Normaliza para Title Case (Primeira Letra Maiúscula) para padronizar a lista
+        if q['banca']: bancas.add(str(q['banca']).strip().upper())
+        if q['instituicao']: instituicoes.add(str(q['instituicao']).strip().upper())
         disc_raw = str(q['disciplina']).strip()
         disc_norm = disc_raw.title() if disc_raw else ""
-
         assunto_raw = str(q['assunto']).strip()
 
         if disc_norm:
             disciplinas.add(disc_norm)
+            if disc_norm not in assuntos_map: assuntos_map[disc_norm] = set()
+            if assunto_raw: assuntos_map[disc_norm].add(assunto_raw)
 
-            if disc_norm not in assuntos_map:
-                assuntos_map[disc_norm] = set()
-
-            # ASSUNTO: Mantido ORIGINAL (Case Sensitive) conforme solicitado
-            # Apenas removemos espaços extras com strip()
-            if assunto_raw:
-                assuntos_map[disc_norm].add(assunto_raw)
-
-    # Converter sets para listas ordenadas
     assuntos_final = []
     for disc, lista_assuntos in assuntos_map.items():
-        # Ordena os assuntos alfabeticamente, mas mantém a caixa original
         for a in sorted(list(lista_assuntos), key=str.lower):
             assuntos_final.append({'nome': a, 'disciplina': disc})
 
-    # Adicionar opções padrão caso a lista esteja vazia
     if not disciplinas: disciplinas.add("Geral")
     if not bancas: bancas.add("BANCA PADRÃO")
 
@@ -341,8 +383,9 @@ def extrair_opcoes_do_banco():
         "bancas": sorted(list(bancas)),
         "instituicoes": sorted(list(instituicoes)),
         "disciplinas": sorted(list(disciplinas)),
-        "assuntos": assuntos_final  # Já ordenado no loop acima
+        "assuntos": assuntos_final
     }
+
 
 # --- ROTAS ---
 @app.route('/img/q_img/<filename>')
@@ -358,11 +401,11 @@ def post_q():
     nova = {};
     arq = None
     if request.content_type.startswith('multipart'):
-        nova = request.form.to_dict(); arq = request.files.get('imagem_file')
+        nova = request.form.to_dict();
+        arq = request.files.get('imagem_file')
     else:
         nova = request.json
     dados = carregar_questoes();
-    nome_img = ""
     if arq and arq.filename:
         ext = arq.filename.rsplit('.', 1)[1].lower();
         nome_img = f"{uuid.uuid4()}.{ext}";
@@ -385,7 +428,8 @@ def put_q():
     load = {};
     arq = None
     if request.content_type and request.content_type.startswith('multipart'):
-        load = request.form.to_dict(); arq = request.files.get('imagem_file')
+        load = request.form.to_dict();
+        arq = request.files.get('imagem_file')
     else:
         load = request.json;
     if isinstance(load, list): salvar_questoes(load); return jsonify({"status": "ok"})
@@ -458,12 +502,13 @@ def upload_pdf():
         for n in novas: n['ja_cadastrada'] = gerar_assinatura(n) in sigs
         return jsonify(novas)
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"erro": str(e)}), 500
     finally:
         if os.path.exists(p): os.remove(p)
 
 
-# Rota de opções agora lê direto do DB, eliminando metadados.xlsx
 @app.route("/opcoes-dinamicas", methods=["GET"])
 def get_opcoes():
     return jsonify(extrair_opcoes_do_banco())
