@@ -78,7 +78,7 @@ def reconstruir_header_logico(texto):
         raw_palavras = m.group(2)
         matches_guia = list(re.finditer(r'([A-Z]|-)', raw_letras))
         palavras_quebradas = raw_palavras.split()
-        stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "E", "EM", "QUE", "SE"]
+        stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "EM", "QUE", "SE"]
         resultado_final = ""
         idx_p2 = 0
         for i, match in enumerate(matches_guia):
