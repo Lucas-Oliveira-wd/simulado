@@ -19,15 +19,14 @@ def limpar_texto_profundo(texto):
     # 1. Remove caracteres de retorno de carro do Windows (\r)
     txt = txt.replace('\r', '')
 
-    # 2. O PULO DO GATO: Substitui 2 ou mais quebras de linha (\n\n...) por APENAS UMA (\n)
-    # Isso "colapsa" o texto, juntando os buracos, mas mantendo a quebra simples.
-    txt = re.sub(r'\n{2,}', '\n', txt)
+    # 2. REGEX NUCLEAR:
+    # \s* -> pega qualquer espaço (incluindo abas) antes ou depois do enter
+    # \n   -> o enter em si
+    # (...) + -> repete isso uma ou mais vezes
+    # Resultado: Transforma "Texto \n   \n \n Texto" em "Texto\nTexto"
+    txt = re.sub(r'(\s*\n\s*)+', '\n', txt)
 
-    # 3. Remove espaços em branco excessivos no início/fim de cada linha
-    # Ex: "   Texto   \n" vira "Texto\n"
-    linhas = [linha.strip() for linha in txt.split('\n')]
-    txt = '\n'.join(linhas)
-
+    # 3. Garante que não tenha espaços no começo/fim da string inteira
     return txt.strip()
 
 
@@ -36,42 +35,40 @@ def executar_limpeza():
         print(f"ERRO: Arquivo não encontrado em {ARQ_QUESTOES}")
         return
 
-    print("--- INICIANDO LIMPEZA DO BANCO DE DADOS ---")
+    print("--- INICIANDO LIMPEZA DO BANCO DE DADOS (MODO FORTE) ---")
 
-    # 1. Cria um backup por segurança
+    # 1. Cria um backup
     try:
         shutil.copy2(ARQ_QUESTOES, ARQ_BACKUP)
-        print(f"1. Backup criado com sucesso: {ARQ_BACKUP}")
+        print(f"Backup criado: {ARQ_BACKUP}")
     except Exception as e:
-        print(f"Erro ao criar backup: {e}")
-        return
+        print(f"Aviso: Não foi possível criar backup ({e})")
 
     # 2. Carrega a planilha
     try:
         wb = load_workbook(ARQ_QUESTOES)
         ws = wb.active
-        print(f"2. Planilha carregada. Processando {ws.max_row} linhas...")
+        print(f"Planilha carregada. Linhas: {ws.max_row}")
     except Exception as e:
         print(f"Erro ao abrir planilha: {e}")
         return
 
-    # Índices das colunas (Baseado na ordem do seu código: A=1, B=2...)
-    # Enunciado é a coluna 5 (E)
-    # Alternativas são colunas 10, 11, 12, 13, 14 (J, K, L, M, N)
+    # Índices das colunas (Base 1 do Excel)
+    # E=Enunciado(5), J=AltA(10), K=AltB(11), L=AltC(12), M=AltD(13), N=AltE(14)
     colunas_para_limpar = [5, 10, 11, 12, 13, 14]
 
     contador_alteracoes = 0
 
-    # Itera sobre as linhas (começando da 2 para pular o cabeçalho)
+    # Itera sobre as linhas
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
         for col_idx in colunas_para_limpar:
-            celula = row[col_idx - 1]  # -1 porque lista é base 0
+            celula = row[col_idx - 1]
             valor_original = celula.value
 
             if valor_original:
                 valor_limpo = limpar_texto_profundo(valor_original)
 
-                # Só atualiza se houve mudança (para ganhar performance)
+                # Força a gravação se houver qualquer diferença ou se tiver espaços extras
                 if valor_original != valor_limpo:
                     celula.value = valor_limpo
                     contador_alteracoes += 1
@@ -80,10 +77,8 @@ def executar_limpeza():
     try:
         wb.save(ARQ_QUESTOES)
         print("------------------------------------------------")
-        print(f"SUCESSO! O banco foi limpo e salvo.")
-        print(f"Total de células corrigidas: {contador_alteracoes}")
+        print(f"CONCLUÍDO! Células corrigidas: {contador_alteracoes}")
         print("------------------------------------------------")
-        print("Agora reinicie seu servidor Flask (coletar_diarios.py) para ver as mudanças.")
     except Exception as e:
         print(f"Erro ao salvar planilha: {e}")
 
