@@ -28,6 +28,22 @@ def garantir_diretorio():
 def limpar(texto):
     return str(texto).strip() if texto else ""
 
+# --- NOVA FUNÇÃO: LIMPEZA PROFUNDA AO SALVAR ---
+def normalizar_texto_para_banco(texto):
+    if not texto: return ""
+    txt = str(texto)
+
+    # 1. Remove caracteres de retorno de carro do Windows (\r)
+    txt = txt.replace('\r\n', '\n').replace('\r', '\n')
+
+    # 2. Remove espaços em branco no final de cada linha
+    txt = re.sub(r'[ \t]+\n', '\n', txt)
+
+    # 3. Colapsa 3 ou mais quebras de linha em apenas 2 (para manter parágrafo, mas sem buracos)
+    txt = re.sub(r'\n{3,}', '\n\n', txt)
+
+    return txt.strip()
+
 
 def normalizar_para_comparacao(texto):
     if not texto: return ""
@@ -309,15 +325,28 @@ def carregar_questoes():
 
 
 def salvar_questoes(dados):
-    wb = Workbook();
+    wb = Workbook()
     ws = wb.active
     ws.append(
         ["id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto", "dificuldade", "tipo", "alt_a",
          "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem"])
-    for i in dados: ws.append(
-        [i["id"], i.get("banca"), i.get("instituicao"), i.get("ano"), i["enunciado"], i["disciplina"], i["assunto"],
-         i["dificuldade"], i["tipo"], i.get("alt_a"), i.get("alt_b"), i.get("alt_c"), i.get("alt_d"), i.get("alt_e"),
-         i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", "")])
+
+    for i in dados:
+        # APLICA A LIMPEZA AQUI: Garante que nada entra sujo no Excel
+        enunciado_limpo = normalizar_texto_para_banco(i.get("enunciado", ""))
+        alt_a = normalizar_texto_para_banco(i.get("alt_a", ""))
+        alt_b = normalizar_texto_para_banco(i.get("alt_b", ""))
+        alt_c = normalizar_texto_para_banco(i.get("alt_c", ""))
+        alt_d = normalizar_texto_para_banco(i.get("alt_d", ""))
+        alt_e = normalizar_texto_para_banco(i.get("alt_e", ""))
+
+        ws.append(
+            [i["id"], i.get("banca"), i.get("instituicao"), i.get("ano"),
+             enunciado_limpo, i["disciplina"], i["assunto"],
+             i["dificuldade"], i["tipo"],
+             alt_a, alt_b, alt_c, alt_d, alt_e,
+             i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", "")])
+
     wb.save(ARQ_QUESTOES)
 
 
