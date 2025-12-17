@@ -231,17 +231,27 @@ def parsear_questoes(texto_bruto):
             q_conteudo_bruto = re.split(r'\n\s*Gabarito\s+1[\.\s]', q_conteudo_bruto, flags=re.IGNORECASE)[0]
 
             # Processamento de metadados (Banca, Ano, etc)
-            meta_limpa = q_meta.replace("–", "/").replace("-", "/")
-            partes_meta = [p.strip() for p in meta_limpa.split('/') if p.strip()]
+            # CORREÇÃO: Busca o ano via regex (19xx ou 20xx) antes de quebrar a string
+            ano = "2025"
+            match_ano = re.search(r'\b(19|20)\d{2}\b', q_meta)
+            if match_ano:
+                ano = match_ano.group(0)
+
+            # Remove o ano encontrado da string para limpar a área para Banca/Instituição
+            meta_sem_ano = q_meta
+            if match_ano:
+                meta_sem_ano = q_meta.replace(ano, "")
+
+            meta_limpa = meta_sem_ano.replace("–", "/").replace("-", "/")
+
+            # Removemos parênteses extras que podem sobrar após a limpeza
+            partes_meta = [p.strip().replace('(', '').replace(')', '') for p in meta_limpa.split('/') if p.strip()]
+
+            # Filtra strings vazias resultantes
+            partes_meta = [p for p in partes_meta if p.strip()]
+
             banca = "CESGRANRIO"
             instituicao = ""
-            ano = "2025"
-
-            for idx, p in enumerate(partes_meta):
-                if re.match(r'^\(?\d{4}\)?$', p.strip()):
-                    ano = p.replace('(', '').replace(')', '');
-                    if idx < len(partes_meta): partes_meta.pop(idx);
-                    break
 
             if len(partes_meta) > 0:
                 banca_cand = partes_meta[0].replace('(', '')
