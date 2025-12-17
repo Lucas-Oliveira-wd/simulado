@@ -146,6 +146,20 @@
         background-color: #e3f2fd;
         border-color: #2196f3;
     }
+
+    /* --- CORREÇÃO DE QUEBRA DE LINHA (Adicione ao final do seu style) --- */
+
+    /* Esta classe diz ao navegador: "Se tiver um Enter no texto, pule a linha na tela" */
+    .enunciado, .render-html {
+        white-space: pre-wrap; 
+        word-wrap: break-word; /* Evita que palavras longas estourem a tela */
+        line-height: 1.6; /* Melhora a leitura entre as linhas */
+    }
+
+    /* Opcional: Garante que os inputs de texto no cadastro também mostrem as quebras */
+    textarea {
+        white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
@@ -606,9 +620,28 @@ function renPratica() {
     let q = pratPool[pratIdx]; 
     el("prat-progresso").innerText = `Questão ${pratIdx+1} de ${pratPool.length}`; 
     el("prat-meta").innerHTML = `<b>${q.banca}</b> (${q.ano||'-'}) | ${q.instituicao||'-'} | ${q.disciplina} > ${q.assunto}`; 
+    
     let htmlImg = q.imagem ? `<img src="${API}/img/q_img/${q.imagem}" class="questao-img">` : "";
+    
+    // O CSS .enunciado { white-space: pre-wrap } vai fazer os \n funcionarem aqui
     el("prat-enunciado").innerHTML = htmlImg + q.enunciado; 
-    let div = el("prat-alternativas"); div.innerHTML=""; if(q.tipo==="CE"){ radio(div,"C","Certo","prat"); radio(div,"E","Errado","prat"); } else ["A","B","C","D","E"].forEach(l=>{ if(q[`alt_${l.toLowerCase()}`]) radio(div,l,q[`alt_${l.toLowerCase()}`],"prat"); }); el("prat-feedback").innerHTML=""; el("prat-feedback").style.background="transparent"; el("prat-btn-confirma").style.display="block"; el("prat-btn-prox").style.display="none"; 
+    
+    let div = el("prat-alternativas"); 
+    div.innerHTML=""; 
+    
+    if(q.tipo==="CE"){ 
+        radio(div,"C","Certo","prat"); 
+        radio(div,"E","Errado","prat"); 
+    } else {
+        ["A","B","C","D","E"].forEach(l=>{ 
+            if(q[`alt_${l.toLowerCase()}`]) radio(div,l,q[`alt_${l.toLowerCase()}`],"prat"); 
+        }); 
+    }
+    
+    el("prat-feedback").innerHTML=""; 
+    el("prat-feedback").style.background="transparent"; 
+    el("prat-btn-confirma").style.display="block"; 
+    el("prat-btn-prox").style.display="none"; 
 }
 function radio(d,v,t,n) { d.innerHTML+=`<div class="alternativa-wrapper" onclick="selecionarAlternativa(this, '${n}', '${v}')"><span class="btn-riscar" onclick="event.stopPropagation();this.parentElement.classList.toggle('riscado-ativo')">✖</span><input type="radio" name="${n}" value="${v}" style="margin:0 10px; pointer-events:none"><span class="render-html">${v}) ${t}</span></div>`; }
 function selecionarAlternativa(elWrapper, name, val) { document.querySelectorAll(`input[name='${name}']`).forEach(i => i.checked = false); document.querySelectorAll(`#area-${name} .alternativa-wrapper`).forEach(e => e.classList.remove("selected")); elWrapper.classList.add("selected"); elWrapper.querySelector("input").checked = true; if(name === 'prova') provaRespostas[provaIdx] = val; }
