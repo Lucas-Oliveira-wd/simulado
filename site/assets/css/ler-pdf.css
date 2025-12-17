@@ -1,0 +1,22 @@
+
+#area-drop {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+#area-drop.drag-over {
+    background-color: #e8f6f3 !important;
+    border: 2px dashed #27ae60 !important;
+    transform: scale(1.02);
+}
+
+#msg-drop {
+    pointer-events: none;
+    font-weight: bold;
+    color: #27ae60;
+    display: none;
+}
+
+#area-drop.drag-over #msg-drop {
+    display: block;
+}

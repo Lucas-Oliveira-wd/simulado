@@ -1,0 +1,112 @@
+/* Transforma o container da alternativa em uma linha flexível */
+.alternativa-wrapper {
+    display: flex;
+    align-items: center;
+    /* Alinha verticalmente ao centro */
+    border: 1px solid #eee;
+    border-radius: 4px;
+    cursor: pointer;
+    background: #fff;
+    transition: background 0.2s;
+    font-size: 1.2rem;
+    /* Fonte das alternativas maior */
+    padding: 15px 20px;
+    /* Mais espaçamento interno (gordinho) */
+    margin-bottom: 15px;
+    /* Mais espaço entre uma alternativa e outra */
+    text-align: left;
+    /* Alternativas geralmente ficam melhor alinhadas à esquerda, mas se quiser justificado, mude para justify */
+}
+
+/* Efeito ao passar o mouse */
+.alternativa-wrapper:hover {
+    background: #f9f9f9;
+    border-color: #ddd;
+}
+
+/* Corrige o input (Radio) para não ocupar 100% da largura */
+.alternativa-wrapper input[type="radio"] {
+    width: auto !important;
+    /* Força largura automática */
+    margin: 0 10px 0 10px !important;
+    /* Espaçamento nas laterais */
+    cursor: pointer;
+}
+
+/* Estilo do botão "X" de riscar */
+.btn-riscar {
+    color: #e74c3c;
+    font-weight: bold;
+    font-size: 1.2rem;
+    padding: 0 5px;
+    border-radius: 4px;
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-riscar:hover {
+    background-color: #fce4e4;
+}
+
+/* Estilo visual para quando a alternativa for "riscada" */
+.alternativa-wrapper.riscado-ativo {
+    opacity: 0.5;
+    background-color: #eee;
+}
+
+.alternativa-wrapper.riscado-ativo .render-html {
+    text-decoration: line-through;
+}
+
+/* Destaque para a alternativa selecionada */
+.alternativa-wrapper.selected {
+    background-color: #e3f2fd;
+    border-color: #2196f3;
+}
+
+/* --- CORREÇÃO DE QUEBRA DE LINHA (Adicione ao final do seu style) --- */
+
+/* Esta classe diz ao navegador: "Se tiver um Enter no texto, pule a linha na tela" */
+.enunciado,
+.render-html {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    /* Evita que palavras longas estourem a tela */
+    line-height: 1.6;
+    /* Melhora a leitura entre as linhas */
+    font-size: 1.3rem;
+    /* Fonte bem maior para leitura confortável (aprox 21px) */
+    text-align: justify;
+    /* Texto justificado */
+    line-height: 1.8;
+    /* Mais altura entre as linhas */
+    color: #2c3e50;
+}
+
+/* Opcional: Garante que os inputs de texto no cadastro também mostrem as quebras */
+textarea {
+    white-space: pre-wrap;
+}
+
+/* Ajuste fino para o texto dentro da alternativa acompanhar o tamanho */
+.alternativa-wrapper .render-html {
+    font-size: 1.2rem;
+}
+
+/* 2. Cabeçalho da Questão (Dados: Banca, Ano, etc.) */
+#prat-meta,
+#prova-meta {
+    margin-bottom: 35px;
+    /* Mais espaço entre os dados e o texto */
+    padding: 15px;
+    border-left: 5px solid var(--sec);
+    /* Detalhe visual bonito */
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    font-size: 1.2rem;
+    /* Fonte maior para os dados */
+    color: #444;
+    line-height: 1.5;
+}
