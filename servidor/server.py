@@ -158,18 +158,17 @@ def limpar_ruido(texto, disciplina=""):
 
 
 def extrair_mapa_gabaritos_local(texto_bloco):
-    """
-    Extrai gabaritos do bloco atual.
-    CORREÇÃO: Usa regex baseada em limites de palavra (\b) para permitir
-    vários gabaritos na mesma linha (ex: "1. A 2. B 3. C").
-    """
+
     mapa = {}
     # Procura por número + (ponto/traço opcional) + (LETRA opcional) + A-E
     # Ex: "1. A", "1. Letra A", "01 - A"
-    padrao_tabela = r'\b(\d+)\s*[\.\-]?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s*([A-E])\b'
+    padrao_tabela = r'\b(\d+)\s*[\.\-]?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s*([A-E]|Certo|Errado|C|E)\b'
     matches = re.finditer(padrao_tabela, texto_bloco, re.IGNORECASE)
     for m in matches:
-        mapa[m.group(1)] = m.group(2).upper()
+        val = m.group(2).upper()
+        if val == "CERTO": val = "C"
+        elif val == "ERRADO": val = "E"
+        mapa[m.group(1)] = val
     return mapa
 
 
@@ -254,7 +253,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
             # INSERÇÃO: Detecção Universal de Certo/Errado
             tipo = "ME"
-            if re.search(r'\(\s*\)\s*(?:Certo|Errado)|(?:Certo|Errado)\s*\(\s*\)', q_conteudo_bruto, re.IGNORECASE):
+            if re.search(r'\(\s*\)\s*(?:Certo|Errado)|(?:Certo|Errado)\s*\(\s*\)|julgue\s+o\s+item|julgue\s+os\s+itens', q_conteudo_bruto, re.IGNORECASE):
                 tipo = "CE"
 
             # Processamento de metadados (Banca, Ano, etc)
