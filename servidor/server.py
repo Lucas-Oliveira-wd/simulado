@@ -220,15 +220,22 @@ def parsear_questoes(texto_bruto, disciplina=""):
             pattern_questao = re.compile(r'(\d+)[\.\-\s]?\s*\((.+?)\)')
 
         matches_questoes = list(pattern_questao.finditer(bloco))
+        for q in matches_questoes:
+            print(f"q: {q}")
 
         for i, m in enumerate(matches_questoes):
             q_numero = m.group(1)
             q_meta = m.group(2)
 
-            # Filtro para evitar falsos positivos (como "1. Noções..." no índice)
-            if not re.search(r'^\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS',
-                             q_meta.upper().strip()):
-                continue
+            if disciplina == "Português":
+                # Filtro para evitar falsos positivos (como "1. Noções..." no índice)
+                if not re.search(r'^\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS',
+                                 q_meta.upper().strip()):
+                    continue
+            elif disciplina == "Conhecimentos Específicos":
+                if len(q_meta) < 3:
+                    continue
+
 
             start_index = m.end()
             end_index = matches_questoes[i + 1].start() if i + 1 < len(matches_questoes) else len(bloco)
@@ -305,7 +312,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                 enunciado = sanitizar_texto(enunciado)
                 alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
             else:
-                parts_alt = re.split(r'\b([A-E])\)', content_no_comments)
+                parts_alt = re.split(r'\b([A-E])\)', content_no_comments, flags=re.IGNORECASE)
                 enunciado = sanitizar_texto(parts_alt[0].strip())
                 alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
                 if len(parts_alt) > 1:
