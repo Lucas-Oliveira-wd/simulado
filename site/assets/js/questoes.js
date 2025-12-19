@@ -29,6 +29,9 @@ function renderPreview(lista) {
   div.innerHTML = "";
   el("imp-titulo-preview").innerText = `Prévia (${lista.length})`;
   el("imp-preview-container").style.display = "block";
+
+  let globalAssunto = el("imp-assunto").value;
+
   lista.forEach((q, i) => {
     let statusHtml = q.ja_cadastrada
       ? `<span class="aviso-dup">⚠️ Já Cadastrada</span>`
@@ -39,46 +42,40 @@ function renderPreview(lista) {
       let sel = q.gabarito === l ? "selected" : "";
       optionsGab += `<option value="${l}" ${sel}>${l}</option>`;
     });
+
+    let areaAlternativas = "";
+    if (q.tipo === "CE") {
+        areaAlternativas = `<div style="padding:10px; color:#555; font-style:italic">Questão do tipo Certo/Errado (Sem alternativas A-E)</div>`;
+    } else {
+        areaAlternativas = `
+        <div style="margin-top:5px; display:grid; gap:5px">
+            <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${q.alt_a}" onfocus="showToolbar(this)"></div>
+            <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${q.alt_b}" onfocus="showToolbar(this)"></div>
+            <div class="input-group"><span>C)</span><input type="text" class="imp-alt-c" value="${q.alt_c}" onfocus="showToolbar(this)"></div>
+            <div class="input-group"><span>D)</span><input type="text" class="imp-alt-d" value="${q.alt_d}" onfocus="showToolbar(this)"></div>
+            <div class="input-group"><span>E)</span><input type="text" class="imp-alt-e" value="${q.alt_e}" onfocus="showToolbar(this)"></div>
+        </div>`;
+    };
+
+    // Se tiver assunto global digitado, usa ele. Se não, usa o que veio do Python. Se não tiver nada, "Geral".
+    let assuntoFinal = globalAssunto ? globalAssunto : (q.assunto || "Geral");
+
     div.innerHTML += `
 <div class="${classeRow}" id="imp-row-${i}">
-    <div style="width:40px; font-weight:bold; text-align:center">${
-      i + 1
-    }<div id="status-${i}">${statusHtml}</div></div>
+    <div style="width:40px; font-weight:bold; text-align:center">${i + 1}<div id="status-${i}">${statusHtml}</div></div>
     <div class="imp-meta">
-        <input type="text" class="imp-banca" placeholder="Banca" value="${
-          q.banca
-        }" list="lista-bancas">
-        <input type="text" class="imp-inst" placeholder="Instituição" value="${
-          q.instituicao
-        }" list="lista-instituicoes" style="font-size:0.85em">
+        <input type="text" class="imp-banca" placeholder="Banca" value="${q.banca}" list="lista-bancas">
+        <input type="text" class="imp-inst" placeholder="Instituição" value="${q.instituicao}" list="lista-instituicoes" style="font-size:0.85em">
         <input type="number" class="imp-ano" placeholder="Ano" value="${q.ano}">
-        <input type="text" class="imp-assunto-ind" placeholder="Assunto" value="${
-          q.assunto
-        }" list="lista-assuntos" style="font-size:0.85em; color:var(--purple)">
+
+        <input type="text" class="imp-assunto-ind" placeholder="Assunto" value="${assuntoFinal}" list="lista-assuntos" style="font-size:0.85em; color:var(--purple)">
+
         <select class="imp-dif"><option value="Médio">Médio</option><option value="Fácil">Fácil</option><option value="Difícil">Difícil</option></select>
     </div>
     <div class="imp-content">
-        <textarea class="imp-textarea imp-enunciado" rows="3" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})">${
-      q.enunciado
-    }</textarea>
+        <textarea class="imp-textarea imp-enunciado" rows="3" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})">${q.enunciado}</textarea>
         <div style="margin:5px 0"><input type="file" class="imp-imagem-file" accept="image/*" style="font-size:0.8em"></div>
-        <div style="margin-top:5px; display:grid; gap:5px">
-            <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${
-              q.alt_a
-            }" onfocus="showToolbar(this)"></div>
-            <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${
-              q.alt_b
-            }" onfocus="showToolbar(this)"></div>
-            <div class="input-group"><span>C)</span><input type="text" class="imp-alt-c" value="${
-              q.alt_c
-            }" onfocus="showToolbar(this)"></div>
-            <div class="input-group"><span>D)</span><input type="text" class="imp-alt-d" value="${
-              q.alt_d
-            }" onfocus="showToolbar(this)"></div>
-            <div class="input-group"><span>E)</span><input type="text" class="imp-alt-e" value="${
-              q.alt_e
-            }" onfocus="showToolbar(this)"></div>
-        </div>
+        ${areaAlternativas}
     </div>
     <div class="imp-gab"><select class="imp-gabarito">${optionsGab}</select></div>
     <div class="imp-acoes"><button class="btn-icon" style="color:#27ae60" onclick="salvarIndividual(${i})">💾</button><button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()">✖</button></div>
@@ -444,3 +441,16 @@ el("form-edicao").onsubmit = async (e) => {
   el("modal-edicao").style.display = "none";
   init();
 };
+
+// Função para replicar o assunto global em tempo real
+function aplicarAssuntoGlobal() {
+  let valorGlobal = el("imp-assunto").value;
+  let inputsIndividuais = document.querySelectorAll(".imp-assunto-ind");
+
+  inputsIndividuais.forEach((inp) => {
+    // Só sobrescreve se o global não estiver vazio
+    if (valorGlobal.trim() !== "") {
+      inp.value = valorGlobal;
+    }
+  });
+}

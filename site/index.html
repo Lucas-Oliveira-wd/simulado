@@ -110,7 +110,7 @@
                 </div>
                 <input type="text" id="imp-disciplina" list="lista-disciplinas" placeholder="Disciplina Padrão"
                     onchange="carregarAssuntos('imp')">
-                <input type="text" id="imp-assunto" list="lista-assuntos" placeholder="Assunto Global...">
+                <input type="text" id="imp-assunto" oninput="aplicarAssuntoGlobal()" list="lista-assuntos" placeholder="Assunto Global...">
             </div>
             <div id="imp-preview-container" style="display:none">
                 <h3 id="imp-titulo-preview">Prévia</h3>

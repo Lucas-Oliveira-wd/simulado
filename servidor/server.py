@@ -135,9 +135,14 @@ def limpar_ruido(texto, disciplina=""):
     texto = re.sub(r'G\s*\n?\s*A\s*B\s*A\s*R\s*I\s*T\s*O', 'Gabarito', texto, flags=re.IGNORECASE)
 
     patterns_to_remove = [
-        r"PETROBRAS \(Nível Superior\) Português\s*\d*", r"www\.estrategiaconcursos\.com\.br\s*\d*",
-        r"\d{11}\s*-\s*Ricardo Aciole", r"Equipe Português Estratégia Concursos, Felipe Luccas",
-        r"Aula \d+", r"==\w+==", r"^\.\d+\.\.\)\.",
+        r"PETROBRAS \(Nível Superior\) Português\s*\d*",
+        r"www\.estrategiaconcursos\.com\.br\s*\d*",
+        r".*Ricardo Aciole.*",
+        r"^\s*\d+\s*$", # REMOVE LINHAS QUE SÃO APENAS NÚMEROS
+        r"Equipe Português Estratégia Concursos, Felipe Luccas",
+        r"Aula \d+",
+        r"==\w+==",
+        r"^\.\d+\.\.\)\.",
     ]
     if disciplina == "Conhecimentos Específicos":
         patterns_to_remove.extend([
