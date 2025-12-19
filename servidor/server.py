@@ -129,7 +129,7 @@ def reconstruir_header_logico(texto):
     return re.sub(pattern, resolver_match, texto)
 
 
-def limpar_ruido(texto):
+def limpar_ruido(texto, disciplina=""):
     texto = reconstruir_header_logico(texto)
     # Normaliza a palavra GABARITO que pode vir espaçada ou quebrada
     texto = re.sub(r'G\s*\n?\s*A\s*B\s*A\s*R\s*I\s*T\s*O', 'Gabarito', texto, flags=re.IGNORECASE)
@@ -139,6 +139,13 @@ def limpar_ruido(texto):
         r"\d{11}\s*-\s*Ricardo Aciole", r"Equipe Português Estratégia Concursos, Felipe Luccas",
         r"Aula \d+", r"==\w+==", r"^\.\d+\.\.\)\.",
     ]
+    if disciplina == "Conhecimentos Específicos":
+        patterns_to_remove.extend([
+            r"PETROBRAS \(Engenharia de Produção\)",
+            r"Conhecimentos Específicos",
+            r"10763321451",
+            r"Daniel Almeida"
+        ])
     for pattern in patterns_to_remove:
         texto = re.sub(pattern, "", texto, flags=re.MULTILINE | re.IGNORECASE)
     texto = re.sub(r'\n{3,}', '\n\n', texto)
@@ -161,12 +168,11 @@ def extrair_mapa_gabaritos_local(texto_bloco):
     return mapa
 
 
-def parsear_questoes(texto_bruto):
-    texto_limpo = limpar_ruido(texto_bruto)
+def parsear_questoes(texto_bruto, disciplina=""):
+    texto_limpo = limpar_ruido(texto_bruto, disciplina)
     questoes = []
 
     # Segmentação por Blocos Lógicos
-    # "GABARITO" foi removido da divisão para garantir que a tabela fique junto com a lista de questões
     regex_divisao_blocos = re.compile(
         r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)(?:.|\n)+?)(?=(?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)|$)',
         re.IGNORECASE)
@@ -203,11 +209,15 @@ def parsear_questoes(texto_bruto):
         # Extrai o mapa de respostas contido neste bloco (agora pega inline também)
         mapa_gabaritos_local = extrair_mapa_gabaritos_local(bloco)
 
-        # Regex estrita para identificar início de questão
-        pattern_questao = re.compile(
-            r'^\s*(\d+)\.\s*(?:\(?)\s*((?:\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|EQUIPE|[A-Z][a-zçãõâêô]+).+?)\s*(?:\)?)\s*$',
-            re.MULTILINE
-        )
+        if disciplina == "Português":
+            # Regex estrita para identificar início de questão
+            pattern_questao = re.compile(
+                r'^\s*(\d+)\.\s*(?:\(?)\s*((?:\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|EQUIPE|[A-Z][a-zçãõâêô]+).+?)\s*(?:\)?)\s*$',
+                re.MULTILINE
+            )
+        elif disciplina == "Conhecimentos Específicos":
+            # Sem ^ (início de linha) e sem $ (fim de linha). Pega inline.
+            pattern_questao = re.compile(r'(\d+)[\.\-\s]?\s*\((.+?)\)')
 
         matches_questoes = list(pattern_questao.finditer(bloco))
 
@@ -225,10 +235,15 @@ def parsear_questoes(texto_bruto):
 
             q_conteudo_bruto = bloco[start_index:end_index]
 
-            # CORREÇÃO CRÍTICA: Remover tabela de gabarito do final do texto da questão
+            # Remover tabela de gabarito do final do texto da questão
             # Se encontrar "Gabarito 1." ou "Gabarito 1 ", corta o texto ali.
             # Isso evita que a tabela vá para a Alternativa E da última questão.
             q_conteudo_bruto = re.split(r'\n\s*Gabarito\s+1[\.\s]', q_conteudo_bruto, flags=re.IGNORECASE)[0]
+
+            # INSERÇÃO: Detecção Universal de Certo/Errado
+            tipo = "ME"
+            if re.search(r'\(\s*\)\s*(?:Certo|Errado)|(?:Certo|Errado)\s*\(\s*\)', q_conteudo_bruto, re.IGNORECASE):
+                tipo = "CE"
 
             # Processamento de metadados (Banca, Ano, etc)
             # CORREÇÃO: Busca o ano via regex (19xx ou 20xx) antes de quebrar a string
@@ -264,7 +279,13 @@ def parsear_questoes(texto_bruto):
             gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
             matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
             if matches_gab:
-                gabarito = matches_gab[-1].group(1).upper()
+                gab_raw = matches_gab[-1].group(1).upper()
+                if gab_raw in ["CERTO", "C"]:
+                    gabarito = "C"
+                elif gab_raw in ["ERRADO", "E"]:
+                    gabarito = "E"
+                else:
+                    gabarito = gab_raw
 
             # 2. Fallback: Mapa local (listas de questões)
             # Só usa se não achou no comentário E se não parece ter comentário no texto
@@ -277,24 +298,32 @@ def parsear_questoes(texto_bruto):
             re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
             content_no_comments = re.sub(r'www\.estrategia.*', '', content_no_comments)
 
-            parts_alt = re.split(r'\b([A-E])\)', content_no_comments)
-            enunciado = sanitizar_texto(parts_alt[0].strip())
+            # Separação Enunciado/Alternativas
+            if tipo == "CE":
+                enunciado = re.sub(r'\(\s*\)\s*(?:Certo|Errado)|(?:Certo|Errado)\s*\(\s*\)', '', content_no_comments,
+                                   flags=re.IGNORECASE)
+                enunciado = sanitizar_texto(enunciado)
+                alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
+            else:
+                parts_alt = re.split(r'\b([A-E])\)', content_no_comments)
+                enunciado = sanitizar_texto(parts_alt[0].strip())
+                alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
+                if len(parts_alt) > 1:
+                    for k in range(1, len(parts_alt), 2):
+                        letra = parts_alt[k].upper()
+                        if k + 1 < len(parts_alt):
+                            alts[letra] = sanitizar_texto(parts_alt[k + 1].strip())
 
-            alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
-            if len(parts_alt) > 1:
-                for k in range(1, len(parts_alt), 2):
-                    letra = parts_alt[k].upper()
-                    if k + 1 < len(parts_alt):
-                        alts[letra] = sanitizar_texto(parts_alt[k + 1].strip())
-
-            if enunciado and (alts["A"] or alts["B"]):
-                questoes.append({
-                    "temp_id": str(uuid.uuid4()),
-                    "banca": banca, "instituicao": instituicao, "ano": ano,
-                    "assunto": assunto_atual, "enunciado": enunciado,
-                    "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"], "alt_e": alts["E"],
-                    "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME", "imagem": ""
-                })
+            if enunciado:
+                if (tipo == "ME" and (alts["A"] or alts["B"])) or (tipo == "CE"):
+                    questoes.append({
+                        "temp_id": str(uuid.uuid4()),
+                        "banca": banca, "instituicao": instituicao, "ano": ano,
+                        "assunto": assunto_atual, "enunciado": enunciado,
+                        "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"],
+                        "alt_e": alts["E"],
+                        "gabarito": gabarito, "dificuldade": "Médio", "tipo": tipo, "imagem": ""
+                    })
 
     return questoes
 
@@ -531,14 +560,20 @@ def del_fc(id): dados = [f for f in carregar_flashcards() if str(f["id"]) != str
 @app.route("/upload-pdf", methods=["POST"])
 def upload_pdf():
     f = request.files.get('file');
+    disciplina = request.form.get('disciplina', '')
+
     if not f: return jsonify({"erro": "Sem arquivo"}), 400
+    if not disciplina:
+        return jsonify({"erro": "⚠️ Erro: Nenhuma disciplina selecionada."}), 400
+
     p = os.path.join(BASE_DIR, "temp.pdf");
     f.save(p)
     try:
-        novas = parsear_questoes(extrair_texto_pdf(p));
+        novas = parsear_questoes(extrair_texto_pdf(p), disciplina);
         banco = carregar_questoes();
         sigs = {gerar_assinatura(q) for q in banco}
         for n in novas: n['ja_cadastrada'] = gerar_assinatura(n) in sigs
+
         return jsonify(novas)
     except Exception as e:
         import traceback
