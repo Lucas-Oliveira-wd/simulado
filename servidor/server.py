@@ -162,7 +162,7 @@ def extrair_mapa_gabaritos_local(texto_bloco):
     mapa = {}
     # Procura por número + (ponto/traço opcional) + (LETRA opcional) + A-E
     # Ex: "1. A", "1. Letra A", "01 - A"
-    padrao_tabela = r'\b(\d+)\s*[\.\-]?\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s*([A-E]|Certo|Errado|C|E)\b'
+    padrao_tabela = r'\b(\d+)[\.\-\s]+\s*(?:[Ll][Ee][Tt][Rr][Aa])?\s*([A-E]|Certo|Errado|C|E)(?=[\s\d\.\-]|$)'
     matches = re.finditer(padrao_tabela, texto_bloco, re.IGNORECASE)
     for m in matches:
         val = m.group(2).upper()
@@ -224,8 +224,6 @@ def parsear_questoes(texto_bruto, disciplina=""):
             pattern_questao = re.compile(r'(\d+)[\.\-\s]?\s*\((.+?)\)')
 
         matches_questoes = list(pattern_questao.finditer(bloco))
-        for q in matches_questoes:
-            print(f"q: {q}")
 
         for i, m in enumerate(matches_questoes):
             q_numero = m.group(1)
