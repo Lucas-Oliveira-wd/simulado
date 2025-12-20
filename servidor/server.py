@@ -285,7 +285,11 @@ def parsear_questoes(texto_bruto, disciplina=""):
             # Busca Gabarito
             gabarito = ""
             # 1. Prioridade: Comentário local (questões comentadas)
-            gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
+            if disciplina == "Português":
+                gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
+            else:
+                # 2. [A-E](?![a-z]): Pega a letra A-E SÓ SE não tiver letra minúscula depois (Evita o A de Alternativa).
+                gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*(?:(?:Alternativa|Opção)\s+)?([A-E](?![a-z])|\bCerto\b|\bErrado\b|\bC\b|\bE\b)'
             matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
             if matches_gab:
                 gab_raw = matches_gab[-1].group(1).upper()
