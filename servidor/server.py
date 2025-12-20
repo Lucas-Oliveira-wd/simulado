@@ -221,7 +221,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
             )
         elif disciplina == "Conhecimentos Específicos":
             # Sem ^ (início de linha) e sem $ (fim de linha). Pega inline.
-            pattern_questao = re.compile(r'(\d+)[\.\-\s]?\s*\((.+?)\)')
+            pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*(\(.*?\))', re.MULTILINE)
 
         matches_questoes = list(pattern_questao.finditer(bloco))
 
