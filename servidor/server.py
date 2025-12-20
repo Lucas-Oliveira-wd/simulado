@@ -149,7 +149,8 @@ def limpar_ruido(texto, disciplina=""):
             r"PETROBRAS \(Engenharia de Produção\)",
             r"Conhecimentos Específicos",
             r"10763321451",
-            r"Daniel Almeida"
+            r"Daniel Almeida",
+            r".*Felipe Canella.*"
         ])
     for pattern in patterns_to_remove:
         texto = re.sub(pattern, "", texto, flags=re.MULTILINE | re.IGNORECASE)
@@ -289,7 +290,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                 gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
             else:
                 # 2. [A-E](?![a-z]): Pega a letra A-E SÓ SE não tiver letra minúscula depois (Evita o A de Alternativa).
-                gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*(?:(?:Alternativa|Opção)\s+)?([A-E](?![a-z])|\bCerto\b|\bErrado\b|\bC\b|\bE\b)'
+                gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*(?:(?:Alternativa|Opção)\s+)?(?:[\"“\']\s*)?([A-Ea-e])(?:[\"”\']\.?)?(?![a-z])'
             matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
             if matches_gab:
                 gab_raw = matches_gab[-1].group(1).upper()
@@ -318,6 +319,10 @@ def parsear_questoes(texto_bruto, disciplina=""):
                 enunciado = sanitizar_texto(enunciado)
                 alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
             else:
+                # --- CORREÇÃO PARA FORMATO (A), (B)... ---
+                if disciplina == "Conhecimentos Específicos":
+                    content_no_comments = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
+
                 parts_alt = re.split(r'\b([A-E])\)', content_no_comments, flags=re.IGNORECASE)
                 enunciado = sanitizar_texto(parts_alt[0].strip())
                 alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
