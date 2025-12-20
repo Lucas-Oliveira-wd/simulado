@@ -44,7 +44,6 @@ const API = "http://localhost:5000";
             }
         });
 
-        // --- CORREÇÃO AQUI: Removemos o nav('cadastro') daqui ---
         async function init() {
             try {
                 let [r1, r2, r3] = await Promise.all([fetch(`${API}/questoes`), fetch(`${API}/opcoes-dinamicas`), fetch(`${API}/flashcards`)]);
