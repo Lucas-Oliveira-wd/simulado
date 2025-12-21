@@ -100,6 +100,21 @@ function renderCard() {
     el("fc-area-jogo").style.display = "none";
     return alert("Revisão Concluída!");
   }
+
+  // --- LÓGICA DO ALFINETE ALEATÓRIO ---
+  const pinoEl = el("alfinetes"); // Certifique-se que a div tem id="alfinetes"
+  if (pinoEl) {
+      // As 5 posições verticais possíveis (0%, 25%, 50%, 75%, 100%)
+      const posicoes = ["0%", "25%", "50%", "75%", "100%"];
+      
+      // Sorteia um índice de 0 a 4
+      const indiceAleatorio = Math.floor(Math.random() * posicoes.length);
+      
+      // Aplica a posição: Center (horizontal) + Posição Sorteada (vertical)
+      pinoEl.style.backgroundPosition = `center ${posicoes[indiceAleatorio]}`;
+  }
+  // -------------------------------------
+
   let c = flashPool[flashIdx];
   el("fc-progresso").innerText = `Cartão ${flashIdx + 1} de ${
     flashPool.length

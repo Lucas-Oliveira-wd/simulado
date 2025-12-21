@@ -110,3 +110,39 @@ textarea {
     color: #444;
     line-height: 1.5;
 }
+
+/* Força a tabela a respeitar a largura do card */
+.render-html table, .enunciado table {
+    width: 100%;
+    max-width: 100%;
+    border-collapse: collapse; /* Remove espaços duplos entre bordas */
+    margin: 15px 0;
+    background-color: #fff;
+    font-size: 0.95em;
+}
+
+/* Estiliza as células e força a quebra de texto */
+.render-html th, .render-html td,
+.enunciado th, .enunciado td {
+    border: 1px solid #d1d1d1; /* Borda cinza suave */
+    padding: 10px;             /* Espaçamento interno para não grudar */
+    text-align: left;
+    vertical-align: top;       /* Alinha texto ao topo (útil para textos longos) */
+    
+    /* O SEGREDO DO SUCESSO: */
+    white-space: normal;       /* Permite quebra de linha */
+    word-wrap: break-word;     /* Quebra palavras se necessário */
+    overflow-wrap: break-word; /* Compatibilidade moderna */
+}
+
+/* (Opcional) Efeito zebra para facilitar leitura em tabelas longas */
+.render-html tr:nth-child(even), .enunciado tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* (Opcional) Cabeçalho da tabela */
+.render-html th, .enunciado th {
+    background-color: #f1f1f1;
+    font-weight: bold;
+    color: #333;
+}
