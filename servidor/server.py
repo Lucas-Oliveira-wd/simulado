@@ -220,7 +220,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                 r'^\s*(\d+)\.\s*(?:\(?)\s*((?:\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|EQUIPE|[A-Z][a-zçãõâêô]+).+?)\s*(?:\)?)\s*$',
                 re.MULTILINE
             )
-        elif disciplina == "Conhecimentos Específicos":
+        else:
             # Sem ^ (início de linha) e sem $ (fim de linha). Pega inline.
             pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*(\(.*?\))', re.MULTILINE)
 
@@ -407,6 +407,47 @@ def salvar_questoes(dados):
     wb.save(ARQ_QUESTOES)
 
 
+# --- GERENCIAMENTO DE TEXTOS DE APOIO ---
+def verificar_tabela_textos():
+    garantir_diretorio()
+    if not os.path.exists(ARQ_QUESTOES):
+        return  # Se não existe o arquivo, a função verificar_questoes vai criar
+
+    wb = load_workbook(ARQ_QUESTOES)
+    if "textos" not in wb.sheetnames:
+        ws = wb.create_sheet("textos")
+        ws.append(["id", "titulo", "conteudo"])  # Cabeçalho
+        wb.save(ARQ_QUESTOES)
+
+
+def carregar_todos_textos():
+    verificar_tabela_textos()
+    wb = load_workbook(ARQ_QUESTOES)
+    if "textos" not in wb.sheetnames: return []
+    ws = wb["textos"]
+    textos = []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row[0]:
+            textos.append({"id": row[0], "titulo": row[1], "conteudo": row[2]})
+    return textos
+
+
+def salvar_novo_texto(novo_texto):
+    try:
+        verificar_tabela_textos()
+        wb = load_workbook(ARQ_QUESTOES)
+        ws = wb["textos"]
+
+        ws.append([novo_texto["id"], novo_texto["titulo"], novo_texto["conteudo"]])
+        wb.save(ARQ_QUESTOES)
+        return True
+    except PermissionError:
+        print("--- ERRO CRÍTICO: Arquivo Excel aberto. Feche para salvar. ---")
+        return False  # Retorna Falha
+    except Exception as e:
+        print(f"--- ERRO DESCONHECIDO: {e} ---")
+        return False
+
 def verificar_flashcards():
     garantir_diretorio()
     if not os.path.exists(ARQ_FLASHCARDS):
@@ -481,6 +522,8 @@ def serve_image(filename): return send_from_directory(UPLOAD_FOLDER, filename)
 @app.route("/questoes", methods=["GET"])
 def get_q():
     dados = carregar_questoes()
+    textos = carregar_todos_textos()
+    mapa_textos = {t["id"]: t["conteudo"] for t in textos}
     dados.reverse()  # Mais recentes primeiro
 
     # --- 1. FILTRAGEM (Server-Side) ---
@@ -509,6 +552,16 @@ def get_q():
 
             filtrados.append(q)
         dados = filtrados
+
+    # Antes de paginar ou retornar, "hidrata" as questões com o texto real
+    for q in dados:
+        # O campo no excel se chama 'texto_apoio', mas agora guardamos um ID nele.
+        id_vinculo = q.get("texto_apoio")
+        if id_vinculo and id_vinculo in mapa_textos:
+            # Cria um campo novo 'texto_conteudo' para o front mostrar
+            q["texto_conteudo"] = mapa_textos[id_vinculo]
+        else:
+            q["texto_conteudo"] = ""
 
     # --- 2. PAGINAÇÃO ---
     page = request.args.get('page')
@@ -604,8 +657,22 @@ def check_dup():
 
 
 @app.route("/questoes/<string:id>", methods=["DELETE"])
-def del_q(id): dados = [q for q in carregar_questoes() if str(q["id"]) != str(id)]; salvar_questoes(
-    dados); return jsonify({"status": "Removido"})
+def del_q(id):
+    try:
+        dados_atuais = carregar_questoes()
+        novos_dados = [q for q in dados_atuais if str(q["id"]) != str(id)]
+
+        # Se o tamanho for igual, não achou a questão (evita reescrever o arquivo à toa)
+        if len(novos_dados) == len(dados_atuais):
+            return jsonify({"status": "Questão não encontrada"}), 404
+
+        salvar_questoes(novos_dados)
+        return jsonify({"status": "Removido"})
+    except PermissionError:
+        return jsonify({"erro": "Arquivo Excel aberto. Feche para excluir."}), 500
+    except Exception as e:
+        print(f"Erro ao excluir: {e}")
+        return jsonify({"erro": str(e)}), 500
 
 
 @app.route("/flashcards", methods=["GET", "POST", "PUT"])
@@ -661,6 +728,24 @@ def upload_pdf():
 @app.route("/opcoes-dinamicas", methods=["GET"])
 def get_opcoes():
     return jsonify(extrair_opcoes_do_banco())
+
+
+@app.route("/textos", methods=["GET", "POST"])
+def handle_textos():
+    if request.method == "GET":
+        return jsonify(carregar_todos_textos())
+
+    if request.method == "POST":
+        data = request.json
+        if not data.get("conteudo"): return jsonify({"erro": "Vazio"}), 400
+
+        novo = {
+            "id": str(uuid.uuid4()),
+            "titulo": data.get("titulo", "Sem Título"),
+            "conteudo": normalizar_texto_para_banco(data.get("conteudo"))
+        }
+        salvar_novo_texto(novo)
+        return jsonify(novo), 201
 
 
 if __name__ == "__main__": app.run(debug=True, port=5000)

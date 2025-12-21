@@ -54,6 +54,16 @@
         <div class="container">
             <h2>Cadastrar Questão</h2>
             <form id="form-cadastro">
+                <div class="input-group" style="margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #fdfdfd;">
+                    <label style="font-weight:bold; color:var(--primary)">Texto de Apoio (Opcional)</label>
+                    <div style="display:flex; gap:10px;">
+                        <select class="sel-texto-apoio" style="flex-grow:1;">
+                            <option selected value="">-- Sem Texto de Apoio --</option>
+                            </select>
+                        <button type="button" class="btn-padrao" onclick="abrirModalTexto()">+ Novo Texto</button>
+                    </div>
+                    <div class="preview-texto-apoio" style="font-size:0.8em; color:#666; margin-top:5px; max-height:60px; overflow:hidden; font-style:italic;"></div>
+                </div>
                 <label>Enunciado:</label><textarea id="cad-enunciado" class="input-com-toolbar" rows="4" required
                     onfocus="showToolbar(this)"></textarea>
                 <label>Imagem (Opcional):</label><input type="file" id="cad-imagem" accept="image/*">
@@ -316,7 +326,14 @@
 
     <section id="secao-estatisticas" class="secao">
         <div class="container">
-            <h2>Desempenho</h2><canvas id="chart"></canvas>
+            <div class="flex" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 id="titulo-estatistica">Desempenho Geral</h2>
+                <button id="btn-voltar-estatistica" class="btn-acao" onclick="graf()" 
+                        style="display:none; width:auto; background:#95a5a6; padding: 5px 15px;">
+                    ⬅ Voltar para Disciplinas
+                </button>
+            </div>
+            <canvas id="chart"></canvas>
         </div>
     </section>
 
@@ -325,6 +342,16 @@
                 onclick="el('modal-edicao').style.display='none'">&times;</span>
             <h2>Editar</h2>
             <form id="form-edicao"><input type="hidden" id="edit-id">
+                <div class="input-group" style="margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 5px; background: #fdfdfd;">
+                    <label style="font-weight:bold; color:var(--primary)">Texto de Apoio (Opcional)</label>
+                    <div style="display:flex; gap:10px;">
+                        <select class="sel-texto-apoio" style="flex-grow:1;">
+                            <option selected value="">-- Sem Texto de Apoio --</option>
+                        </select>
+                        <button type="button" class="btn-padrao" onclick="abrirModalTexto()">+ Novo Texto</button>
+                    </div>
+                    <div class="preview-texto-apoio" style="font-size:0.8em; color:#666; margin-top:5px; max-height:60px; overflow:hidden; font-style:italic;"></div>
+                </div>
                 <label>Enunciado:</label><textarea id="edit-enunciado" class="input-com-toolbar" rows="3" required
                     onfocus="showToolbar(this)"></textarea>
                 <label>Imagem:</label>
@@ -365,6 +392,16 @@
                 </div><label>Gabarito:</label><select id="edit-gabarito"></select><button class="btn-acao"
                     style="background:#f39c12">Salvar</button>
             </form>
+        </div>
+    </div>
+
+    <div id="modal-novo-texto" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close" onclick="el('modal-novo-texto').style.display='none'">&times;</span>
+            <h2>Cadastrar Novo Texto</h2>
+            <input type="text" id="novo-texto-titulo" class="imp-input" placeholder="Título / Identificador (Ex: Texto 1 - Aula 05)">
+            <textarea id="novo-texto-conteudo" class="imp-textarea" rows="10" placeholder="Cole o texto aqui..."></textarea>
+            <button class="btn-padrao" onclick="salvarNovoTextoApi()" style="width:100%; margin-top:10px;">Salvar Texto</button>
         </div>
     </div>
 

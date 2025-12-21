@@ -154,6 +154,7 @@ function iniciarPratica() {
   el("area-pratica").style.display = "block";
   renPratica();
 }
+
 function renPratica() {
   let q = pratPool[pratIdx];
   el("prat-progresso").innerText = `Questão ${pratIdx + 1} de ${
@@ -166,6 +167,19 @@ function renPratica() {
   let htmlImg = q.imagem
     ? `<img src="${API}/img/q_img/${q.imagem}" class="questao-img">`
     : "";
+
+  let htmlTexto = "";
+  // Note que usamos "texto_conteudo", que foi injetado pelo backend via JOIN
+  if (q.texto_conteudo) { 
+      let textoFormatado = q.texto_conteudo.replace(/\n/g, '<br>');
+      htmlTexto = `
+          <div class="texto-apoio-box">
+              <div class="texto-apoio-header">📄 Texto de Referência</div>
+              <div class="texto-apoio-content">${textoFormatado}</div>
+          </div>`;
+  }
+  
+  el("prat-enunciado").innerHTML = htmlTexto + (q.imagem ? `<img ...>` : "") + q.enunciado;
 
   // O CSS .enunciado { white-space: pre-wrap } vai fazer os \n funcionarem aqui
   el("prat-enunciado").innerHTML = htmlImg + q.enunciado;
@@ -403,31 +417,113 @@ function finalizarProva() {
 
 // --- ESTATÍSTICAS ---
 function graf() {
+  renderGraficoNivel("disciplina");
+}
+
+function renderGraficoNivel(nivel, filtroDisciplina = null) {
   let ctx = el("chart").getContext("2d");
+  
+  // Destrói gráfico anterior se existir para evitar sobreposição
   if (window.myChart) window.myChart.destroy();
-  let stats = {};
-  db.forEach((q) => {
-    if (!stats[q.disciplina]) stats[q.disciplina] = { r: 0, a: 0 };
-    stats[q.disciplina].r += q.respondidas;
-    stats[q.disciplina].a += q.acertos;
-  });
-  let l = [],
-    d = [],
-    c = [];
-  for (let k in stats) {
-    if (stats[k].r > 0) {
-      l.push(k);
-      let p = (stats[k].a / stats[k].r) * 100;
-      d.push(p.toFixed(1));
-      c.push(p >= 50 ? "#27ae60" : "#e74c3c");
-    }
+
+  // Controle de Interface (Botão Voltar e Título)
+  let btnVoltar = el("btn-voltar-estatistica");
+  let titulo = el("titulo-estatistica");
+
+  if (nivel === "disciplina") {
+      btnVoltar.style.display = "none";
+      titulo.innerText = "Desempenho por Disciplina";
+  } else {
+      btnVoltar.style.display = "block";
+      titulo.innerText = `Detalhes: ${filtroDisciplina}`;
   }
+
+  // 1. Processamento dos Dados
+  let stats = {};
+  
+  db.forEach((q) => {
+      // Se estamos vendo assuntos, ignora questões de outras disciplinas
+      if (nivel === "assunto" && q.disciplina !== filtroDisciplina) return;
+
+      // Define a chave de agrupamento (Nome da Disciplina ou Nome do Assunto)
+      let chave = (nivel === "disciplina") ? q.disciplina : q.assunto;
+      if (!chave) chave = "Indefinido";
+
+      if (!stats[chave]) stats[chave] = { r: 0, a: 0 };
+      stats[chave].r += (q.respondidas || 0);
+      stats[chave].a += (q.acertos || 0);
+  });
+
+  // 2. Preparação para o Chart.js
+  let labels = [], data = [], colors = [];
+  
+  // Ordena por porcentagem de acertos (opcional, mas fica melhor visualmente)
+  let sortedKeys = Object.keys(stats).sort((a, b) => {
+      let pA = stats[a].r > 0 ? (stats[a].a / stats[a].r) : 0;
+      let pB = stats[b].r > 0 ? (stats[b].a / stats[b].r) : 0;
+      return pB - pA; // Decrescente
+  });
+
+  for (let k of sortedKeys) {
+      if (stats[k].r > 0) { // Só mostra se tiver respostas
+          labels.push(k);
+          let p = (stats[k].a / stats[k].r) * 100;
+          data.push(p.toFixed(1));
+          
+          // Cores: Verde (>=70%), Amarelo (>=50%), Vermelho (<50%)
+          if (p >= 70) colors.push("#27ae60");
+          else if (p >= 50) colors.push("#f1c40f");
+          else colors.push("#e74c3c");
+      }
+  }
+
+  // 3. Renderização
   window.myChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: l,
-      datasets: [{ label: "%", data: d, backgroundColor: c }],
-    },
-    options: { scales: { y: { beginAtZero: true, max: 100 } } },
+      type: "bar",
+      data: {
+          labels: labels,
+          datasets: [{ 
+              label: "% de Acertos", 
+              data: data, 
+              backgroundColor: colors,
+              borderWidth: 1
+          }],
+      },
+      options: {
+          responsive: true,
+          scales: { y: { beginAtZero: true, max: 100 } },
+          plugins: {
+              tooltip: {
+                  callbacks: {
+                      label: function(context) {
+                          let label = context.dataset.label || '';
+                          let val = context.parsed.y;
+                          let key = context.label;
+                          let total = stats[key].r;
+                          let acertos = stats[key].a;
+                          return `${val}% (${acertos}/${total} questões)`;
+                      }
+                  }
+              }
+          },
+          // EVENTO DE CLIQUE NAS BARRAS
+          onClick: (e, elements) => {
+              if (nivel === "disciplina" && elements.length > 0) {
+                  let index = elements[0].index;
+                  let disciplinaClicada = labels[index];
+                  
+                  // Chama a função recursivamente para o nível de assunto
+                  renderGraficoNivel("assunto", disciplinaClicada);
+              }
+          },
+          // Muda o cursor para "mãozinha" quando passa em cima de uma barra clicável
+          onHover: (event, chartElement) => {
+              if (nivel === "disciplina") {
+                  event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+              } else {
+                  event.native.target.style.cursor = 'default';
+              }
+          }
+      }
   });
 }

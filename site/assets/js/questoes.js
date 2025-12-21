@@ -4,6 +4,75 @@ let totalPaginas = 1;
 
 let filtroCache = {}; // Guarda o filtro atual para navegação
 
+// Variável global para cache de textos
+let cacheTextos = [];
+
+// 1. Função para carregar textos do servidor e preencher os Selects
+async function carregarListaTextos() {
+    try {
+        const res = await fetch(`${API}/textos`);
+        cacheTextos = await res.json();
+        
+        // Atualiza todos os selects de texto (cadastro e edição)
+        document.querySelectorAll('.sel-texto-apoio').forEach(sel => {
+            let valorAtual = sel.value; // Tenta manter seleção se houver
+            sel.innerHTML = `<option value="">-- Sem Texto de Apoio --</option>`;
+            cacheTextos.forEach(t => {
+                // Mostra os primeiros 60 caracteres no dropdown
+                let resumo = t.titulo + " - " + t.conteudo.substring(0, 50).replace(/\n/g, " ") + "...";
+                sel.innerHTML += `<option value="${t.id}">${resumo}</option>`;
+            });
+            if(valorAtual) sel.value = valorAtual;
+            
+            // Adiciona evento para mostrar preview
+            sel.onchange = function() {
+                let txt = cacheTextos.find(x => x.id === this.value);
+                let divPrev = this.parentElement.parentElement.querySelector('.preview-texto-apoio');
+                divPrev.innerText = txt ? txt.conteudo.substring(0, 150) + "..." : "";
+            }
+        });
+    } catch (e) { console.error("Erro ao carregar textos", e); }
+}
+
+// 2. Funções do Modal de Novo Texto
+function abrirModalTexto() {
+    el('modal-novo-texto').style.display = 'block';
+    el('novo-texto-titulo').value = "";
+    el('novo-texto-conteudo').value = "";
+    el('novo-texto-titulo').focus();
+}
+
+async function salvarNovoTextoApi() {
+    let titulo = el('novo-texto-titulo').value;
+    let conteudo = el('novo-texto-conteudo').value;
+    
+    if(!conteudo) return alert("O texto precisa de conteúdo.");
+    
+    try {
+        const res = await fetch(`${API}/textos`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ titulo, conteudo })
+        });
+        
+        if(res.ok) {
+            let novo = await res.json();
+            alert("Texto salvo!");
+            el('modal-novo-texto').style.display = 'none';
+            await carregarListaTextos(); // Recarrega as listas
+            
+            // Seleciona automaticamente o novo texto nos selects
+            document.querySelectorAll('.sel-texto-apoio').forEach(s => s.value = novo.id);
+        }else {
+            // Se der erro (ex: Excel aberto), mostra o alerta do servidor
+            let erroJson = await res.json();
+            alert("ERRO AO SALVAR: " + (erroJson.erro || "Erro desconhecido"));
+        }
+        
+    } catch(e) { alert("Erro ao salvar texto"); }
+}
+
+
 // --- IMPORTAÇÃO PDF & DRAG DROP ---
 async function lerPDF() {
   let lista = el("imp-lista-questoes");
@@ -137,6 +206,8 @@ async function salvarIndividual(index) {
   formData.append("alt_e", iE ? iE.value : "");
 
   formData.append("gabarito", r.querySelector(".imp-gabarito").value);
+
+  formData.append("texto_apoio", document.querySelector("#form-cadastro .sel-texto-apoio").value);
 
   let tipoDetectado = iA ? "ME" : "CE"; //Detecta o tipo de questão
   formData.append("tipo", tipoDetectado);
@@ -290,6 +361,7 @@ el("form-cadastro").onsubmit = async (e) => {
   formData.append("dificuldade", el("cad-dificuldade").value);
   formData.append("tipo", el("cad-tipo").value);
   formData.append("gabarito", el("cad-gabarito").value);
+  formData.append("texto_apoio", document.querySelector("#form-cadastro .sel-texto-apoio").value);
   formData.append("alt_a", el("cad-alt-a").value);
   formData.append("alt_b", el("cad-alt-b").value);
   formData.append("alt_c", el("cad-alt-c").value);
@@ -482,6 +554,7 @@ el("form-edicao").onsubmit = async (e) => {
   formData.append("dificuldade", el("edit-dificuldade").value);
   formData.append("tipo", el("edit-tipo").value);
   formData.append("gabarito", el("edit-gabarito").value);
+  formData.append("texto_apoio", document.querySelector("#form-cadastro .sel-texto-apoio").value);
   formData.append("alt_a", el("edit-alt-a").value);
   formData.append("alt_b", el("edit-alt-b").value);
   formData.append("alt_c", el("edit-alt-c").value);
@@ -507,3 +580,4 @@ function aplicarAssuntoGlobal() {
     }
   });
 }
+

@@ -57,6 +57,8 @@ async function init() {
         if (el('fc-modo-gerenciar').style.display === 'block') renderListaFC();
 
     } catch (e) { console.error(e); alert("Erro ao carregar dados."); }
+
+    await carregarListaTextos();
 }
 
 function pop(elAlvo, arr, def, usarDatalist = false) {
