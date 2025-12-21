@@ -1,0 +1,15 @@
+.btn-pag {
+    padding: 8px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    cursor: pointer;
+}
+.btn-pag:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.btn-pag:hover:not(:disabled) {
+    background: var(--primary);
+    color: white;
+}

@@ -1,3 +1,9 @@
+// VARIÁVEIS GLOBAIS DE PAGINAÇÃO
+let paginaAtual = 1;
+let totalPaginas = 1;
+
+let filtroCache = {}; // Guarda o filtro atual para navegação
+
 // --- IMPORTAÇÃO PDF & DRAG DROP ---
 async function lerPDF() {
   let lista = el("imp-lista-questoes");
@@ -309,68 +315,104 @@ el("form-cadastro").onsubmit = async (e) => {
   }
 };
 
-function carrTab() {
-  el("total-db").innerText = `${db.length} questões`;
-  filtrar();
+async function carrTab(pagina = 1) {
+  paginaAtual = pagina; // Atualiza a global
+
+  // Captura os filtros atuais
+  let txt = el("busca-texto").value;
+  let ban = el("busca-banca").value;
+  let inst = el("busca-instituicao").value;
+  let dis = el("busca-disciplina").value;
+  let ass = el("busca-assunto").value;
+  let dif = el("busca-dificuldade").value;
+
+  // Monta Query String
+  let params = new URLSearchParams({
+      page: pagina,
+      texto: txt,
+      banca: ban,
+      instituicao: inst,
+      disciplina: dis,
+      assunto: ass,
+      dificuldade: dif
+  });
+
+  try {
+      showLoader("Carregando...");
+      const res = await fetch(`${API}/questoes?${params.toString()}`);
+      const data = await res.json();
+      
+      // Se a API retornar lista pura (modo antigo), converte para objeto
+      let lista = Array.isArray(data) ? data : data.items;
+      let total = Array.isArray(data) ? data.length : data.total;
+
+      // ATUALIZA O TOTAL DE PÁGINAS GLOBALMENTE
+      totalPaginas = Array.isArray(data) ? 1 : data.total_paginas;
+
+      renderizarTabela(lista);
+      atualizarControlesPaginacao(total);
+      
+  } catch (e) {
+      console.error(e);
+      alert("Erro ao carregar tabela.");
+  } finally {
+      hideLoader();
+  }
+}
+
+function renderizarTabela(lista) {
+  let tb = document.querySelector("#tabela-questoes tbody");
+  tb.innerHTML = "";
+  
+  if (lista.length === 0) {
+      tb.innerHTML = "<tr><td colspan='10' style='text-align:center; padding:20px'>Nenhuma questão encontrada.</td></tr>";
+      return;
+  }
+
+  lista.forEach((q) => {
+      let difClass = q.dificuldade === "Fácil" ? "color-facil" : q.dificuldade === "Médio" ? "color-medio" : "color-dificil";
+      let dots = q.dificuldade === "Fácil" ? "●" : q.dificuldade === "Médio" ? "●●" : "●●●";
+      
+      tb.innerHTML += `<tr>
+          <td>${q.id}</td>
+          <td>${q.banca || '-'}</td>
+          <td style="font-size:0.85em; color:#555;">${q.instituicao || "-"}</td>
+          <td>${q.ano || "-"}</td>
+          <td>${q.disciplina || '-'}</td>
+          <td title="${(q.enunciado||'').replace(/"/g, "&quot;")}">${(q.enunciado||'').substring(0, 40)}...</td>
+          <td>${q.assunto || '-'}</td>
+          <td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td>
+          <td>${q.gabarito}</td>
+          <td>
+              <button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button>
+              <button class="btn-icon" onclick="del('${q.id}')">🗑️</button>
+          </td>
+      </tr>`;
+  });
+}
+
+function atualizarControlesPaginacao(totalItens) {
+    el("total-db").innerText = `${totalItens} questões encontradas`;
+    
+    let divPag = el("paginacao-container");
+    if(!divPag) return; // Se não criou a div no HTML, ignora
+
+    divPag.innerHTML = `
+        <button class="btn-pag" onclick="mudarPag(-1)" ${paginaAtual <= 1 ? 'disabled' : ''}>◀ Anterior</button>
+        <span style="margin: 0 15px">Página <b>${paginaAtual}</b> de <b>${totalPaginas}</b></span>
+        <button class="btn-pag" onclick="mudarPag(1)" ${paginaAtual >= totalPaginas ? 'disabled' : ''}>Próxima ▶</button>
+    `;
+}
+
+function mudarPag(delta) {
+    let nova = paginaAtual + delta;
+    if(nova >= 1 && nova <= totalPaginas) {
+        carrTab(nova);
+    }
 }
 
 function filtrar() {
-  let txt = el("busca-texto").value.toLowerCase(),
-    ban = el("busca-banca").value,
-    inst = el("busca-instituicao").value, // Captura valor (vem MAIUSCULO do datalist)
-    dis = el("busca-disciplina").value,
-    ass = el("busca-assunto").value,
-    dif = el("busca-dificuldade").value;
-
-  let filtrados = db.filter((q) => {
-    let qInst = q.instituicao ? q.instituicao.toString().toUpperCase() : "";
-    let filtroInst = inst ? inst.toUpperCase() : "";
-
-    return (
-      q.enunciado.toLowerCase().includes(txt) &&
-      (ban === "" || q.banca === ban) &&
-      (filtroInst === "" || qInst === filtroInst) &&
-      (dis === "" || q.disciplina === dis) &&
-      (ass === "" || q.assunto === ass) &&
-      (dif === "" || q.dificuldade === dif)
-    );
-  });
-
-  let tb = document.querySelector("#tabela-questoes tbody");
-  tb.innerHTML = "";
-  filtrados.forEach((q) => {
-    let difClass =
-      q.dificuldade === "Fácil"
-        ? "color-facil"
-        : q.dificuldade === "Médio"
-        ? "color-medio"
-        : "color-dificil";
-    let dots =
-      q.dificuldade === "Fácil"
-        ? "●"
-        : q.dificuldade === "Médio"
-        ? "●●"
-        : "●●●";
-    tb.innerHTML += `<tr>
-    <td>${q.id}</td>
-    <td>${q.banca}</td>
-    <td style="font-size:0.85em; color:#555;">${q.instituicao || "-"}</td>
-    <td>${q.ano || "-"}</td>
-    <td>${q.disciplina}</td>
-    <td title="${q.enunciado.replace(/"/g, "&quot;")}">${q.enunciado.substring(
-      0,
-      40
-    )}...</td>
-    <td>${q.assunto}</td>
-    <td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td>
-    <td>${q.gabarito}</td>
-    <td><button class="btn-icon" onclick="abrirEd('${
-      q.id
-    }')">✏️</button><button class="btn-icon" onclick="del('${
-      q.id
-    }')">🗑️</button></td>
-</tr>`;
-  });
+  carrTab(1); // Recarrega do servidor aplicando os filtros na página 1
 }
 
 function del(id) {
@@ -450,7 +492,7 @@ el("form-edicao").onsubmit = async (e) => {
   if (fileInput.files[0]) formData.append("imagem_file", fileInput.files[0]);
   await fetch(`${API}/questoes`, { method: "PUT", body: formData });
   el("modal-edicao").style.display = "none";
-  init();
+  carrTab(paginaAtual);
 };
 
 // Função para replicar o assunto global em tempo real

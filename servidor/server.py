@@ -479,7 +479,64 @@ def serve_image(filename): return send_from_directory(UPLOAD_FOLDER, filename)
 
 
 @app.route("/questoes", methods=["GET"])
-def get_q(): return jsonify(carregar_questoes())
+def get_q():
+    dados = carregar_questoes()
+    dados.reverse()  # Mais recentes primeiro
+
+    # --- 1. FILTRAGEM (Server-Side) ---
+    # Captura os parâmetros da URL
+    texto = request.args.get('texto', '').lower()
+    banca = request.args.get('banca', '')
+    instituicao = request.args.get('instituicao', '')
+    disciplina = request.args.get('disciplina', '')
+    assunto = request.args.get('assunto', '')
+    dificuldade = request.args.get('dificuldade', '')
+
+    # Se houver algum filtro, aplicamos antes de paginar
+    if any([texto, banca, instituicao, disciplina, assunto, dificuldade]):
+        filtrados = []
+        for q in dados:
+            # Filtro Texto (Enunciado)
+            if texto and texto not in (str(q.get('enunciado') or '')).lower(): continue
+
+            # Filtros Exatos (Banca, Disciplina, etc)
+            # Usamos 'or ""' para evitar erro se o campo for None
+            if banca and str(q.get('banca') or '') != banca: continue
+            if instituicao and str(q.get('instituicao') or '').upper() != instituicao.upper(): continue
+            if disciplina and str(q.get('disciplina') or '') != disciplina: continue
+            if assunto and str(q.get('assunto') or '') != assunto: continue
+            if dificuldade and str(q.get('dificuldade') or '') != dificuldade: continue
+
+            filtrados.append(q)
+        dados = filtrados
+
+    # --- 2. PAGINAÇÃO ---
+    page = request.args.get('page')
+    if page:
+        try:
+            page = int(page)
+            per_page = 50
+            total_items = len(dados)
+            total_pages = (total_items + per_page - 1) // per_page
+
+            # Proteção: Se a página pedida for maior que o total, devolve a última
+            if page > total_pages and total_pages > 0: page = total_pages
+            if page < 1: page = 1
+
+            start = (page - 1) * per_page
+            end = start + per_page
+
+            return jsonify({
+                "items": dados[start:end],
+                "total": total_items,
+                "pagina_atual": page,
+                "total_paginas": total_pages if total_pages > 0 else 1
+            })
+        except ValueError:
+            pass
+
+            # Retorno padrão (sem paginação, ex: para o modo Simulado)
+    return jsonify(dados)
 
 
 @app.route("/questoes", methods=["POST"])
