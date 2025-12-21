@@ -127,3 +127,37 @@ window.onload = async () => {
     headerOffset = el('secao-cadastro').offsetTop;
     setupDragDrop();
 };
+
+const fmtList = (elem, type) => {
+    let c = typeof elem === 'string' ? el(elem) : elem;
+    if (!c) return;
+
+    let s = c.selectionStart;
+    let e = c.selectionEnd;
+    let sel = c.value.substring(s, e);
+
+    // Se não tiver nada selecionado, aborta
+    if (!sel.trim()) return;
+
+    // 1. Identifica as quebras de linha originais (Enter)
+    // O split('\n') separa exatamente onde o usuário deu Enter.
+    let linhas = sel.split('\n');
+
+    // 2. Transforma cada linha em um <li>, mantendo a formatação visual
+    let itensLista = linhas
+        .map(linha => {
+            let textoLimpo = linha.trim();
+            // Se a linha tiver texto, encapsula em <li>. Se for linha em branco, ignora.
+            return textoLimpo ? `\t<li>${textoLimpo}</li>` : ''; 
+        })
+        .filter(item => item !== '') // Remove as linhas vazias do array
+        .join('\n'); // Junta tudo colocando uma quebra de linha visual entre os <li>
+
+    // 3. Monta o bloco final com quebras de linha para ficar legível no input
+    let resultado = `<${type}>\n${itensLista}\n</${type}>`;
+
+    // 4. Substitui a seleção pelo código formatado
+    c.value = c.value.substring(0, s) + resultado + c.value.substring(e);
+};
+
+const fmtListUlt = (type) => { if (foco) fmtList(foco, type); };
