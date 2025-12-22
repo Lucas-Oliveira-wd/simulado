@@ -218,11 +218,12 @@ async function respGrid(id, acertou, index) {
       
       // Atualiza contagem
       let restantes = document.querySelectorAll('.fc-card-wrapper').length;
-      el("fc-progresso").innerText = `Restam ${restantes} cartões`;
-
-      if (restantes === 0) {
-          alert("Revisão Concluída!");
-          toggleModeFC('estudo'); // Volta para o menu
+      // Se ainda tem cartas, atualiza o texto
+      if (restantes > 0) {
+        el("fc-progresso").innerText = `Restam ${restantes} cartões`;
+      } else {
+        alert("Revisão Concluída! 🎉");
+        el("fc-area-jogo").style.display = "none"; // <--- A CORREÇÃO: Esconde a mesa
       }
   }, 500);
 }
