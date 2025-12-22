@@ -313,11 +313,11 @@ function renPratica() {
   if (q.texto_conteudo) { 
       let textoFormatado = q.texto_conteudo.replace(/\n/g, '<br>');
       htmlTexto = `
-          <div class="texto-apoio-box" style="background:#fdfdfd; border-left:4px solid var(--primary); padding:15px; margin-bottom:20px; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.05)">
+          <div class="texto-apoio-box" style="background:#fdfdfd; padding:15px; margin-bottom:20px; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.05)">
               <div class="texto-apoio-header" style="font-weight:bold; color:var(--primary); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
                   <span>📄 Texto de Referência</span>
                   ${htmlAvisoTexto} </div>
-              <div class="texto-apoio-content" style="max-height:300px; overflow-y:auto; line-height:1.6; font-family:'Georgia', serif; color:#444;">
+              <div class="texto-apoio-content" style="line-height:1.5; font-family:'Georgia', serif;">
                   ${textoFormatado}
               </div>
           </div>`;

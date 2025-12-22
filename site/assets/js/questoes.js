@@ -638,7 +638,15 @@ function repararTextoSmart(idElemento = null) {
       return;
   }
 
-  let linhas = textarea.value.split('\n');
+  // 2. Verifica Seleção
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const temSelecao = start !== end;
+
+  // Define qual texto processar (Seleção ou Tudo)
+  let textoOriginal = temSelecao ? textarea.value.substring(start, end) : textarea.value;
+
+  let linhas = textoOriginal.split('\n');
   let resultado = [];
   
   for (let i = 0; i < linhas.length; i++) {
@@ -674,9 +682,22 @@ function repararTextoSmart(idElemento = null) {
       }
   }
 
-  // Atualiza o valor do campo
-  textarea.value = resultado.join('\n');
+  let textoProcessado = resultado.join('\n');
+
+  // 3. Aplica o resultado
+  if (temSelecao) {
+      // Reconstrói o valor preservando o que estava antes e depois da seleção
+      const antes = textarea.value.substring(0, start);
+      const depois = textarea.value.substring(end);
+      textarea.value = antes + textoProcessado + depois;
+
+      // (Opcional) Mantém a seleção no texto novo para facilitar ajustes
+      textarea.selectionStart = start;
+      textarea.selectionEnd = start + textoProcessado.length;
+  } else {
+      textarea.value = textoProcessado;
+  }
   
-  // Dispara evento para avisar que mudou (importante para frameworks reativos ou salvamento auto)
+  // Dispara evento de input para salvar alterações
   textarea.dispatchEvent(new Event('input', { bubbles: true }));
 }
