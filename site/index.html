@@ -34,6 +34,7 @@
                 <button id="nav-flashcards" onclick="nav('flashcards')">🗂️ Flashcards</button>
                 <button id="nav-estatisticas" onclick="nav('estatisticas')">Estatísticas</button>
                 <button id="nav-importar" onclick="nav('importar')">📂 Importar PDF</button>
+                <button id="btn-tema" onclick="toggleTema()" title="Alternar Tema (Claro/Escuro)"></button>
             </nav>
         </div>
     </header>
@@ -102,8 +103,11 @@
                     <div class="input-group"><span>E)</span><input type="text" id="cad-alt-e"
                             onfocus="showToolbar(this)"></div>
                 </div>
-                <label>Gabarito:</label><select id="cad-gabarito" required></select><button type="submit"
-                    class="btn-acao">Salvar</button>
+                <label>Gabarito:</label>
+                <select id="cad-gabarito" required></select>
+                <label>Comentários</label>
+                <textarea id="cad-comentario" class="input-com-toolbar" rows="3" onfocus="showToolbar(this)"></textarea>
+                <button type="submit" class="btn-acao">Salvar</button>
             </form>
         </div>
     </section>
@@ -204,7 +208,7 @@
                             placeholder="Filtrar por texto..." onkeyup="renderListaFC()">
                         <div id="fc-lista" class="fc-lista"></div>
                     </div>
-                    <div style="background:#fafafa; padding:20px; border-radius:8px; border:1px solid #eee">
+                    <div style="padding:20px; border-radius:8px; border:1px solid #eee">
                         <h4 id="fc-titulo-form">Novo Cartão</h4>
                         <form id="fc-form"><input type="hidden" id="fc-id">
                             <label>Disciplina:</label><input type="text" id="fc-disciplina" list="lista-disciplinas"
@@ -267,6 +271,10 @@
                         <option value="">Todas as Bancas</option>
                     </select>
                     <input type="number" id="prat-qtd" value="10" placeholder="Qtd">
+                    <div style="display:flex; align-items:center; gap:5px; margin-top:5px">
+                        <input type="checkbox" id="prat-modo-cego">
+                        <label for="prat-modo-cego" style="cursor:pointer">Modo Cego</label>
+                    </div>
                 </div>
                 <button class="btn-acao" onclick="iniciarPratica()">Começar Prática</button>
             </div>
@@ -393,8 +401,11 @@
                             onfocus="showToolbar(this)"></div>
                     <div class="input-group"><span>E)</span><input type="text" id="edit-alt-e"
                             onfocus="showToolbar(this)"></div>
-                </div><label>Gabarito:</label><select id="edit-gabarito"></select><button class="btn-acao"
-                    style="background:#f39c12">Salvar</button>
+                </div><label>Gabarito:</label>
+                <select id="edit-gabarito"></select>
+                <label>Comentários</label>
+                <textarea id="cad-comentario" class="input-com-toolbar" rows="3" onfocus="showToolbar(this)"></textarea>
+                <button class="btn-acao" style="background:#f39c12">Salvar</button>
             </form>
         </div>
     </div>
@@ -406,6 +417,19 @@
             <input type="text" id="novo-texto-titulo" class="imp-input" placeholder="Título / Identificador (Ex: Texto 1 - Aula 05)">
             <textarea id="novo-texto-conteudo" class="imp-textarea" rows="10" placeholder="Cole o texto aqui..."></textarea>
             <button class="btn-padrao" onclick="salvarNovoTextoApi()" style="width:100%; margin-top:10px;">Salvar Texto</button>
+        </div>
+    </div>
+
+    <div id="modal-comentario" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="el('modal-comentario').style.display='none'">&times;</span>
+            <h3>Comentários da Questão</h3>
+            <div id="view-comentario" class="render-html" style="margin-bottom:15px; padding:10px; background:#f4f4f9; border-radius:5px; min-height:50px;"></div>
+            <textarea id="edit-comentario" class="input-com-toolbar" rows="5" placeholder="Adicione suas anotações ou explicação..." style="display:none"></textarea>
+            <div style="margin-top:10px; text-align:right">
+                <button id="btn-editar-coment" class="btn-acao" onclick="habilitarEdicaoComent()">Editar</button>
+                <button id="btn-salvar-coment" class="btn-acao" onclick="salvarComentarioApi()" style="display:none; background:#27ae60">Salvar</button>
+            </div>
         </div>
     </div>
 

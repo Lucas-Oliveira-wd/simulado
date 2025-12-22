@@ -1,3 +1,12 @@
+// Função do Tema Escuro
+function toggleTema() {
+    document.body.classList.toggle("dark-mode");
+    localStorage.setItem("temaEscuro", document.body.classList.contains("dark-mode"));
+}
+// Carregar preferência ao iniciar
+if (localStorage.getItem("temaEscuro") === "true") document.body.classList.add("dark-mode");
+
+
 const API = "http://localhost:5000";
 let db = [], opcoes = {}, flashDb = [], flashPool = [], flashIdx = 0;
 let pratPool = [], pratIdx = 0, pratAcertos = 0;

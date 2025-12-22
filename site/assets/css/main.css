@@ -1,5 +1,5 @@
 :root {
-    --primary: #2c3e50;
+    --primary: #008148;
     --sec: #3498db;
     --acc: #e74c3c;
     --succ: #27ae60;
@@ -8,6 +8,104 @@
     --text-muted: #95a5a6;
     --purple: #8e44ad;
     --orange: #f39c12;
+
+    /* Novas variáveis para o Modo Escuro */
+    --dark-primary: #001f11;
+    --dark-bg: #1a1a1a;        /* Fundo da página */
+    --dark-surface: #2d2d2d;   /* Cards, modais e containers */
+    --dark-input: #464646;     /* Campos de texto */
+    --dark-border: #7e7e7e;    /* Bordas e separadores */
+    --dark-text: #e0e0e0ef;      /* Texto principal */
+    --dark-hover: #555555;     /* Hover de elementos */
+}
+
+/* Botão Toggle de Tema (Círculo Bicolor) */
+#btn-tema {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 2px solid #fff; /* Borda branca */
+    padding: 0;
+    cursor: pointer;
+    
+    /* Cria o fundo dividido: 50% branco, 50% transparente (cor do header) */
+    background: linear-gradient(90deg, #fff 50%, transparent 50%);
+    
+    /* Transição suave para a rotação */
+    transition: transform 0.4s ease;
+    
+    /* Remove estilos padrão de botão do navegador */
+    outline: none;
+    box-shadow: none;
+}
+
+/* Quando o corpo estiver em Dark Mode, o botão gira 180 graus */
+body.dark-mode #btn-tema {
+    transform: rotate(180deg);
+}
+
+/* --- TEMA ESCURO --- */
+body.dark-mode {
+    background-color: var(--dark-bg);
+    color: var(--dark-text);
+}
+
+/* ---- DARKMODE COM BORDA ----- */
+body.dark-mode .modal-content, 
+body.dark-mode .filtro-grid, 
+body.dark-mode .texto-apoio-box,
+body.dark-mode #view-comentario,
+body.dark-mode .secao,
+body.dark-mode .input-group,
+body.dark-mode #prat-meta,
+body.dark-mode #prova-meta,
+body.dark-mode .enunciado,
+body.dark-mode .render-html,
+body.dark-mode .alternativa-wrapper {
+    background-color: var(--dark-surface) !important;
+    color: var(--dark-text);
+    border-color: var(--dark-border);
+}
+
+/* ---- DARKMODE SEM BORDA ----- */
+body.dark-mode .fc-lista{
+    background-color: var(--dark-surface) !important;
+    color: var(--dark-text);
+    border: none !important;
+}
+
+body.dark-mode .alternativa-wrapper{
+    border: 0 transparent;
+}
+
+body.dark-mode .container{
+    background-color: transparent;
+}
+
+body.dark-mode header{
+    background-color: var(--dark-primary);
+}
+
+body.dark-mode input, 
+body.dark-mode select, 
+body.dark-mode textarea {
+    background-color: var(--dark-input) !important; 
+    color: #fff; /* Mantém branco puro para inputs para contraste máximo */
+    border-color: var(--dark-border);
+}
+
+body.dark-mode .questao-card {
+    background-color: #252525; /* Um tom levemente mais escuro que a surface para destacar */
+    border: 1px solid var(--dark-border);
+}
+
+body.dark-mode .alternativa-wrapper:hover {
+    background-color: var(--dark-border);
+}
+
+body.dark-mode .btn-padrao {
+    background-color: var(--dark-border);
+    color: var(--dark-text);
 }
 
 body {

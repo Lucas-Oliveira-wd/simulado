@@ -522,8 +522,13 @@ function abrirEd(id) {
   el("edit-tipo").value = q.tipo;
   el("edit-banca").value = q.banca;
   el("edit-disciplina").value = q.disciplina;
+
+  // 3. Carrega assuntos e define o valor com um pequeno delay
   carregarAssuntos("edit");
-  el("edit-assunto").value = q.assunto;
+  setTimeout(() => {
+      el("edit-assunto").value = q.assunto;
+  }, 50);
+
   altTipo("edit");
   if (q.tipo === "ME") {
     el("edit-alt-a").value = q.alt_a || "";
@@ -532,12 +537,23 @@ function abrirEd(id) {
     el("edit-alt-d").value = q.alt_d || "";
     el("edit-alt-e").value = q.alt_e || "";
   }
-  el("edit-gabarito").value = q.gabarito;
+
+  // Pequeno delay para garantir que o select de gabarito foi atualizado pelo altTipo
+  setTimeout(() => {
+      el("edit-gabarito").value = q.gabarito;
+  }, 50);
+
   el("edit-imagem-nome").value = q.imagem || "";
   el("edit-imagem-file").value = "";
   el("edit-img-preview-container").innerHTML = q.imagem
     ? `<a href="${API}/img/q_img/${q.imagem}" target="_blank"><img src="${API}/img/q_img/${q.imagem}" class="img-preview-mini"></a>`
     : "<span style='font-size:0.8em;color:#999'>Sem imagem</span>";
+
+  if(el("edit-comentario-modal")) {
+      el("edit-comentario-modal").value = q.comentarios || "";
+  }
+
+  
   el("modal-edicao").style.display = "block";
 }
 

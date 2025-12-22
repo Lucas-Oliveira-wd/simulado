@@ -331,35 +331,153 @@ function confirmaPratica() {
   let s = document.querySelector('input[name="prat"]:checked');
   if (!s) return alert("Selecione");
 
-  let q = pratPool[pratIdx],
-    acertou = s.value === q.gabarito,
-    f = el("prat-feedback");
+  let q = pratPool[pratIdx], acertou = s.value === q.gabarito;
 
-    let textoGab = q.gabarito;
-    if (q.tipo === "CE") {
-        textoGab = q.gabarito === "C" ? "Certo" : "Errado";
-    }
+  // --- LÓGICA MODO CEGO ---
+  let modoCego = el("prat-modo-cego").checked;
+  
+  if (modoCego) {
+      // No modo cego, apenas registra, não dá feedback visual
+      if (acertou) pratAcertos++;
+      // Pula direto para a lógica de salvar progresso silenciosamente
+      salvarProgressoQuestao(q, acertou);
+      proxPratica(); 
+      return; // Sai da função para não mostrar feedback visual
+  }
+  // -------------------------
+
+  let f = el("prat-feedback");
+  let textoGab = q.gabarito;
+  if (q.tipo === "CE") {
+      textoGab = q.gabarito === "C" ? "Certo" : "Errado";
+  }
 
   f.innerHTML = acertou ? "Correto! ✅" : `Errado! ❌ Gabarito: ${textoGab}`;
+
+
   f.style.background = acertou ? "#d4edda" : "#f8d7da";
+  f.style.color = "#000"; // Força preto para legibilidade no feedback
   f.style.padding = "10px";
-    f.style.borderRadius = "5px";
+  f.style.borderRadius = "5px";
+
+  // Botões de Ação Extras (Flashcard e Comentários)
+  let htmlBotoes = "";
+  
+  // Botão de Comentários (sempre aparece, para ver explicação)
+  htmlBotoes += `<button class="btn-padrao" onclick="abrirComentarioPratica()" style="margin-right:10px; margin-top:10px;">💬 Comentários / Ver PDF</button>`;
+
+  // Botão de Criar Flashcard (Se errou ou se quiser revisar)
+  if (!acertou) {
+      htmlBotoes += `<button class="btn-padrao" onclick="criarFlashcardDoErro()" style="background:#e67e22; color:white; margin-top:10px;">⚡ Criar Flashcard do Erro</button>`;
+  }
+
+  // Insere os botões no feedback
+  f.innerHTML += `<div style="margin-top:5px">${htmlBotoes}</div>`;
+
   if (acertou) {
     pratAcertos++;
   }
-  let qOriginal = db.find((d) => d.id === q.id);
-  if (qOriginal) {
-    qOriginal.respondidas = (qOriginal.respondidas || 0) + 1;
-    if (acertou) qOriginal.acertos = (qOriginal.acertos || 0) + 1;
-    fetch(`${API}/questoes`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(qOriginal),
-    });
-  }
+
+  salvarProgressoQuestao(q, acertou);
+
   el("prat-btn-confirma").style.display = "none";
   el("prat-btn-prox").style.display = "block";
 }
+
+function salvarProgressoQuestao(q, acertou) {
+  // Busca a referência original para atualizar no banco
+  let qOriginal = db.find((d) => d.id === q.id);
+  if (qOriginal) {
+      qOriginal.respondidas = (qOriginal.respondidas || 0) + 1;
+      if (acertou) qOriginal.acertos = (qOriginal.acertos || 0) + 1;
+      
+      // Salva silenciosamente
+      fetch(`${API}/questoes`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(qOriginal),
+      });
+  }
+}
+
+// Lógica de Comentários
+let questaoAtualComent = null;
+
+function abrirComentarioPratica() {
+  questaoAtualComent = pratPool[pratIdx]; // Pega a questão atual
+  el("modal-comentario").style.display = "block";
+  
+  let texto = questaoAtualComent.comentarios || "Nenhum comentário registrado.";
+  el("view-comentario").innerHTML = texto.replace(/\n/g, "<br>");
+  
+  // Reseta estado de edição
+  el("view-comentario").style.display = "block";
+  el("edit-comentario").style.display = "none";
+  el("btn-salvar-coment").style.display = "none";
+  el("btn-editar-coment").style.display = "inline-block";
+}
+
+function habilitarEdicaoComent() {
+  el("view-comentario").style.display = "none";
+  el("edit-comentario").style.display = "block";
+  el("edit-comentario").value = questaoAtualComent.comentarios || "";
+  el("btn-salvar-coment").style.display = "inline-block";
+  el("btn-editar-coment").style.display = "none";
+}
+
+async function salvarComentarioApi() {
+  let novoComent = el("edit-comentario").value;
+  
+  // Atualiza localmente
+  questaoAtualComent.comentarios = novoComent;
+  
+  // Atualiza no DB principal (memória)
+  let qNoDb = db.find(q => q.id === questaoAtualComent.id);
+  if(qNoDb) qNoDb.comentarios = novoComent;
+
+  // Envia para o servidor
+  await fetch(`${API}/questoes`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(qNoDb || questaoAtualComent),
+  });
+
+  // Atualiza visualização
+  el("view-comentario").innerHTML = novoComent.replace(/\n/g, "<br>");
+  el("view-comentario").style.display = "block";
+  el("edit-comentario").style.display = "none";
+  el("btn-salvar-coment").style.display = "none";
+  el("btn-editar-coment").style.display = "inline-block";
+}
+
+// Flashcard Rápido a partir do Erro
+function criarFlashcardDoErro() {
+  let q = pratPool[pratIdx];
+  
+  // Prepara o modal de Flashcards
+  toggleModeFC('gerenciar'); // Vai para a tela de flashcards
+  nav('flashcards'); // Troca a aba visualmente
+  
+  // Preenche o formulário automaticamente
+  el("fc-disciplina").value = q.disciplina;
+  carregarAssuntos("fc"); // Dispara carregamento (pode precisar de um delay pequeno)
+  
+  setTimeout(() => {
+      el("fc-assunto").value = q.assunto;
+  }, 100);
+  
+  // Frente: O Enunciado da Questão
+  el("fc-frente").value = `[Questão de Erro]\n${q.banca} - ${q.instituicao}\n\n${q.enunciado}`;
+  
+  // Verso: O Gabarito + Comentário (se houver)
+  let txtVerso = `Gabarito: ${q.gabarito}\n\n`;
+  if(q.comentarios) txtVerso += `Comentário:\n${q.comentarios}`;
+  
+  el("fc-verso").value = txtVerso;
+  
+  el("fc-titulo-form").scrollIntoView();
+}
+
 function proxPratica() {
   pratIdx++;
   if (pratIdx < pratPool.length) renPratica();
