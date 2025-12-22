@@ -246,19 +246,27 @@ function prepPratica() {
   el("config-pratica").style.display = "block";
   el("area-pratica").style.display = "none";
 }
+
 function iniciarPratica() {
   let dis = el("prat-disciplina").value,
     ban = el("prat-banca").value,
     ass = el("prat-assunto").value,
-    qtd = el("prat-qtd").value;
+    qtd = parseInt(el("prat-qtd").value);
+
   let pool = db.filter(
     (q) =>
       (dis === "" || q.disciplina === dis) &&
       (ban === "" || q.banca === ban) &&
       (ass === "" || q.assunto === ass)
   );
+
   if (pool.length === 0) return alert("Nenhuma questão encontrada");
-  pratPool = pool.sort(() => 0.5 - Math.random()).slice(0, qtd);
+
+  // Primeiro embaralha agrupado, DEPOIS corta a quantidade
+  let poolOrdenado = embaralharAgrupado(pool);
+
+  pratPool = poolOrdenado.slice(0, qtd);
+
   pratIdx = 0;
   pratAcertos = 0;
   el("config-pratica").style.display = "none";
@@ -268,6 +276,27 @@ function iniciarPratica() {
 
 function renPratica() {
   let q = pratPool[pratIdx];
+
+  // --- LÓGICA DE CONTAGEM DO TEXTO ---
+  let htmlAvisoTexto = "";
+  
+  if (q.texto_apoio && q.texto_conteudo) {
+      // Conta quantas questões NO POOL ATUAL (pratPool) pertencem a esse mesmo texto
+      let questoesDoTexto = pratPool.filter(x => x.texto_apoio === q.texto_apoio);
+      let totalDoTexto = questoesDoTexto.length;
+      
+      // Descobre qual é a posição desta questão dentro do grupo do texto
+      // (Ex: Esta é a 2ª questão de 5 sobre este texto)
+      let indiceNoGrupo = questoesDoTexto.findIndex(x => x.id === q.id) + 1;
+
+      if (totalDoTexto > 1) {
+          htmlAvisoTexto = `<div style="background:#e8f6f3; color:#16a085; padding:5px 10px; border-radius:4px; font-size:0.85em; margin-bottom:10px; display:inline-block; border:1px solid #a3e4d7;">
+              📖 Questão <b>${indiceNoGrupo}</b> de <b>${totalDoTexto}</b> vinculadas a este texto
+          </div>`;
+      }
+  }
+  // -----------------------------------
+
   el("prat-progresso").innerText = `Questão ${pratIdx + 1} de ${
     pratPool.length
   }`;
@@ -284,16 +313,17 @@ function renPratica() {
   if (q.texto_conteudo) { 
       let textoFormatado = q.texto_conteudo.replace(/\n/g, '<br>');
       htmlTexto = `
-          <div class="texto-apoio-box">
-              <div class="texto-apoio-header">📄 Texto de Referência</div>
-              <div class="texto-apoio-content">${textoFormatado}</div>
+          <div class="texto-apoio-box" style="background:#fdfdfd; border-left:4px solid var(--primary); padding:15px; margin-bottom:20px; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.05)">
+              <div class="texto-apoio-header" style="font-weight:bold; color:var(--primary); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                  <span>📄 Texto de Referência</span>
+                  ${htmlAvisoTexto} </div>
+              <div class="texto-apoio-content" style="max-height:300px; overflow-y:auto; line-height:1.6; font-family:'Georgia', serif; color:#444;">
+                  ${textoFormatado}
+              </div>
           </div>`;
   }
   
-  el("prat-enunciado").innerHTML = htmlTexto + (q.imagem ? `<img ...>` : "") + q.enunciado;
-
-  // O CSS .enunciado { white-space: pre-wrap } vai fazer os \n funcionarem aqui
-  el("prat-enunciado").innerHTML = htmlImg + q.enunciado;
+  el("prat-enunciado").innerHTML = htmlTexto + htmlImg + `<div style="font-size:1.1em; line-height:1.5">${q.enunciado}</div>`;
 
   let div = el("prat-alternativas");
   div.innerHTML = "";
@@ -312,6 +342,9 @@ function renPratica() {
   el("prat-feedback").style.background = "transparent";
   el("prat-btn-confirma").style.display = "block";
   el("prat-btn-prox").style.display = "none";
+
+  // Rola para o topo da questão suavemente (importante se o texto for longo)
+  el("area-pratica").scrollIntoView({ behavior: 'smooth' });
 }
 
 function radio(d, v, t, n) {
@@ -813,4 +846,47 @@ function arrastarElemento(elmnt) {
       document.onmouseup = null;
       document.onmousemove = null;
   }
+}
+
+// Função auxiliar para embaralhar mantendo grupos de Texto de Apoio juntos
+function embaralharAgrupado(listaQuestoes) {
+  let grupos = {};
+  let semTexto = [];
+
+  // 1. Separa quem tem texto de quem não tem
+  listaQuestoes.forEach(q => {
+      if (q.texto_apoio) {
+          // Se já existe o grupo desse texto, adiciona; senão cria.
+          if (!grupos[q.texto_apoio]) {
+              grupos[q.texto_apoio] = [];
+          }
+          grupos[q.texto_apoio].push(q);
+      } else {
+          // Questões soltas ficam num array separado temporariamente
+          semTexto.push(q);
+      }
+  });
+
+  // 2. Transforma os itens sem texto em "grupos de um só" para o sorteio
+  // (Para que elas se misturem entre os blocos de texto)
+  semTexto.forEach(q => {
+      // Usa um ID único temporário como chave
+      grupos['isolada_' + q.id] = [q];
+  });
+
+  // 3. Pega as chaves (IDs dos textos e das isoladas) e embaralha AS CHAVES
+  let chaves = Object.keys(grupos);
+  chaves.sort(() => 0.5 - Math.random());
+
+  // 4. Reconstrói a lista plana na nova ordem
+  let listaFinal = [];
+  chaves.forEach(chave => {
+      // Opcional: Embaralhar as questões DENTRO do mesmo texto também?
+      // Se quiser ordem aleatória dentro do texto, descomente a linha abaixo:
+      // grupos[chave].sort(() => 0.5 - Math.random());
+      
+      listaFinal.push(...grupos[chave]);
+  });
+
+  return listaFinal;
 }
