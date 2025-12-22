@@ -9,29 +9,45 @@ let cacheTextos = [];
 
 // 1. Função para carregar textos do servidor e preencher os Selects
 async function carregarListaTextos() {
-    try {
-        const res = await fetch(`${API}/textos`);
-        cacheTextos = await res.json();
-        
-        // Atualiza todos os selects de texto (cadastro e edição)
-        document.querySelectorAll('.sel-texto-apoio').forEach(sel => {
-            let valorAtual = sel.value; // Tenta manter seleção se houver
-            sel.innerHTML = `<option value="">-- Sem Texto de Apoio --</option>`;
-            cacheTextos.forEach(t => {
-                // Mostra os primeiros 60 caracteres no dropdown
-                let resumo = t.titulo + " - " + t.conteudo.substring(0, 50).replace(/\n/g, " ") + "...";
-                sel.innerHTML += `<option value="${t.id}">${resumo}</option>`;
-            });
-            if(valorAtual) sel.value = valorAtual;
-            
-            // Adiciona evento para mostrar preview
-            sel.onchange = function() {
-                let txt = cacheTextos.find(x => x.id === this.value);
-                let divPrev = this.parentElement.parentElement.querySelector('.preview-texto-apoio');
-                divPrev.innerText = txt ? txt.conteudo.substring(0, 150) + "..." : "";
-            }
-        });
-    } catch (e) { console.error("Erro ao carregar textos", e); }
+  try {
+      const res = await fetch(`${API}/textos`);
+      cacheTextos = await res.json();
+
+      // --- ORDENAÇÃO ALFABÉTICA (A-Z) ---
+      cacheTextos.sort((a, b) => {
+          let nomeA = (a.titulo || "").toLowerCase();
+          let nomeB = (b.titulo || "").toLowerCase();
+          return nomeA.localeCompare(nomeB); // Ordena de forma inteligente
+      });
+      
+      // Atualiza todos os selects de texto (cadastro e edição)
+      document.querySelectorAll('.sel-texto-apoio').forEach(sel => {
+          let valorAtual = sel.value; // Tenta manter seleção se houver
+          sel.innerHTML = `<option value="">-- Sem Texto de Apoio --</option>`;
+
+          cacheTextos.forEach(t => {
+              // Mostra os primeiros 60 caracteres no dropdown
+              let resumo = t.titulo + " - " + t.conteudo.substring(0, 50).replace(/\n/g, " ") + "...";
+              sel.innerHTML += `<option value="${t.id}">${resumo}</option>`;
+          });
+
+          // Restaura o valor selecionado se ele ainda existir na lista
+          if(valorAtual) sel.value = valorAtual;
+          
+          // Adiciona evento para mostrar preview
+          sel.onchange = function() {
+              let txt = cacheTextos.find(x => x.id === this.value);
+
+              // Procura a div de preview correspondente (subindo para o pai comum)
+              let container = this.closest('.input-group') || this.parentElement.parentElement;
+              let divPrev = container.querySelector('.preview-texto-apoio');
+
+              if(divPrev) {
+                  divPrev.innerText = txt ? txt.conteudo.substring(0, 150) + "..." : "";
+              }
+          }
+      });
+  } catch (e) { console.error("Erro ao carregar textos", e); }
 }
 
 // 2. Funções do Modal de Novo Texto
@@ -361,6 +377,7 @@ el("form-cadastro").onsubmit = async (e) => {
   formData.append("dificuldade", el("cad-dificuldade").value);
   formData.append("tipo", el("cad-tipo").value);
   formData.append("gabarito", el("cad-gabarito").value);
+  formData.append("comentarios", el("cad-comentario").value);
   formData.append("texto_apoio", document.querySelector("#form-cadastro .sel-texto-apoio").value);
   formData.append("alt_a", el("cad-alt-a").value);
   formData.append("alt_b", el("cad-alt-b").value);
@@ -557,8 +574,8 @@ function abrirEd(id) {
     ? `<a href="${API}/img/q_img/${q.imagem}" target="_blank"><img src="${API}/img/q_img/${q.imagem}" class="img-preview-mini"></a>`
     : "<span style='font-size:0.8em;color:#999'>Sem imagem</span>";
 
-  if(el("edit-comentario-modal")) {
-      el("edit-comentario-modal").value = q.comentarios || "";
+  if(el("edit-comentario-form")) {
+      el("edit-comentario-form").value = q.comentarios || "";
   }
 
   
@@ -578,6 +595,7 @@ el("form-edicao").onsubmit = async (e) => {
   formData.append("dificuldade", el("edit-dificuldade").value);
   formData.append("tipo", el("edit-tipo").value);
   formData.append("gabarito", el("edit-gabarito").value);
+  formData.append("comentarios", el("edit-comentario-form").value);
   formData.append("texto_apoio", document.querySelector("#form-edicao .sel-texto-apoio").value);
   formData.append("alt_a", el("edit-alt-a").value);
   formData.append("alt_b", el("edit-alt-b").value);
