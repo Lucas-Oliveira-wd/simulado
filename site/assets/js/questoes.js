@@ -529,6 +529,14 @@ function abrirEd(id) {
       el("edit-assunto").value = q.assunto;
   }, 50);
 
+  // Seleciona o dropdown DENTRO do modal de edição
+  let selTextoEdicao = document.querySelector("#form-edicao .sel-texto-apoio");
+  if(selTextoEdicao) {
+      selTextoEdicao.value = q.texto_apoio || ""; // Define o ID salvo ou vazio
+      // Dispara evento 'change' manualmente para atualizar o preview do texto, se houver
+      selTextoEdicao.dispatchEvent(new Event('change'));
+  }
+
   altTipo("edit");
   if (q.tipo === "ME") {
     el("edit-alt-a").value = q.alt_a || "";
@@ -570,7 +578,7 @@ el("form-edicao").onsubmit = async (e) => {
   formData.append("dificuldade", el("edit-dificuldade").value);
   formData.append("tipo", el("edit-tipo").value);
   formData.append("gabarito", el("edit-gabarito").value);
-  formData.append("texto_apoio", document.querySelector("#form-cadastro .sel-texto-apoio").value);
+  formData.append("texto_apoio", document.querySelector("#form-edicao .sel-texto-apoio").value);
   formData.append("alt_a", el("edit-alt-a").value);
   formData.append("alt_b", el("edit-alt-b").value);
   formData.append("alt_c", el("edit-alt-c").value);

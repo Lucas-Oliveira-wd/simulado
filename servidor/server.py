@@ -362,7 +362,8 @@ def verificar_questoes():
         ws.title = "questoes"
         ws.append(
             ["id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto", "dificuldade", "tipo", "alt_a",
-             "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem", "comentarios"])
+             "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem", "comentarios",
+             "texto_apoio"])
         wb.save(ARQ_QUESTOES)
 
 
@@ -378,11 +379,13 @@ def carregar_questoes():
 
             img = row[17] if len(row) > 17 else ""
             coment = row[18] if len(row) > 18 else ""
+            txt_apoio = row[19] if len(row) > 19 else ""
 
             dados.append({"id": row[0], "banca": row[1], "instituicao": row[2], "ano": row[3], "enunciado": row[4],
                           "disciplina": row[5], "assunto": row[6], "dificuldade": row[7], "tipo": row[8], "alt_a": row[9],
                           "alt_b": row[10], "alt_c": row[11], "alt_d": row[12], "alt_e": row[13], "gabarito": row[14],
-                          "respondidas": row[15] or 0, "acertos": row[16] or 0, "imagem": img, "comentarios": coment})
+                          "respondidas": row[15] or 0, "acertos": row[16] or 0, "imagem": img, "comentarios": coment,
+                          "texto_apoio": txt_apoio})
         return dados
     except Exception as e:
         print(f"--- AVISO: Arquivo Excel ilegível ou corrompido ({e}) ---")
@@ -393,7 +396,8 @@ def salvar_questoes(dados):
     ws = wb.active
     ws.append(
         ["id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto", "dificuldade", "tipo", "alt_a",
-         "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem", "comentarios"])
+         "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem", "comentarios",
+         "texto_apoio"])
 
     for i in dados:
         # APLICA A LIMPEZA AQUI: Garante que nada entra sujo no Excel
@@ -409,7 +413,8 @@ def salvar_questoes(dados):
              enunciado_limpo, i["disciplina"], i["assunto"],
              i["dificuldade"], i["tipo"],
              alt_a, alt_b, alt_c, alt_d, alt_e,
-             i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", ""), i.get("comentarios", "")])
+             i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", ""), i.get("comentarios", ""),
+             i.get("texto_apoio", "")])
 
     wb.save(ARQ_QUESTOES)
 
