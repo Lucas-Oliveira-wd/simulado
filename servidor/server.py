@@ -392,8 +392,29 @@ def carregar_questoes():
         return []
 
 def salvar_questoes(dados):
-    wb = Workbook()
-    ws = wb.active
+    # 1. Tenta carregar o arquivo existente para PRESERVAR a aba 'textos'
+    if os.path.exists(ARQ_QUESTOES):
+        try:
+            wb = load_workbook(ARQ_QUESTOES)
+        except:
+            wb = Workbook()  # Se o arquivo estiver corrompido, cria novo
+    else:
+        wb = Workbook()
+
+    # 2. Gerencia a aba 'questoes'
+    if "questoes" in wb.sheetnames:
+        # Pega o índice para recriar na mesma posição visual
+        idx = wb.sheetnames.index("questoes")
+        wb.remove(wb["questoes"])
+        ws = wb.create_sheet("questoes", idx)
+    else:
+        # Se não existe, cria como a primeira
+        ws = wb.create_sheet("questoes", 0)
+
+    # Remove aba padrão "Sheet" se ela foi criada automaticamente e está sobrando
+    if "Sheet" in wb.sheetnames and len(wb.sheetnames) > 1:
+        del wb["Sheet"]
+
     ws.append(
         ["id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto", "dificuldade", "tipo", "alt_a",
          "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem", "comentarios",
@@ -416,7 +437,10 @@ def salvar_questoes(dados):
              i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", ""), i.get("comentarios", ""),
              i.get("texto_apoio", "")])
 
-    wb.save(ARQ_QUESTOES)
+    try:
+        wb.save(ARQ_QUESTOES)
+    except PermissionError:
+        print("--- ERRO: Excel aberto. Não foi possível salvar as questões. ---")
 
 
 # --- GERENCIAMENTO DE TEXTOS DE APOIO ---
