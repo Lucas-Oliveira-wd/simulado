@@ -50,7 +50,7 @@
         <button onmousedown="event.preventDefault(); fmtUlt('mark')" title="Destaque">🖍</button>
         <button onmousedown="event.preventDefault(); fmtListUlt('ul')" title="Lista com Marcadores" style="font-size: 1.2rem;">•</button>
         <button onmousedown="event.preventDefault(); fmtListUlt('ol')" title="Lista Numerada" style="font-size: 0.9rem;">123</button>
-        <button onmousedown="event.preventDefault(); repararTextoSmart(idElemento = null)" title="Ajustar Quebras de PDF" style="font-size: 1rem;">✨</button>
+        <button onmousedown="event.preventDefault(); repararTextoSmart()" title="Ajustar Quebras de PDF">✨</button>
     </div>
 
     <datalist id="lista-bancas"></datalist>
@@ -419,8 +419,8 @@
         <div class="modal-content" style="max-width: 600px;">
             <span class="close" onclick="el('modal-novo-texto').style.display='none'">&times;</span>
             <h2>Cadastrar Novo Texto</h2>
-            <input type="text" id="novo-texto-titulo" class="imp-input" placeholder="Título / Identificador (Ex: Texto 1 - Aula 05)">
-            <textarea id="novo-texto-conteudo" class="imp-textarea" rows="10" placeholder="Cole o texto aqui..."></textarea>
+            <input type="text" id="novo-texto-titulo" class="imp-input input-com-toolbar" onfocus="showToolbar(this)" placeholder="Título / Identificador (Ex: Texto 1 - Aula 05)">
+            <textarea id="novo-texto-conteudo" class="imp-textarea input-com-toolbar" onfocus="showToolbar(this)" rows="10" placeholder="Cole o texto aqui..."></textarea>
             <button class="btn-padrao" onclick="salvarNovoTextoApi()" style="width:100%; margin-top:10px;">Salvar Texto</button>
         </div>
     </div>

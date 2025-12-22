@@ -625,15 +625,11 @@ function aplicarAssuntoGlobal() {
 
 
 function repararTextoSmart(idElemento = null) {
-  // 1. Tenta pegar pelo ID se foi passado
-  let textarea = null;
+
+  let textarea = (typeof foco !== 'undefined' && foco) ? foco : document.activeElement;
+
   if (typeof idElemento !== 'undefined' && idElemento) {
       textarea = document.getElementById(idElemento);
-  }
-
-  // 2. Se não passou ID ou não achou, pega o elemento que está com foco
-  if (!textarea) {
-      textarea = document.activeElement;
   }
 
   // Validação: Se não for um textarea ou input de texto, para aqui
