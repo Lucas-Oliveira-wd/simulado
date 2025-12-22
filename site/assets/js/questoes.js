@@ -667,7 +667,7 @@ function repararTextoSmart(idElemento = null) {
       const pontuacaoFinal = /[.:?!;]$/.test(atual);
       
       // 2. Próxima linha começa com Maiúscula, Número, Aspas ou Marcador?
-      const comecaNovoBloco = /^(?:["'“‘]*[A-Z0-9]|-[A-Z]|•)/.test(proxima);
+      const comecaNovoBloco = /^(?:["'“‘\(\[]*[A-Z0-9]|-[A-Z]|•)/.test(proxima);
 
       if (pontuacaoFinal && comecaNovoBloco) {
           // Parece um fim de frase real -> Mantém a quebra
