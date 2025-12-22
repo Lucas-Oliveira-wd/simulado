@@ -30,15 +30,6 @@ body {
     align-items: center
 }
 
-/* Garante que listas dentro dos enunciados/respostas fiquem alinhadas */
-.render-html ul, .render-html ol,
-.enunciado ul, .enunciado ol,
-.texto-apoio-content ul, .texto-apoio-content ol {
-    margin-left: 20px;
-    padding-left: 20px;
-    margin-bottom: 10px;
-}
-
 .render-html li, .enunciado li {
     margin-bottom: 5px;
 }

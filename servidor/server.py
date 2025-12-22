@@ -677,21 +677,51 @@ def del_q(id):
 
 @app.route("/flashcards", methods=["GET", "POST", "PUT"])
 def handle_fc():
-    if request.method == "GET": return jsonify(carregar_flashcards())
-    dados = carregar_flashcards();
-    load = request.json
-    if request.method == "POST":
-        if not load.get("id"): ids = sorted([int(f["id"]) for f in dados if str(f["id"]).isdigit()]); load[
-            "id"] = 1 if not ids else (ids[-1] + 1)
-        load.update({"acertos": 0, "erros": 0});
-        dados.append(load);
-        salvar_flashcards_dados(dados);
-        return jsonify({"mensagem": "Salvo", "id": load["id"]}), 201
-    if request.method == "PUT":
-        for i, f in enumerate(dados):
-            if str(f["id"]) == str(load["id"]): dados[i] = load; salvar_flashcards_dados(dados); return jsonify(
-                {"status": "Ok"})
-    return jsonify({"erro": "404"}), 404
+    try:
+        # Se for apenas leitura
+        if request.method == "GET":
+            return jsonify(carregar_flashcards())
+
+        # Carrega dados para operações de escrita
+        dados = carregar_flashcards();
+        load = request.json
+        if request.method == "POST":
+            # Gera ID novo se não vier
+            if not load.get("id"):
+                ids = sorted([int(f["id"]) for f in dados if str(f["id"]).isdigit()]);
+                load["id"] = 1 if not ids else (ids[-1] + 1)
+
+            # Inicializa contadores
+            load.update({"acertos": 0, "erros": 0});
+            dados.append(load);
+
+            salvar_flashcards_dados(dados);
+            return jsonify({"mensagem": "Salvo", "id": load["id"]}), 201
+
+        if request.method == "PUT":
+            found = False
+            for i, f in enumerate(dados):
+                if str(f["id"]) == str(load["id"]):
+                    # Isso garante que campos não enviados (como acertos/erros) sejam mantidos
+                    dados[i].update(load);
+
+                    if "acertos" not in dados[i]: dados[i]["acertos"] = 0
+                    if "erros" not in dados[i]: dados[i]["erros"] = 0
+
+                    found = True
+                    break
+
+            if found:
+                salvar_flashcards_dados(dados)
+                return jsonify({"status": "Atualizado"})
+            else:
+                return jsonify({"erro": "404"}), 404
+
+    except PermissionError:
+        return jsonify({"erro": "O Excel de Flashcards está aberto. Feche-o."}), 500
+    except Exception as e:
+        print(f"Erro Flashcards: {e}")
+        return jsonify({"erro": str(e)}), 500
 
 
 @app.route("/flashcards/<string:id>", methods=["DELETE"])

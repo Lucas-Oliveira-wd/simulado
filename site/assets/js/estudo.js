@@ -73,7 +73,7 @@ el("fc-form").onsubmit = async (e) => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(obj),
   });
-  flashDb = await (await fetch(`${API}/flashcards`)).json();
+  flashDb = await (await fetch(`${API}/flashcards?t=${Date.now()}`)).json();
   limparFormFC();
   renderListaFC();
   alert("Salvo!");
@@ -123,7 +123,7 @@ function renderGrid() {
       html += `
       <div class="fc-card-wrapper" id="card-${index}" onclick="virarCartaGrid(this)">
           <div class="flip-card-inner">
-          
+
           <div class="alfinetes" style="${styleAlfinete}"></div>    
 
               <div class="flip-card-front">
