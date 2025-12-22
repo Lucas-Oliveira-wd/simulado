@@ -756,3 +756,61 @@ function renderGraficoNivel(nivel, filtroDisciplina = null) {
       }
   });
 }
+
+function abrirCriadorFlashcard(elementoBotao) {
+  // 1. Limpa os campos (Manual, como você pediu)
+  document.getElementById('modal-front').value = "";
+  document.getElementById('modal-back').value = "";
+  document.getElementById('modal-tag').value = ""; 
+
+  // 2. Exibe o Modal
+  const overlay = document.getElementById('modal-flashcard-overlay');
+  overlay.style.display = 'flex';
+
+  // 3. Inicializa o arraste (Drag)
+  arrastarElemento(document.getElementById("modal-janela"));
+}
+
+// Função para tornar a janela arrastável
+function arrastarElemento(elmnt) {
+  var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+  // O header é onde clicamos para arrastar
+  if (document.getElementById("modal-header")) {
+      document.getElementById("modal-header").onmousedown = dragMouseDown;
+  } else {
+      elmnt.onmousedown = dragMouseDown;
+  }
+
+  function dragMouseDown(e) {
+      e = e || window.event;
+      e.preventDefault();
+      // Pega posição inicial do mouse
+      pos3 = e.clientX;
+      pos4 = e.clientY;
+      document.onmouseup = closeDragElement;
+      document.onmousemove = elementDrag;
+  }
+
+  function elementDrag(e) {
+      e = e || window.event;
+      e.preventDefault();
+      // Calcula nova posição
+      pos1 = pos3 - e.clientX;
+      pos2 = pos4 - e.clientY;
+      pos3 = e.clientX;
+      pos4 = e.clientY;
+      // Define a nova posição do elemento
+      elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+      elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+      
+      // Remove centralização automática do flexbox ao começar a arrastar
+      elmnt.style.position = "absolute"; 
+      // (Opcional) Ajusta transform se necessário, mas absolute costuma bastar
+  }
+
+  function closeDragElement() {
+      // Para de mover ao soltar o mouse
+      document.onmouseup = null;
+      document.onmousemove = null;
+  }
+}

@@ -437,6 +437,32 @@
         </div>
     </div>
 
+    <div id="modal-flashcard-overlay" class="modal-overlay" style="display: none;">
+        <div id="modal-janela" class="modal-content">
+            
+            <div id="modal-header" class="modal-header-drag">
+                <span>Novo Flashcard</span>
+                <span style="cursor: pointer;" onclick="fecharModalFlashcard()">✕</span>
+            </div>
+
+            <div class="modal-body">
+                <label>Frente (Pergunta):</label>
+                <textarea id="modal-front" rows="3"></textarea>
+                
+                <label>Verso (Resposta):</label>
+                <textarea id="modal-back" rows="3"></textarea>
+                
+                <label>Tag:</label>
+                <input type="text" id="modal-tag" placeholder="Ex: Petrobras...">
+
+                <div class="modal-actions">
+                    <button onclick="fecharModalFlashcard()" class="btn-cancelar">Cancelar</button>
+                    <button onclick="salvarFlashcardRapido()" class="btn-salvar">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="assets/js/core.js"></script>
     <script src="assets/js/questoes.js"></script>
     <script src="assets/js/estudo.js"></script>
