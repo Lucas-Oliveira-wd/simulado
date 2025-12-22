@@ -90,9 +90,64 @@ function iniciarEstudoFC() {
   );
   if (flashPool.length === 0) return alert("Nenhum cartão encontrado.");
   flashPool = flashPool.sort(() => 0.5 - Math.random());
-  flashIdx = 0;
+
+  // Mostra a área
   el("fc-area-jogo").style.display = "block";
-  renderCard();
+  el("fc-botoes").classList.add("ocultar-botoes-globais"); // Esconde os botões de baixo
+
+  // Renderiza a Grade
+  renderGrid();
+
+}
+
+function renderGrid() {
+  let container = el("fc-area-jogo");
+  
+  // Cria o cabeçalho de progresso
+  let html = `<h3 id="fc-progresso" style="margin-bottom:20px; text-align:center">Revisando ${flashPool.length} cartões</h3>`;
+  
+  // Abre o container do Grid
+  html += `<div class="fc-grid-container">`;
+
+  flashPool.forEach((c, index) => {
+      // --- Lógica do Alfinete Aleatório Inline ---
+      const posicoes = ["0%", "25%", "50%", "75%", "100%"];
+      const posRandom = posicoes[Math.floor(Math.random() * posicoes.length)];
+      const styleAlfinete = `background-position: center ${posRandom}`;
+      // -------------------------------------------
+
+      // Formata quebras de linha
+      let frente = c.frente.replace(/\n/g, "<br>");
+      let verso = c.verso.replace(/\n/g, "<br>");
+
+      html += `
+      <div class="fc-card-wrapper" id="card-${index}" onclick="virarCartaGrid(this)">
+          <div class="flip-card-inner">
+          
+          <div class="alfinetes" style="${styleAlfinete}"></div>    
+
+              <div class="flip-card-front">
+                  
+                  <span class="fc-tag">${c.disciplina} > ${c.assunto}</span>
+                  <div class="fc-content-front">${frente}</div>
+                  <span style="font-size:0.8rem; color:#999; margin-top:auto; display:block; padding-top:20px">(Clique para virar)</span>
+              </div>
+
+              <div class="flip-card-back">
+                  <div class="fc-content-back">${verso}</div>
+                  
+                  <div class="fc-botoes-internos" onclick="event.stopPropagation()">
+                      <button class="btn-acao" style="background:#e74c3c; width:auto" onclick="respGrid('${c.id}', false, ${index})">Errei 😓</button>
+                      <button class="btn-acao" style="background:#27ae60; width:auto" onclick="respGrid('${c.id}', true, ${index})">Acertei 🤩</button>
+                  </div>
+              </div>
+
+          </div>
+      </div>`;
+  });
+
+  html += `</div>`; // Fecha Grid
+  container.innerHTML = html;
 }
 
 function renderCard() {
@@ -126,10 +181,50 @@ function renderCard() {
   el("fc-botoes").classList.remove("visivel");
 }
 
+function virarCartaGrid(elemento) {
+    let inner = elemento.querySelector(".flip-card-inner");
+    elemento.classList.toggle("virado");
+}
+
 function virarCarta() {
   el("card-ativo").classList.toggle("virado");
   if (el("card-ativo").classList.contains("virado"))
     el("fc-botoes").classList.add("visivel");
+}
+
+async function respGrid(id, acertou, index) {
+  // 1. Atualiza no servidor (sem await para ser rápido visualmente)
+  let c = flashDb.find(x => String(x.id) === String(id));
+  if(c) {
+      c[acertou ? "acertos" : "erros"]++;
+      fetch(`${API}/flashcards`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(c),
+      });
+  }
+
+  // 2. Efeito visual de "Concluído"
+  let cardDiv = el(`card-${index}`);
+  
+  // Animação de saída
+  cardDiv.style.transition = "all 0.5s ease";
+  cardDiv.style.transform = "scale(0.8)";
+  cardDiv.style.opacity = "0";
+
+  // Remove do DOM após animação
+  setTimeout(() => {
+      cardDiv.remove();
+      
+      // Atualiza contagem
+      let restantes = document.querySelectorAll('.fc-card-wrapper').length;
+      el("fc-progresso").innerText = `Restam ${restantes} cartões`;
+
+      if (restantes === 0) {
+          alert("Revisão Concluída!");
+          toggleModeFC('estudo'); // Volta para o menu
+      }
+  }, 500);
 }
 
 async function respFC(acertou) {
