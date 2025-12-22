@@ -17,6 +17,15 @@
     --dark-border: #7e7e7e;    /* Bordas e separadores */
     --dark-text: #e0e0e0ef;      /* Texto principal */
     --dark-hover: #555555;     /* Hover de elementos */
+
+    /* --- Camadas (Z-Index) --- */
+    --z-base: 1;
+    --z-pin: 5;
+    --z-header: 10;       /* Menu fixo */
+    --z-modal-back: 15;   /* Fundo escuro do modal */
+    --z-modal: 20;       /* Janela do modal */
+    --z-toolbar: 25;     /* Toolbar DEVE ser maior que o Modal */
+    --z-loader: 30;      /* Loader de carregamento (sempre no topo) */
 }
 
 /* Botão Toggle de Tema (Círculo Bicolor) */
@@ -300,7 +309,7 @@ td:last-child {
 .modal {
     display: none;
     position: fixed;
-    z-index: 999;
+    z-index: var(--z-modal);
     left: 0;
     top: 0;
     width: 100%;
@@ -423,7 +432,7 @@ td:last-child {
     padding: 5px 10px;
     border-radius: 6px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
+    z-index: var(--z-toolbar);
     gap: 5px;
 }
 
@@ -462,7 +471,7 @@ td:last-child {
 #loader-overlay {
     display: none;
     position: fixed;
-    z-index: 9999;
+    z-index: var(--z-loader);
     left: 0;
     top: 0;
     width: 100%;

@@ -47,7 +47,7 @@
     height: 75px;
     position: absolute;
     top: -12%; left: 40%; right: 40%;
-    z-index: 10;
+    z-index: var(--z-pin);
     background-image: url(../img/alfinetes.png);
     background-repeat: no-repeat;
     background-size: 100% auto;
