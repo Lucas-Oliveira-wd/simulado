@@ -39,7 +39,10 @@ def normalizar_texto_para_banco(texto):
     # 2. Remove espaços em branco no final de cada linha
     txt = re.sub(r'[ \t]+\n', '\n', txt)
 
-    # 3. Colapsa 3 ou mais quebras de linha em apenas 2 (para manter parágrafo, mas sem buracos)
+    # Remove espaços em branco no início de cada linha
+    txt = re.sub(r'\n[ \t]+', '\n', txt)
+
+    # 3. Colapsa 3 ou mais quebras de linha em apenas 1 (para manter parágrafo, mas sem buracos)
     txt = re.sub(r'\n{3,}', '\n\n', txt)
 
     return txt.strip()
@@ -429,12 +432,14 @@ def salvar_questoes(dados):
         alt_d = normalizar_texto_para_banco(i.get("alt_d", ""))
         alt_e = normalizar_texto_para_banco(i.get("alt_e", ""))
 
+        coment_limpo = normalizar_texto_para_banco(i.get("comentarios", ""))
+
         ws.append(
             [i["id"], i.get("banca"), i.get("instituicao"), i.get("ano"),
              enunciado_limpo, i["disciplina"], i["assunto"],
              i["dificuldade"], i["tipo"],
              alt_a, alt_b, alt_c, alt_d, alt_e,
-             i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", ""), i.get("comentarios", ""),
+             i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", ""), coment_limpo,
              i.get("texto_apoio", "")])
 
     try:

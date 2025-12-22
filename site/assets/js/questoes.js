@@ -623,3 +623,64 @@ function aplicarAssuntoGlobal() {
   });
 }
 
+
+function repararTextoSmart(idElemento = null) {
+  // 1. Tenta pegar pelo ID se foi passado
+  let textarea = null;
+  if (typeof idElemento !== 'undefined' && idElemento) {
+      textarea = document.getElementById(idElemento);
+  }
+
+  // 2. Se não passou ID ou não achou, pega o elemento que está com foco
+  if (!textarea) {
+      textarea = document.activeElement;
+  }
+
+  // Validação: Se não for um textarea ou input de texto, para aqui
+  if (!textarea || (textarea.tagName !== 'TEXTAREA' && textarea.type !== 'text')) {
+      console.warn("Nenhum campo de texto selecionado para reparo. Clique dentro do campo antes de apertar o botão.");
+      return;
+  }
+
+  let linhas = textarea.value.split('\n');
+  let resultado = [];
+  
+  for (let i = 0; i < linhas.length; i++) {
+      let atual = linhas[i].trim();
+      
+      // Se for a última linha, salva e encerra
+      if (i === linhas.length - 1) {
+          if (atual) resultado.push(atual);
+          break;
+      }
+
+      let proxima = linhas[i+1].trim();
+
+      // Linha vazia = parágrafo manual intencional
+      if (!atual) {
+          resultado.push(""); 
+          continue;
+      }
+
+      // --- LÓGICA DE DETECÇÃO ---
+      // 1. Termina com pontuação forte? (. : ? ! ;)
+      const pontuacaoFinal = /[.:?!;]$/.test(atual);
+      
+      // 2. Próxima linha começa com Maiúscula, Número, Aspas ou Marcador?
+      const comecaNovoBloco = /^(?:["'“‘]*[A-Z0-9]|-[A-Z]|•)/.test(proxima);
+
+      if (pontuacaoFinal && comecaNovoBloco) {
+          // Parece um fim de frase real -> Mantém a quebra
+          resultado.push(atual); 
+      } else {
+          // Parece quebra de PDF no meio da frase -> Junta com a próxima
+          linhas[i+1] = atual + " " + proxima;
+      }
+  }
+
+  // Atualiza o valor do campo
+  textarea.value = resultado.join('\n');
+  
+  // Dispara evento para avisar que mudou (importante para frameworks reativos ou salvamento auto)
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+}
