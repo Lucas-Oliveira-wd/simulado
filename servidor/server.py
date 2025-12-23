@@ -206,6 +206,8 @@ def parsear_questoes(texto_bruto, disciplina=""):
             match_titulo = re.match(r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)', bloco,
                                 re.IGNORECASE)
         elif disciplina == "Inglês":
+            # O bloco em inglês começa com "TEXTO" seguido de número (arábico ou romano)
+            match_titulo = re.match(r'(TEXTO\s+(?:\d+|[IVX]+).*?)(?:\n|$)', bloco, re.IGNORECASE)
 
         if match_titulo:
             linha_completa = match_titulo.group(1).strip()
@@ -225,6 +227,11 @@ def parsear_questoes(texto_bruto, disciplina=""):
             elif "DENOTAÇÃO" in linha_completa.upper():
                 assunto_atual = "Denotação e Conotação"
 
+        banca = "CESGRANRIO"
+        instituicao = ""
+        ano = "2025"
+
+
         # Extrai o mapa de respostas contido neste bloco (agora pega inline também)
         mapa_gabaritos_local = extrair_mapa_gabaritos_local(bloco)
 
@@ -234,15 +241,19 @@ def parsear_questoes(texto_bruto, disciplina=""):
                 r'^\s*(\d+)\.\s*(?:\(?)\s*((?:\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|EQUIPE|[A-Z][a-zçãõâêô]+).+?)\s*(?:\)?)\s*$',
                 re.MULTILINE
             )
-        else:
+        elif disciplina == "Conhecimentos Específicos":
             # Sem ^ (início de linha) e sem $ (fim de linha). Pega inline.
             pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*(\(.*?\))', re.MULTILINE)
-
+        elif disciplina == "Inglês":
+            pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s+(?=[A-Z])', re.MULTILINE)
         matches_questoes = list(pattern_questao.finditer(bloco))
 
         for i, m in enumerate(matches_questoes):
             q_numero = m.group(1)
-            q_meta = m.group(2)
+            if disciplina == "Inglês":
+                q_meta = ""
+            else:
+                q_meta = m.group(2)
 
             if disciplina == "Português":
                 # Filtro para evitar falsos positivos (como "1. Noções..." no índice)
@@ -271,7 +282,6 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
             # Processamento de metadados (Banca, Ano, etc)
             # CORREÇÃO: Busca o ano via regex (19xx ou 20xx) antes de quebrar a string
-            ano = "2025"
             match_ano = re.search(r'\b(19|20)\d{2}\b', q_meta)
             if match_ano:
                 ano = match_ano.group(0)
@@ -288,9 +298,6 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
             # Filtra strings vazias resultantes
             partes_meta = [p for p in partes_meta if p.strip()]
-
-            banca = "CESGRANRIO"
-            instituicao = ""
 
             if len(partes_meta) > 0:
                 banca_cand = partes_meta[0].replace('(', '')
@@ -334,7 +341,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                 alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
             else:
                 # --- CORREÇÃO PARA FORMATO (A), (B)... ---
-                if disciplina == "Conhecimentos Específicos":
+                if disciplina == "Conhecimentos Específicos" or disciplina == "Inglês":
                     content_no_comments = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
 
                 parts_alt = re.split(r'\b([A-E])\)', content_no_comments, flags=re.IGNORECASE)
