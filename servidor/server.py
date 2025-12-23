@@ -202,8 +202,11 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
     for bloco in blocos:
         # Detecta o assunto do bloco pelo título
-        match_titulo = re.match(r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)', bloco,
+        if disciplina == "Português" or disciplina == "Conhecimentos Específicos":
+            match_titulo = re.match(r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)', bloco,
                                 re.IGNORECASE)
+        elif disciplina == "Inglês":
+
         if match_titulo:
             linha_completa = match_titulo.group(1).strip()
             idx_primeiro_hifen = linha_completa.find('-')
