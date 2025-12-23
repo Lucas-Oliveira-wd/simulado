@@ -173,7 +173,7 @@ nav button.ativa {
 body.dark-mode button:hover,
 body.dark-mode nav button.ativa {
     background: var(--dark-sec-color);
-    border-color: var(--dark-sec-color);
+    border-color: var(--dark-sec-color );
     color: #fff
 }
 
