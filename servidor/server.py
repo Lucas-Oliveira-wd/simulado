@@ -231,7 +231,12 @@ def parsear_questoes(texto_bruto, disciplina=""):
         instituicao = ""
         ano = "2025"
 
-
+        if disciplina == "Inglês":
+            # O regex busca: Qualquer coisa -> Hífen/Travessão -> (Instituição) -> Hífen/Travessão -> (Banca)
+            match_meta_ing = re.search(r'.+?\s*[-–]\s*(.+?)\s*[-–]\s*(.+?)\s*(?:\n|$)', bloco[:600])
+            if match_meta_ing:
+                instituicao = match_meta_ing.group(1).strip()  # Grupo 1: BNDES
+                banca = match_meta_ing.group(2).strip()  # Grupo 2: CESGRANRIO
         # Extrai o mapa de respostas contido neste bloco (agora pega inline também)
         mapa_gabaritos_local = extrair_mapa_gabaritos_local(bloco)
 
@@ -247,6 +252,17 @@ def parsear_questoes(texto_bruto, disciplina=""):
         elif disciplina == "Inglês":
             pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s+(?=[A-Z])', re.MULTILINE)
         matches_questoes = list(pattern_questao.finditer(bloco))
+
+        # --- Extração do Conteúdo do Texto de Apoio ---
+        texto_apoio_bloco = ""
+        if disciplina == "Inglês":
+            # Tenta pegar tudo até "Comentários" ou até a 1ª questão
+            if re.search(r'Comentários?:', bloco, re.IGNORECASE):
+                texto_apoio_bloco = re.split(r'Comentários?:', bloco, maxsplit=1, flags=re.IGNORECASE)[0]
+            elif matches_questoes:
+                idx_start = matches_questoes[0].start()
+                texto_apoio_bloco = bloco[:idx_start]
+            texto_apoio_bloco = texto_apoio_bloco.strip()
 
         for i, m in enumerate(matches_questoes):
             q_numero = m.group(1)
@@ -280,29 +296,30 @@ def parsear_questoes(texto_bruto, disciplina=""):
             if re.search(r'\(\s*\)\s*(?:Certo|Errado)|(?:Certo|Errado)\s*\(\s*\)|julgue\s+o\s+item|julgue\s+os\s+itens', q_conteudo_bruto, re.IGNORECASE):
                 tipo = "CE"
 
-            # Processamento de metadados (Banca, Ano, etc)
-            # CORREÇÃO: Busca o ano via regex (19xx ou 20xx) antes de quebrar a string
-            match_ano = re.search(r'\b(19|20)\d{2}\b', q_meta)
-            if match_ano:
-                ano = match_ano.group(0)
+            if disciplina != "Inglês":
+                # Processamento de metadados (Banca, Ano, etc)
+                # CORREÇÃO: Busca o ano via regex (19xx ou 20xx) antes de quebrar a string
+                match_ano = re.search(r'\b(19|20)\d{2}\b', q_meta)
+                if match_ano:
+                    ano = match_ano.group(0)
 
-            # Remove o ano encontrado da string para limpar a área para Banca/Instituição
-            meta_sem_ano = q_meta
-            if match_ano:
-                meta_sem_ano = q_meta.replace(ano, "")
+                # Remove o ano encontrado da string para limpar a área para Banca/Instituição
+                meta_sem_ano = q_meta
+                if match_ano:
+                    meta_sem_ano = q_meta.replace(ano, "")
 
-            meta_limpa = meta_sem_ano.replace("–", "/").replace("-", "/")
+                meta_limpa = meta_sem_ano.replace("–", "/").replace("-", "/")
 
-            # Removemos parênteses extras que podem sobrar após a limpeza
-            partes_meta = [p.strip().replace('(', '').replace(')', '') for p in meta_limpa.split('/') if p.strip()]
+                # Removemos parênteses extras que podem sobrar após a limpeza
+                partes_meta = [p.strip().replace('(', '').replace(')', '') for p in meta_limpa.split('/') if p.strip()]
 
-            # Filtra strings vazias resultantes
-            partes_meta = [p for p in partes_meta if p.strip()]
+                # Filtra strings vazias resultantes
+                partes_meta = [p for p in partes_meta if p.strip()]
 
-            if len(partes_meta) > 0:
-                banca_cand = partes_meta[0].replace('(', '')
-                if len(banca_cand) > 2: banca = banca_cand
-            if len(partes_meta) > 1: instituicao = partes_meta[1].replace(')', '')
+                if len(partes_meta) > 0:
+                    banca_cand = partes_meta[0].replace('(', '')
+                    if len(banca_cand) > 2: banca = banca_cand
+                if len(partes_meta) > 1: instituicao = partes_meta[1].replace(')', '')
 
             # Busca Gabarito
             gabarito = ""
@@ -361,7 +378,8 @@ def parsear_questoes(texto_bruto, disciplina=""):
                         "assunto": assunto_atual, "enunciado": enunciado,
                         "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"],
                         "alt_e": alts["E"],
-                        "gabarito": gabarito, "dificuldade": "Médio", "tipo": tipo, "imagem": ""
+                        "gabarito": gabarito, "dificuldade": "Médio", "tipo": tipo, "imagem": "",
+                        "texto_apoio_conteudo": texto_apoio_bloco if disciplina == "Inglês" else ""
                     })
 
     return questoes
