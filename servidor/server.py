@@ -564,7 +564,7 @@ def serve_image(filename): return send_from_directory(UPLOAD_FOLDER, filename)
 def get_q():
     dados = carregar_questoes()
     textos = carregar_todos_textos()
-    mapa_textos = {t["id"]: t["conteudo"] for t in textos}
+    mapa_textos = {t["id"]: t for t in textos}
     dados.reverse()  # Mais recentes primeiro
 
     # --- 1. FILTRAGEM (Server-Side) ---
@@ -596,12 +596,13 @@ def get_q():
 
     # Antes de paginar ou retornar, "hidrata" as questões com o texto real
     for q in dados:
-        # O campo no excel se chama 'texto_apoio', mas agora guardamos um ID nele.
+
         id_vinculo = q.get("texto_apoio")
         if id_vinculo and id_vinculo in mapa_textos:
-            # Cria um campo novo 'texto_conteudo' para o front mostrar
-            q["texto_conteudo"] = mapa_textos[id_vinculo]
+            q["texto_titulo"] = mapa_textos[id_vinculo]["titulo"]
+            q["texto_conteudo"] = mapa_textos[id_vinculo]["conteudo"]
         else:
+            q["texto_titulo"] = ""
             q["texto_conteudo"] = ""
 
     # --- 2. PAGINAÇÃO ---

@@ -290,7 +290,7 @@ function renPratica() {
       let indiceNoGrupo = questoesDoTexto.findIndex(x => x.id === q.id) + 1;
 
       if (totalDoTexto > 1) {
-          htmlAvisoTexto = `<div style="background:#e8f6f3; color:#16a085; padding:5px 10px; border-radius:4px; font-size:0.85em; margin-bottom:10px; display:inline-block; border:1px solid #a3e4d7;">
+          htmlAvisoTexto = `<div>
               📖 Questão <b>${indiceNoGrupo}</b> de <b>${totalDoTexto}</b> vinculadas a este texto
           </div>`;
       }
@@ -311,17 +311,33 @@ function renPratica() {
   let htmlTexto = "";
   // Note que usamos "texto_conteudo", que foi injetado pelo backend via JOIN
   if (q.texto_conteudo) { 
-      let textoFormatado = q.texto_conteudo.replace(/\n/g, '<br>');
-      htmlTexto = `
-          <div class="texto-apoio-box" style="background:#fdfdfd; padding:15px; margin-bottom:20px; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.05)">
-              <div class="texto-apoio-header" style="font-weight:bold; color:var(--primary); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-                  <span>📄 Texto de Referência</span>
-                  ${htmlAvisoTexto} </div>
-              <div class="texto-apoio-content" style="line-height:1.5; font-family:'Georgia', serif;">
-                  ${textoFormatado}
+    // Mapeia linhas para parágrafos com classe CSS, mantendo quebras vazias
+    let textoFormatado = q.texto_conteudo
+      .split('\n')
+      .map(linha => {
+          if (linha.trim() !== '') {
+              // Usa a classe .texto-paragrafo definida no CSS
+              return `<p class="texto-paragrafo">${linha}</p>`;
+          } else {
+              return '<br>';
+          }
+      })
+      .join('');
+    
+    htmlTexto = `
+        <div class="texto-apoio-box">
+            <div class="texto-apoio-header">
+              <div class="texto-header-info">
+                  <span class="texto-label">📄 Texto de Referência</span>
+                  <span class="texto-titulo">${(q.texto_titulo || '').trim() || 'Sem Título'}</span>
               </div>
-          </div>`;
-  }
+              ${htmlAvisoTexto} 
+            </div>
+            <div class="texto-apoio-content">
+                ${textoFormatado}
+            </div>
+        </div>`;
+  } 
   
   el("prat-enunciado").innerHTML = htmlTexto + htmlImg + `<div style="font-size:1.1em; line-height:1.5">${q.enunciado}</div>`;
 
@@ -682,6 +698,35 @@ function graf() {
   renderGraficoNivel("disciplina");
 }
 
+// Função para gerar cor dinâmica (Gradiente: Vermelho -> Amarelo -> Verde)
+function getCorGradiente(porcentagem) {
+  // Definição das cores base em RGB
+  const vermelho = { r: 255, g: 0, b: 0}; 
+  const amarelo = { r: 255, g: 255, b: 0};
+  const verde = { r: 0, g: 255, b: 0};  
+
+  let inicio, fim, fator;
+
+  if (porcentagem < 50) {
+      // Fase 1: Do Vermelho (0%) ao Amarelo (50%)
+      inicio = vermelho;
+      fim = amarelo;
+      fator = porcentagem / 50; // Normaliza de 0 a 1
+  } else {
+      // Fase 2: Do Amarelo (50%) ao Verde (100%)
+      inicio = amarelo;
+      fim = verde;
+      fator = (porcentagem - 50) / 50; // Normaliza de 0 a 1
+  }
+
+  // Calcula a cor intermediária (Interpolação Linear)
+  const r = Math.round(inicio.r + (fim.r - inicio.r) * fator);
+  const g = Math.round(inicio.g + (fim.g - inicio.g) * fator);
+  const b = Math.round(inicio.b + (fim.b - inicio.b) * fator);
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
 function renderGraficoNivel(nivel, filtroDisciplina = null) {
   let ctx = el("chart").getContext("2d");
   
@@ -732,10 +777,8 @@ function renderGraficoNivel(nivel, filtroDisciplina = null) {
           let p = (stats[k].a / stats[k].r) * 100;
           data.push(p.toFixed(1));
           
-          // Cores: Verde (>=70%), Amarelo (>=50%), Vermelho (<50%)
-          if (p >= 70) colors.push("#27ae60");
-          else if (p >= 50) colors.push("#f1c40f");
-          else colors.push("#e74c3c");
+          // Usa a nova função de gradiente
+          colors.push(getCorGradiente(p));
       }
   }
 
