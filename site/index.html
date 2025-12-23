@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sistema Petrobras - Questões & Flashcards</title>
+    <title>Sistema Petrobras/Traspetro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="assets/css/main.css">
     <link rel="stylesheet" href="assets/css/header.css">
@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="assets/css/ler-pdf.css">
     <link rel="stylesheet" href="assets/css/secao-praticar.css">
     <link rel="stylesheet" href="assets/css/secao-banco.css">
+    <link rel="stylesheet" href="assets/css/secao-leitor-pdf.css">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/assets/img/favicon/favicon-16x16.png">
@@ -27,17 +28,16 @@
     <header id="main-header">
         <div class="container flex">
             <div class="logo">
-                <h4>Concurso Petrobras</h4>
+                <h4>Concurso Petrobras/Traspetro</h4>
             </div>
             <nav>
                 <button id="nav-cadastro" onclick="nav('cadastro')">Cadastrar</button>
                 <button id="nav-banco" onclick="nav('banco')">Banco</button>
                 <button id="nav-praticar" onclick="nav('praticar')">Praticar</button>
-                <button id="nav-prova" onclick="nav('prova')" style="color:#f1c40f;border-color:#f1c40f">Simulado
-                    Real</button>
-                <button id="nav-flashcards" onclick="nav('flashcards')">🗂️ Flashcards</button>
+                <button id="nav-prova" onclick="nav('prova')">Simulado</button>
+                <button id="nav-flashcards" onclick="nav('flashcards')">Flashcards</button>
                 <button id="nav-estatisticas" onclick="nav('estatisticas')">Estatísticas</button>
-                <button id="nav-importar" onclick="nav('importar')">📂 Importar PDF</button>
+                <button id="nav-importar" onclick="nav('importar')">Importar PDF</button>
                 <button id="btn-tema" onclick="toggleTema()" title="Alternar Tema (Claro/Escuro)"></button>
             </nav>
         </div>
@@ -145,8 +145,7 @@
                     <div style="width:60px; text-align:center">Gab</div>
                     <div style="width:60px; text-align:center">Ações</div>
                 </div>
-                <div id="imp-lista-questoes"
-                    style="background:#f4f4f9; padding:10px; max-height:600px; overflow-y:auto; border:1px solid #ccc">
+                <div id="imp-lista-questoes">
                 </div>
             </div>
         </div>

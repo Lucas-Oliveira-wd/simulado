@@ -146,15 +146,23 @@ def limpar_ruido(texto, disciplina=""):
         r"Aula \d+",
         r"==\w+==",
         r"^\.\d+\.\.\)\.",
+        r"10763321451",
     ]
     if disciplina == "Conhecimentos Específicos":
         patterns_to_remove.extend([
             r"PETROBRAS \(Engenharia de Produção\)",
             r"Conhecimentos Específicos",
-            r"10763321451",
             r"Daniel Almeida",
             r".*Felipe Canella.*"
         ])
+    elif disciplina == "Inglês":
+        patterns_to_remove.extend([
+            r"PETROBRAS \(Nível Superior\) Inglês",
+            r"Ena Smith",
+            r"Available at:.*",
+            r"^\d+\s*de\s*[A-Z][a-z]+\s*de\s*\d+",  # Datas
+        ])
+
     for pattern in patterns_to_remove:
         texto = re.sub(pattern, "", texto, flags=re.MULTILINE | re.IGNORECASE)
     texto = re.sub(r'\n{3,}', '\n\n', texto)

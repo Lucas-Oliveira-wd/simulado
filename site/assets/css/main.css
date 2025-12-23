@@ -1,6 +1,6 @@
 :root {
     --primary: #008148;
-    --sec: #3498db;
+    --sec: #fecc2b;
     --acc: #e74c3c;
     --succ: #27ae60;
     --bg: #f4f4f9;
@@ -8,15 +8,18 @@
     --text-muted: #95a5a6;
     --purple: #8e44ad;
     --orange: #f39c12;
+    --overload-color:rgba(255,255,255,.9);
 
     /* Novas variáveis para o Modo Escuro */
     --dark-primary: #001f11;
     --dark-bg: #1a1a1a;        /* Fundo da página */
     --dark-surface: #2d2d2d;   /* Cards, modais e containers */
     --dark-input: #464646;     /* Campos de texto */
-    --dark-border: #7e7e7e;    /* Bordas e separadores */
+    --dark-border: #616161;    /* Bordas e separadores */
     --dark-text: #e0e0e0ef;      /* Texto principal */
     --dark-hover: #555555;     /* Hover de elementos */
+    --dark-overload-color:rgba(55,55,55,.9);
+    --dark-sec-color: #7e6515;
 
     /* --- Camadas (Z-Index) --- */
     --z-base: 1;
@@ -54,6 +57,8 @@ body.dark-mode #btn-tema {
 }
 
 /* --- TEMA ESCURO --- */
+
+body.dark-mode .secao,
 body.dark-mode {
     background-color: var(--dark-bg);
     color: var(--dark-text);
@@ -64,13 +69,14 @@ body.dark-mode .modal-content,
 body.dark-mode .filtro-grid, 
 body.dark-mode .texto-apoio-box,
 body.dark-mode #view-comentario,
-body.dark-mode .secao,
 body.dark-mode .input-group,
 body.dark-mode #prat-meta,
 body.dark-mode #prova-meta,
 body.dark-mode .enunciado,
 body.dark-mode .render-html,
-body.dark-mode .alternativa-wrapper {
+body.dark-mode .alternativa-wrapper,
+body.dark-mode #imp-lista-questoes,
+body.dark-mode .imp-row {
     background-color: var(--dark-surface) !important;
     color: var(--dark-text);
     border-color: var(--dark-border);
@@ -164,22 +170,11 @@ nav button.ativa {
     color: #fff
 }
 
-#nav-importar {
-    background: var(--purple);
-    border-color: var(--purple);
-}
-
-#nav-importar:hover {
-    background: #9b59b6;
-}
-
-#nav-flashcards {
-    background: var(--orange);
-    border-color: var(--orange);
-}
-
-#nav-flashcards:hover {
-    background: #e67e22;
+body.dark-mode button:hover,
+body.dark-mode nav button.ativa {
+    background: var(--dark-sec-color);
+    border-color: var(--dark-sec-color);
+    color: #fff
 }
 
 .secao {
@@ -359,6 +354,11 @@ td:last-child {
     background: #fff5f5;
 }
 
+body.dark-mode .ja-cadastrada {
+    border-left: 4px solid #e74c3c ;
+    background: #ff00001a !important;
+}
+
 .imp-row.sucesso-salvo {
     border-left: 4px solid #27ae60;
     background: #eafaf1;
@@ -476,10 +476,14 @@ td:last-child {
     top: 0;
     width: 100%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--overload-color);
     justify-content: center;
     align-items: center;
     flex-direction: column;
+}
+
+.dark-mode #loader-overlay{
+    background: var(--dark-overload-color);
 }
 
 .spinner {
