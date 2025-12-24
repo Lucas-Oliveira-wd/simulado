@@ -51,7 +51,9 @@ def normalizar_texto_para_banco(texto):
 def normalizar_para_comparacao(texto):
     if not texto: return ""
     texto_sem_tags = re.sub(r'<[^>]+>', '', str(texto))
-    return re.sub(r'[\W_]+', '', texto_sem_tags).lower()
+    # Remove TUDO que não for letra ou número (espaços, tabs, quebras de linha, pontuação)
+    # Isso gera uma string "pura" para comparação infalível
+    return re.sub(r'[\W_]+', '', texto_sem_tags).lower().strip()
 
 
 def sanitizar_texto(texto):
@@ -401,34 +403,52 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
             # --- NOVO FILTRO DE UNICIDADE ---
             # Identifica todos os inícios (Número + Espaço + Letra Maiúscula)
-            pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)[\.\s\)]+\s*(?=[A-Z])', re.MULTILINE)
+            pattern_questao = re.compile(r'(?i)(?:^|\n|Gabarito[:\s]*[A-E])\s*(\d+)[\.\s\)]+\s*(?=[A-Z])', re.MULTILINE)
             todos_matches = list(pattern_questao.finditer(bloco))
 
             matches_questoes = []
             numeros_vistos = set()
 
-            for m in todos_matches:
+            print(f"\n--- [DEBUG] INICIANDO CAPTURA NO BLOCO ---")
+
+            for idx, m in enumerate(todos_matches):
                 q_num = m.group(1)
-                # SÓ ADICIONA SE FOR A PRIMEIRA VEZ QUE O NÚMERO APARECE NO BLOCO
-                if q_num not in numeros_vistos:
+                pos_match = m.start()
+
+                # Define o fim da janela de busca: o início do próximo número encontrado ou o fim do bloco
+                prox_pos_candidata = todos_matches[idx + 1].start() if idx + 1 < len(todos_matches) else len(bloco)
+                janela_de_texto = bloco[m.end():prox_pos_candidata]
+
+                # VALIDAÇÃO: Não importa se o enunciado é longo.
+                # Se for uma QUESTÃO, as alternativas (A e B) DEVEM aparecer antes do próximo número.
+                # Se for um NÚMERO DE LINHA (margem), as alternativas nunca aparecerão.
+                tem_alts = re.search(r'\bA[\)\.]|\(A\)', janela_de_texto) and \
+                           re.search(r'\bB[\)\.]|\(B\)', janela_de_texto)
+                if q_num not in numeros_vistos and tem_alts:
+                    print(f"[DEBUG - CAPTURA] Q{q_num} validada na pos {pos_match}")
                     matches_questoes.append(m)
                     numeros_vistos.add(q_num)
+                else:
+                    razao = "repetida" if q_num in numeros_vistos else "número de margem/sem alternativas"
+                    print(f"[DEBUG - DESCARTADA] Ocorrência {q_num} na pos {pos_match} -> {razao}")
 
-            # --- Extração do Conteúdo do Texto de Apoio ---
-            texto_apoio_bloco = ""
-            # Tenta pegar tudo até "Comentários" ou até a 1ª questão
-            if re.search(r'Comentários?:', bloco, re.IGNORECASE):
-                texto_apoio_bloco = re.split(r'Comentários?:', bloco, maxsplit=1, flags=re.IGNORECASE)[0]
-            elif matches_questoes:
-                idx_start = matches_questoes[0].start()
-                texto_apoio_bloco = bloco[:idx_start]
-            texto_apoio_bloco = texto_apoio_bloco.strip()
+            matches_questoes.sort(key=lambda m: m.start())
 
+            print(f"--- [DEBUG] INICIANDO PARSING INDIVIDUAL ---")
             for i, m in enumerate(matches_questoes):
                 q_numero = m.group(1)
                 start_index = m.end()
                 end_index = matches_questoes[i + 1].start() if i + 1 < len(matches_questoes) else len(bloco)
 
+                # O end_index define o limite da questão atual. Se estiver errado, a questão "engole" a próxima.
+                if i + 1 < len(matches_questoes):
+                    prox_match = matches_questoes[i + 1]
+                    end_index = prox_match.start()
+                    print(
+                        f"[DEBUG - PROCESSANDO] Q{q_numero} -> Fim definido pelo início da Q{prox_match.group(1)} na posição {end_index}")
+                else:
+                    end_index = len(bloco)
+                    print(f"[DEBUG - PROCESSANDO] Q{q_numero} -> Última questão do bloco. Fim na posição {end_index}")
                 # 1. PEGA O BLOCO BRUTO (GIGANTE)
                 q_conteudo_bruto = bloco[start_index:end_index]
 
@@ -501,6 +521,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                         "imagem": "", "comentarios": comentarios_extraidos
                     })
 
+    print(f"--- [DEBUG] FIM DO PROCESSAMENTO ---\n")
     return questoes
 
 

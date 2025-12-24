@@ -249,22 +249,23 @@ async function salvarIndividual(index) {
   formData.append("comentarios", r.querySelector(".imp-comentario").value);
 
   // ---  Só lê as alternativas se o input existir ---
-  let iA = r.querySelector(".imp-alt-a"), iB = r.querySelector(".imp-alt-b");
-  let iC = r.querySelector(".imp-alt-c"), iD = r.querySelector(".imp-alt-d"), iE = r.querySelector(".imp-alt-e");
+  let iA = r.querySelector(".imp-alt-a"),
+    iB = r.querySelector(".imp-alt-b");
+  let iC = r.querySelector(".imp-alt-c"),
+    iD = r.querySelector(".imp-alt-d"),
+    iE = r.querySelector(".imp-alt-e");
 
-  formData.append("alt_a", iA ? iA.value : ""); 
+  formData.append("alt_a", iA ? iA.value : "");
   formData.append("alt_b", iB ? iB.value : "");
-  formData.append("alt_c", iC ? iC.value : ""); 
+  formData.append("alt_c", iC ? iC.value : "");
   formData.append("alt_d", iD ? iD.value : "");
   formData.append("alt_e", iE ? iE.value : "");
 
   formData.append("gabarito", r.querySelector(".imp-gabarito").value);
 
-  formData.append("texto_apoio", document.querySelector("#form-cadastro .sel-texto-apoio").value);
-
   let tipoDetectado = iA ? "ME" : "CE"; //Detecta o tipo de questão
   formData.append("tipo", tipoDetectado);
-  
+
   formData.append("disciplina", disc);
   formData.append("assunto", assuntoFinal);
 
@@ -275,7 +276,7 @@ async function salvarIndividual(index) {
   let fileInput = r.querySelector(".imp-imagem-file");
   if (fileInput && fileInput.files[0])
     formData.append("imagem_file", fileInput.files[0]);
-  
+
   if (!formData.get("enunciado") || !formData.get("gabarito"))
     return alert("Dados incompletos.");
 
