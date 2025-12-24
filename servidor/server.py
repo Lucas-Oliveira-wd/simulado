@@ -61,10 +61,6 @@ def sanitizar_texto(texto):
     # Remove hifens soltos de quebra de página
     texto = re.sub(r'-\s*\n\s*', '', texto)
 
-    # Remove linhas isoladas de gabarito que possam ter sobrado (ex: em questões comentadas)
-    # Mas cuidado para não remover partes do enunciado. O foco aqui é limpar "sujeira"
-    texto = re.sub(r'\n\s*Gabarito:?\s*Letra\s*[A-E]\s*\n', '\n', texto, flags=re.IGNORECASE)
-
     linhas = [l.strip() for l in texto.split('\n') if l.strip()]
     if not linhas: return ""
     resultado = []
@@ -403,7 +399,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
             # --- NOVO FILTRO DE UNICIDADE ---
             # Identifica todos os inícios (Número + Espaço + Letra Maiúscula)
-            pattern_questao = re.compile(r'(?i)(?:^|\n|Gabarito[:\s]*[A-E])\s*(\d+)[\.\s\)]+\s*(?=[A-Z])', re.MULTILINE)
+            pattern_questao = re.compile(r'\b(\d+)[\.\s\)]+\s*(?=[A-Z])')
             todos_matches = list(pattern_questao.finditer(bloco))
 
             matches_questoes = []
@@ -495,6 +491,8 @@ def parsear_questoes(texto_bruto, disciplina=""):
                             corpo_util = q_conteudo_bruto[:posicao_corte].strip()
                             # TUDO após o corte vira comentário
                             comentarios_extraidos = q_conteudo_bruto[posicao_corte:].strip()
+
+                    print(f"comentarios: {comentarios_extraidos}")
 
                 # 5. SEPARAÇÃO FINAL DAS ALTERNATIVAS (Agora no corpo já cortado)
                 content_final = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', corpo_util)
