@@ -197,6 +197,10 @@ function renderPreview(lista) {
         <textarea class="imp-textarea imp-enunciado" rows="3" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})">${q.enunciado}</textarea>
         <div style="margin:5px 0"><input type="file" class="imp-imagem-file" accept="image/*" style="font-size:0.8em"></div>
         ${areaAlternativas}
+        <div style="margin-top:10px">
+            <label style="font-size:0.8rem; font-weight:bold; color:var(--sec)">Comentários:</label>
+            <textarea class="imp-textarea imp-comentario" rows="4" style="background:#f0f4f8; font-size:0.85em;" onfocus="showToolbar(this)">${q.comentarios || ""}</textarea>
+        </div>
     </div>
     <div class="imp-gab"><select class="imp-gabarito">${optionsGab}</select></div>
     <div class="imp-acoes"><button class="btn-icon" style="color:#27ae60" onclick="salvarIndividual(${i})">💾</button><button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()">✖</button></div>
@@ -242,6 +246,7 @@ async function salvarIndividual(index) {
   formData.append("ano", r.querySelector(".imp-ano").value);
   formData.append("dificuldade", r.querySelector(".imp-dif").value);
   formData.append("enunciado", r.querySelector(".imp-enunciado").value);
+  formData.append("comentarios", r.querySelector(".imp-comentario").value);
 
   // ---  Só lê as alternativas se o input existir ---
   let iA = r.querySelector(".imp-alt-a"), iB = r.querySelector(".imp-alt-b");

@@ -187,12 +187,6 @@ def extrair_mapa_gabaritos_local(texto_bloco):
 def parsear_questoes(texto_bruto, disciplina=""):
     texto_limpo = limpar_ruido(texto_bruto, disciplina)
 
-    # DEBUG: Verifica se o número 21 (ou qualquer rodapé) ainda existe no texto limpo
-    if "PETROBRAS" in texto_limpo:
-        print("⚠️ Atenção: A função limpar_ruido ainda deixou passar termos de rodapé!")
-    else:
-        print("✅ Texto limpo com sucesso. Iniciando separação de questões...")
-
     questoes = []
 
     if disciplina == "Português" or disciplina == "Conhecimentos Específicos":
@@ -364,7 +358,6 @@ def parsear_questoes(texto_bruto, disciplina=""):
                             "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"],
                             "alt_e": alts["E"],
                             "gabarito": gabarito, "dificuldade": "Médio", "tipo": tipo, "imagem": "",
-                            "texto_apoio_conteudo": texto_apoio_bloco if disciplina == "Inglês" else ""
                         })
 
 
@@ -412,8 +405,6 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     matches_questoes.append(m)
                     numeros_vistos.add(q_num)
 
-            print(f"[DEBUG] Questões únicas encontradas: {list(numeros_vistos)}")
-
             # --- Extração do Conteúdo do Texto de Apoio ---
             texto_apoio_bloco = ""
             # Tenta pegar tudo até "Comentários" ou até a 1ª questão
@@ -452,6 +443,8 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
                 # 4. CORTE DA REPETIÇÃO (Limpando o vazamento para a Alt E)
                 corpo_util = q_conteudo_bruto
+                comentarios_extraidos = "" # Inicializa vazio
+
                 if ancora:
                     # Padroniza espaços para a busca ser robusta contra quebras de linha do PDF
                     padrao_ancora = re.sub(r'\s+', r'\\s+', re.escape(ancora))
@@ -461,7 +454,9 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     if len(matches_ancora) > 1:
                         posicao_corte = matches_ancora[1].start()
                         corpo_util = q_conteudo_bruto[:posicao_corte].strip()
-                        print(f"✅ Q{q_numero}: Corte realizado via âncora '{ancora}'")
+
+                        # TUDO após o corte vira comentário
+                        comentarios_extraidos = q_conteudo_bruto[posicao_corte:].strip()
                     else:
                         # Fallback: Se não achou a repetição do texto, corta se o número da questão se repetir
                         # Isso evita o efeito dominó se a tradução começar com "11. De acordo..."
@@ -469,7 +464,8 @@ def parsear_questoes(texto_bruto, disciplina=""):
                         if match_num:
                             posicao_corte = limiar + match_num.start()
                             corpo_util = q_conteudo_bruto[:posicao_corte].strip()
-                            print(f"⚡ Q{q_numero}: Corte realizado via número repetido.")
+                            # TUDO após o corte vira comentário
+                            comentarios_extraidos = q_conteudo_bruto[posicao_corte:].strip()
 
                 # 5. SEPARAÇÃO FINAL DAS ALTERNATIVAS (Agora no corpo já cortado)
                 content_final = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', corpo_util)
@@ -493,7 +489,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                         "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"],
                         "alt_d": alts["D"], "alt_e": alts["E"],
                         "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME",
-                        "imagem": "", "texto_apoio_conteudo": texto_apoio_bloco
+                        "imagem": "", "comentarios": comentarios_extraidos
                     })
 
     return questoes
