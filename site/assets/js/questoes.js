@@ -94,25 +94,49 @@ async function lerPDF() {
   let lista = el("imp-lista-questoes");
   if (lista && lista.children.length > 0)
     if (!confirm("Substituir lista atual?")) return;
+  
   let inp = el("imp-file");
   if (inp.files.length === 0) return alert("Selecione PDF");
+
   let fd = new FormData();
   fd.append("file", inp.files[0]);
+
   let disciplinaAlvo = el("imp-disciplina").value;
   if (!disciplinaAlvo) return alert("Selecione a disciplina!");
   fd.append("disciplina", disciplinaAlvo);
+
   el("imp-preview-container").style.display = "none";
   el("imp-lista-questoes").innerHTML = "";
   showLoader("Lendo PDF...");
+
   try {
     let r = await fetch(`${API}/upload-pdf`, { method: "POST", body: fd });
+    if (!r.ok) throw new Error("Erro na resposta do servidor");
+
     let questoes = await r.json();
+
     renderPreview(questoes);
+
+    atualizarTodosSelectsTexto();
+
   } catch (e) {
     alert("Erro ao ler PDF.");
   } finally {
     hideLoader();
   }
+}
+
+function atualizarTodosSelectsTexto() {
+  const selects = document.querySelectorAll('.sel-texto-apoio');
+  selects.forEach(sel => {
+    const valorAtual = sel.value;
+    sel.innerHTML = '<option value="">-- Sem Texto de Apoio --</option>';
+    cacheTextos.forEach(t => {
+      let resumo = t.titulo + " - " + t.conteudo.substring(0, 50).replace(/\n/g, " ") + "...";
+      sel.innerHTML += `<option value="${t.id}">${resumo}</option>`;
+    });
+    sel.value = valorAtual;
+  });
 }
 
 function renderPreview(lista) {
@@ -162,6 +186,12 @@ function renderPreview(lista) {
         <input type="text" class="imp-assunto-ind" placeholder="Assunto" value="${assuntoFinal}" list="lista-assuntos" style="font-size:0.85em; color:var(--purple)">
 
         <select class="imp-dif"><option value="Médio">Médio</option><option value="Fácil">Fácil</option><option value="Difícil">Difícil</option></select>
+
+        <div class="vinculo-texto-preview" style="margin-top: 5px;">
+            <select class="sel-texto-apoio imp-input" style="width:100%; font-size:0.8em; color:var(--sec);">
+                <option value="">-- Vincular Texto --</option>
+            </select>
+        </div>
     </div>
     <div class="imp-content">
         <textarea class="imp-textarea imp-enunciado" rows="3" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})">${q.enunciado}</textarea>
@@ -172,6 +202,7 @@ function renderPreview(lista) {
     <div class="imp-acoes"><button class="btn-icon" style="color:#27ae60" onclick="salvarIndividual(${i})">💾</button><button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()">✖</button></div>
 </div>`;
   });
+  atualizarTodosSelectsTexto();
 }
 
 function verificarDuplicidadeDinamica(index) {
@@ -204,6 +235,7 @@ async function salvarIndividual(index) {
     r.querySelector(".imp-assunto-ind").value ||
     el("imp-assunto").value ||
     "Geral";
+
   const formData = new FormData();
   formData.append("banca", r.querySelector(".imp-banca").value);
   formData.append("instituicao", r.querySelector(".imp-inst").value);
@@ -231,12 +263,17 @@ async function salvarIndividual(index) {
   formData.append("disciplina", disc);
   formData.append("assunto", assuntoFinal);
 
+  // Captura o texto de apoio SELECIONADO NA LINHA ATUAL
+  let selectTexto = r.querySelector(".sel-texto-apoio");
+  formData.append("texto_apoio", selectTexto ? selectTexto.value : "");
+
   let fileInput = r.querySelector(".imp-imagem-file");
   if (fileInput && fileInput.files[0])
     formData.append("imagem_file", fileInput.files[0]);
   
   if (!formData.get("enunciado") || !formData.get("gabarito"))
     return alert("Dados incompletos.");
+
   try {
     const response = await fetch(`${API}/questoes`, {
       method: "POST",
@@ -256,62 +293,6 @@ async function salvarIndividual(index) {
   } catch (e) {
     alert("Erro conexao");
   }
-}
-
-async function salvarLote() {
-  let rows = document.querySelectorAll(".imp-row");
-  let disc = el("imp-disciplina").value;
-  let assGlobal = el("imp-assunto").value;
-  if (!disc) return alert("Informe a Disciplina base.");
-  let lote = [];
-  rows.forEach((r) => {
-    if (
-      r.classList.contains("sucesso-salvo") ||
-      r.classList.contains("ja-cadastrada") ||
-      r.querySelector(".imp-imagem-file").files.length > 0
-    )
-      return;
-    let assuntoFinal =
-      r.querySelector(".imp-assunto-ind").value || assGlobal || "Geral";
-    let obj = {
-      banca: r.querySelector(".imp-banca").value,
-      instituicao: r.querySelector(".imp-inst").value,
-      ano: r.querySelector(".imp-ano").value,
-      dificuldade: r.querySelector(".imp-dif").value,
-      enunciado: r.querySelector(".imp-enunciado").value,
-      alt_a: r.querySelector(".imp-alt-a").value,
-      alt_b: r.querySelector(".imp-alt-b").value,
-      alt_c: r.querySelector(".imp-alt-c").value,
-      alt_d: r.querySelector(".imp-alt-d").value,
-      alt_e: r.querySelector(".imp-alt-e").value,
-      gabarito: r.querySelector(".imp-gabarito").value,
-      tipo: "ME",
-      disciplina: disc,
-      assunto: assuntoFinal,
-    };
-    if (obj.enunciado && obj.gabarito) lote.push(obj);
-  });
-  if (lote.length === 0) return alert("Nada para salvar em lote.");
-  if (!confirm(`Salvar ${lote.length} questões?`)) return;
-  showLoader("Salvando...");
-  let ok = 0;
-  for (let q of lote) {
-    try {
-      if (
-        (
-          await fetch(`${API}/questoes`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(q),
-          })
-        ).ok
-      )
-        ok++;
-    } catch (e) {}
-  }
-  hideLoader();
-  alert(`${ok} Salvas!`);
-  init();
 }
 
 function setupDragDrop() {

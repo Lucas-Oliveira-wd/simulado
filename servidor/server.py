@@ -157,10 +157,10 @@ def limpar_ruido(texto, disciplina=""):
         ])
     elif disciplina == "Inglês":
         patterns_to_remove.extend([
-            r"PETROBRAS \(Nível Superior\) Inglês",
-            r"Ena Smith",
-            r"Available at:.*",
-            r"^\d+\s*de\s*[A-Z][a-z]+\s*de\s*\d+",  # Datas
+            r"^.*PETROBRAS \(Nível Superior\) Inglês.*$",
+            r"^.*Ena Smith.*$",
+            r"^.*Available at:.*$",
+            r"^\d+\s*de\s*[A-Z][a-z]+\s*de\s*\d+",
         ])
 
     for pattern in patterns_to_remove:
@@ -186,117 +186,102 @@ def extrair_mapa_gabaritos_local(texto_bloco):
 
 def parsear_questoes(texto_bruto, disciplina=""):
     texto_limpo = limpar_ruido(texto_bruto, disciplina)
+
+    # DEBUG: Verifica se o número 21 (ou qualquer rodapé) ainda existe no texto limpo
+    if "PETROBRAS" in texto_limpo:
+        print("⚠️ Atenção: A função limpar_ruido ainda deixou passar termos de rodapé!")
+    else:
+        print("✅ Texto limpo com sucesso. Iniciando separação de questões...")
+
     questoes = []
 
-    # Segmentação por Blocos Lógicos
-    regex_divisao_blocos = re.compile(
-        r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)(?:.|\n)+?)(?=(?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)|$)',
-        re.IGNORECASE)
+    if disciplina == "Português" or disciplina == "Conhecimentos Específicos":
 
-    blocos = [m.group(1) for m in regex_divisao_blocos.finditer(texto_limpo)]
+        # Segmentação por Blocos Lógicos
+        regex_divisao_blocos = re.compile(
+            r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)(?:.|\n)+?)(?=(?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)|$)',
+            re.IGNORECASE)
 
-    if not blocos:
-        blocos = [texto_limpo]
+        blocos = [m.group(1) for m in regex_divisao_blocos.finditer(texto_limpo)]
 
-    assunto_atual = "Geral"
+        if not blocos:
+            blocos = [texto_limpo]
 
-    for bloco in blocos:
-        # Detecta o assunto do bloco pelo título
-        if disciplina == "Português" or disciplina == "Conhecimentos Específicos":
+        assunto_atual = "Geral"
+
+        for bloco in blocos:
+            # Detecta o assunto do bloco pelo título
             match_titulo = re.match(r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)', bloco,
                                 re.IGNORECASE)
-        elif disciplina == "Inglês":
-            # O bloco em inglês começa com "TEXTO" seguido de número (arábico ou romano)
-            match_titulo = re.match(r'(TEXTO\s+(?:\d+|[IVX]+).*?)(?:\n|$)', bloco, re.IGNORECASE)
 
-        if match_titulo:
-            linha_completa = match_titulo.group(1).strip()
-            idx_primeiro_hifen = linha_completa.find('-')
-            idx_ultimo_hifen = linha_completa.rfind('-')
-            if idx_primeiro_hifen != -1 and idx_ultimo_hifen != -1 and idx_primeiro_hifen < idx_ultimo_hifen:
-                assunto_raw = linha_completa[idx_primeiro_hifen + 1: idx_ultimo_hifen].strip()
-                assunto_atual = re.sub(r'Cesgranrio', '', assunto_raw.title(), flags=re.IGNORECASE).strip()
-            elif "CORRELAÇÃO" in linha_completa.upper():
-                assunto_atual = "Correlação Verbal"
-            elif "SINTÁTICAS" in linha_completa.upper():
-                assunto_atual = "Funções Sintáticas"
-            elif "SEMÂNTICO" in linha_completa.upper():
-                assunto_atual = "Campo Semântico"
-            elif "SINÔNIMO" in linha_completa.upper():
-                assunto_atual = "Sinônimos e Antônimos"
-            elif "DENOTAÇÃO" in linha_completa.upper():
-                assunto_atual = "Denotação e Conotação"
+            if match_titulo:
+                linha_completa = match_titulo.group(1).strip()
+                idx_primeiro_hifen = linha_completa.find('-')
+                idx_ultimo_hifen = linha_completa.rfind('-')
+                if idx_primeiro_hifen != -1 and idx_ultimo_hifen != -1 and idx_primeiro_hifen < idx_ultimo_hifen:
+                    assunto_raw = linha_completa[idx_primeiro_hifen + 1: idx_ultimo_hifen].strip()
+                    assunto_atual = re.sub(r'Cesgranrio', '', assunto_raw.title(), flags=re.IGNORECASE).strip()
+                elif "CORRELAÇÃO" in linha_completa.upper():
+                    assunto_atual = "Correlação Verbal"
+                elif "SINTÁTICAS" in linha_completa.upper():
+                    assunto_atual = "Funções Sintáticas"
+                elif "SEMÂNTICO" in linha_completa.upper():
+                    assunto_atual = "Campo Semântico"
+                elif "SINÔNIMO" in linha_completa.upper():
+                    assunto_atual = "Sinônimos e Antônimos"
+                elif "DENOTAÇÃO" in linha_completa.upper():
+                    assunto_atual = "Denotação e Conotação"
 
-        banca = "CESGRANRIO"
-        instituicao = ""
-        ano = "2025"
+            banca = "CESGRANRIO"
+            instituicao = ""
+            ano = "2025"
 
-        if disciplina == "Inglês":
-            # O regex busca: Qualquer coisa -> Hífen/Travessão -> (Instituição) -> Hífen/Travessão -> (Banca)
-            match_meta_ing = re.search(r'.+?\s*[-–]\s*(.+?)\s*[-–]\s*(.+?)\s*(?:\n|$)', bloco[:600])
-            if match_meta_ing:
-                instituicao = match_meta_ing.group(1).strip()  # Grupo 1: BNDES
-                banca = match_meta_ing.group(2).strip()  # Grupo 2: CESGRANRIO
-        # Extrai o mapa de respostas contido neste bloco (agora pega inline também)
-        mapa_gabaritos_local = extrair_mapa_gabaritos_local(bloco)
-
-        if disciplina == "Português":
-            # Regex estrita para identificar início de questão
-            pattern_questao = re.compile(
-                r'^\s*(\d+)\.\s*(?:\(?)\s*((?:\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|EQUIPE|[A-Z][a-zçãõâêô]+).+?)\s*(?:\)?)\s*$',
-                re.MULTILINE
-            )
-        elif disciplina == "Conhecimentos Específicos":
-            # Sem ^ (início de linha) e sem $ (fim de linha). Pega inline.
-            pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*(\(.*?\))', re.MULTILINE)
-        elif disciplina == "Inglês":
-            pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s+(?=[A-Z])', re.MULTILINE)
-        matches_questoes = list(pattern_questao.finditer(bloco))
-
-        # --- Extração do Conteúdo do Texto de Apoio ---
-        texto_apoio_bloco = ""
-        if disciplina == "Inglês":
-            # Tenta pegar tudo até "Comentários" ou até a 1ª questão
-            if re.search(r'Comentários?:', bloco, re.IGNORECASE):
-                texto_apoio_bloco = re.split(r'Comentários?:', bloco, maxsplit=1, flags=re.IGNORECASE)[0]
-            elif matches_questoes:
-                idx_start = matches_questoes[0].start()
-                texto_apoio_bloco = bloco[:idx_start]
-            texto_apoio_bloco = texto_apoio_bloco.strip()
-
-        for i, m in enumerate(matches_questoes):
-            q_numero = m.group(1)
-            if disciplina == "Inglês":
-                q_meta = ""
-            else:
-                q_meta = m.group(2)
+            # Extrai o mapa de respostas contido neste bloco (agora pega inline também)
+            mapa_gabaritos_local = extrair_mapa_gabaritos_local(bloco)
 
             if disciplina == "Português":
-                # Filtro para evitar falsos positivos (como "1. Noções..." no índice)
-                if not re.search(r'^\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS',
-                                 q_meta.upper().strip()):
-                    continue
+                # Regex estrita para identificar início de questão
+                pattern_questao = re.compile(
+                    r'^\s*(\d+)\.\s*(?:\(?)\s*((?:\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|EQUIPE|[A-Z][a-zçãõâêô]+).+?)\s*(?:\)?)\s*$',
+                    re.MULTILINE
+                )
             elif disciplina == "Conhecimentos Específicos":
-                if len(q_meta) < 3:
-                    continue
+                # Sem ^ (início de linha) e sem $ (fim de linha). Pega inline.
+                pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*(\(.*?\))', re.MULTILINE)
+            matches_questoes = list(pattern_questao.finditer(bloco))
+
+            # --- Extração do Conteúdo do Texto de Apoio ---
+            texto_apoio_bloco = ""
+
+            for i, m in enumerate(matches_questoes):
+                q_numero = m.group(1)
+                q_meta = m.group(2)
+
+                if disciplina == "Português":
+                    # Filtro para evitar falsos positivos (como "1. Noções..." no índice)
+                    if not re.search(r'^\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS',
+                                     q_meta.upper().strip()):
+                        continue
+                elif disciplina == "Conhecimentos Específicos":
+                    if len(q_meta) < 3:
+                        continue
 
 
-            start_index = m.end()
-            end_index = matches_questoes[i + 1].start() if i + 1 < len(matches_questoes) else len(bloco)
+                start_index = m.end()
+                end_index = matches_questoes[i + 1].start() if i + 1 < len(matches_questoes) else len(bloco)
 
-            q_conteudo_bruto = bloco[start_index:end_index]
+                q_conteudo_bruto = bloco[start_index:end_index]
 
-            # Remover tabela de gabarito do final do texto da questão
-            # Se encontrar "Gabarito 1." ou "Gabarito 1 ", corta o texto ali.
-            # Isso evita que a tabela vá para a Alternativa E da última questão.
-            q_conteudo_bruto = re.split(r'\n\s*Gabarito\s+1[\.\s]', q_conteudo_bruto, flags=re.IGNORECASE)[0]
+                # Remover tabela de gabarito do final do texto da questão
+                # Se encontrar "Gabarito 1." ou "Gabarito 1 ", corta o texto ali.
+                # Isso evita que a tabela vá para a Alternativa E da última questão.
+                q_conteudo_bruto = re.split(r'\n\s*Gabarito\s+1[\.\s]', q_conteudo_bruto, flags=re.IGNORECASE)[0]
 
-            # INSERÇÃO: Detecção Universal de Certo/Errado
-            tipo = "ME"
-            if re.search(r'\(\s*\)\s*(?:Certo|Errado)|(?:Certo|Errado)\s*\(\s*\)|julgue\s+o\s+item|julgue\s+os\s+itens', q_conteudo_bruto, re.IGNORECASE):
-                tipo = "CE"
+                # INSERÇÃO: Detecção Universal de Certo/Errado
+                tipo = "ME"
+                if re.search(r'\(\s*\)\s*(?:Certo|Errado)|(?:Certo|Errado)\s*\(\s*\)|julgue\s+o\s+item|julgue\s+os\s+itens', q_conteudo_bruto, re.IGNORECASE):
+                    tipo = "CE"
 
-            if disciplina != "Inglês":
                 # Processamento de metadados (Banca, Ano, etc)
                 # CORREÇÃO: Busca o ano via regex (19xx ou 20xx) antes de quebrar a string
                 match_ano = re.search(r'\b(19|20)\d{2}\b', q_meta)
@@ -321,65 +306,194 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     if len(banca_cand) > 2: banca = banca_cand
                 if len(partes_meta) > 1: instituicao = partes_meta[1].replace(')', '')
 
-            # Busca Gabarito
-            gabarito = ""
-            # 1. Prioridade: Comentário local (questões comentadas)
-            if disciplina == "Português":
-                gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
-            else:
-                # 2. [A-E](?![a-z]): Pega a letra A-E SÓ SE não tiver letra minúscula depois (Evita o A de Alternativa).
-                gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*(?:(?:Alternativa|Opção)\s+)?(?:[\"“\']\s*)?([A-Ea-e])(?:[\"”\']\.?)?(?![a-z])'
-            matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
-            if matches_gab:
-                gab_raw = matches_gab[-1].group(1).upper()
-                if gab_raw in ["CERTO", "C"]:
-                    gabarito = "C"
-                elif gab_raw in ["ERRADO", "E"]:
-                    gabarito = "E"
+                # Busca Gabarito
+                gabarito = ""
+                # 1. Prioridade: Comentário local (questões comentadas)
+                if disciplina == "Português":
+                    gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*([A-E])'
                 else:
-                    gabarito = gab_raw
+                    # 2. [A-E](?![a-z]): Pega a letra A-E SÓ SE não tiver letra minúscula depois (Evita o A de Alternativa).
+                    gabarito_pattern_local = r'(?:Gabarito|Gab\.?|Letra|Correta)[:\s\.]+\s*(?:(?:Alternativa|Opção)\s+)?(?:[\"“\']\s*)?([A-Ea-e])(?:[\"”\']\.?)?(?![a-z])'
+                matches_gab = list(re.finditer(gabarito_pattern_local, q_conteudo_bruto.strip(), re.IGNORECASE))
+                if matches_gab:
+                    gab_raw = matches_gab[-1].group(1).upper()
+                    if gab_raw in ["CERTO", "C"]:
+                        gabarito = "C"
+                    elif gab_raw in ["ERRADO", "E"]:
+                        gabarito = "E"
+                    else:
+                        gabarito = gab_raw
 
-            # 2. Fallback: Mapa local (listas de questões)
-            # Só usa se não achou no comentário E se não parece ter comentário no texto
-            if not gabarito and q_numero in mapa_gabaritos_local:
-                if "Comentário" not in q_conteudo_bruto and "COMENTÁRIO" not in q_conteudo_bruto.upper():
+                # 2. Fallback: Mapa local (listas de questões)
+                # Só usa se não achou no comentário E se não parece ter comentário no texto
+                if not gabarito and q_numero in mapa_gabaritos_local:
+                    if "Comentário" not in q_conteudo_bruto and "COMENTÁRIO" not in q_conteudo_bruto.upper():
+                        gabarito = mapa_gabaritos_local[q_numero]
+
+                # Separa Enunciado e Alternativas
+                content_no_comments = \
+                re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
+                content_no_comments = re.sub(r'www\.estrategia.*', '', content_no_comments)
+
+                # Separação Enunciado/Alternativas
+                if tipo == "CE":
+                    enunciado = re.sub(r'\(\s*\)\s*(?:Certo|Errado)|(?:Certo|Errado)\s*\(\s*\)', '', content_no_comments,
+                                       flags=re.IGNORECASE)
+                    enunciado = sanitizar_texto(enunciado)
+                    alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
+                else:
+                    # --- CORREÇÃO PARA FORMATO (A), (B)... ---
+                    if disciplina == "Conhecimentos Específicos" or disciplina == "Inglês":
+                        content_no_comments = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
+
+                    parts_alt = re.split(r'\b([A-E])\)', content_no_comments, flags=re.IGNORECASE)
+                    enunciado = sanitizar_texto(parts_alt[0].strip())
+                    alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
+                    if len(parts_alt) > 1:
+                        for k in range(1, len(parts_alt), 2):
+                            letra = parts_alt[k].upper()
+                            if k + 1 < len(parts_alt):
+                                alts[letra] = sanitizar_texto(parts_alt[k + 1].strip())
+
+                if enunciado:
+                    if (tipo == "ME" and (alts["A"] or alts["B"])) or (tipo == "CE"):
+                        questoes.append({
+                            "temp_id": str(uuid.uuid4()),
+                            "banca": banca, "instituicao": instituicao, "ano": ano,
+                            "assunto": assunto_atual, "enunciado": enunciado,
+                            "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"],
+                            "alt_e": alts["E"],
+                            "gabarito": gabarito, "dificuldade": "Médio", "tipo": tipo, "imagem": "",
+                            "texto_apoio_conteudo": texto_apoio_bloco if disciplina == "Inglês" else ""
+                        })
+
+
+
+    elif disciplina == "Inglês":
+
+        # Segmentação por Blocos Lógicos
+        regex_divisao_blocos = re.compile(
+            r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)(?:.|\n)+?)(?=(?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)|$)',
+            re.IGNORECASE)
+
+        blocos = [m.group(1) for m in regex_divisao_blocos.finditer(texto_limpo)]
+
+        if not blocos:
+            blocos = [texto_limpo]
+
+        assunto_atual = "Interpretação de Texto"
+
+        for bloco in blocos:
+
+            banca = "CESGRANRIO"
+            instituicao = ""
+            ano = "2025"
+
+            # O regex busca: Qualquer coisa -> Hífen/Travessão -> (Instituição) -> Hífen/Travessão -> (Banca)
+            match_meta_ing = re.search(r'.+?\s*[-–]\s*(.+?)\s*[-–]\s*(.+?)\s*(?:\n|$)', bloco[:600])
+            if match_meta_ing:
+                instituicao = match_meta_ing.group(1).strip()  # Grupo 1: BNDES
+                banca = match_meta_ing.group(2).strip()  # Grupo 2: CESGRANRIO
+            # Extrai o mapa de respostas contido neste bloco (agora pega inline também)
+            mapa_gabaritos_local = extrair_mapa_gabaritos_local(bloco)
+
+            # --- NOVO FILTRO DE UNICIDADE ---
+            # Identifica todos os inícios (Número + Espaço + Letra Maiúscula)
+            pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)[\.\s\)]+\s*(?=[A-Z])', re.MULTILINE)
+            todos_matches = list(pattern_questao.finditer(bloco))
+
+            matches_questoes = []
+            numeros_vistos = set()
+
+            for m in todos_matches:
+                q_num = m.group(1)
+                # SÓ ADICIONA SE FOR A PRIMEIRA VEZ QUE O NÚMERO APARECE NO BLOCO
+                if q_num not in numeros_vistos:
+                    matches_questoes.append(m)
+                    numeros_vistos.add(q_num)
+
+            print(f"[DEBUG] Questões únicas encontradas: {list(numeros_vistos)}")
+
+            # --- Extração do Conteúdo do Texto de Apoio ---
+            texto_apoio_bloco = ""
+            # Tenta pegar tudo até "Comentários" ou até a 1ª questão
+            if re.search(r'Comentários?:', bloco, re.IGNORECASE):
+                texto_apoio_bloco = re.split(r'Comentários?:', bloco, maxsplit=1, flags=re.IGNORECASE)[0]
+            elif matches_questoes:
+                idx_start = matches_questoes[0].start()
+                texto_apoio_bloco = bloco[:idx_start]
+            texto_apoio_bloco = texto_apoio_bloco.strip()
+
+            for i, m in enumerate(matches_questoes):
+                q_numero = m.group(1)
+                start_index = m.end()
+                end_index = matches_questoes[i + 1].start() if i + 1 < len(matches_questoes) else len(bloco)
+
+                # 1. PEGA O BLOCO BRUTO (GIGANTE)
+                q_conteudo_bruto = bloco[start_index:end_index]
+
+                # 2. BUSCA O GABARITO (Independente do corte)
+                gabarito = ""
+                match_gab = re.search(r'(?i)GABARITO\s*:\s*([A-E])(?![a-z])', q_conteudo_bruto)
+                if match_gab:
+                    gabarito = match_gab.group(1).upper()
+                elif q_numero in mapa_gabaritos_local:
                     gabarito = mapa_gabaritos_local[q_numero]
 
-            # Separa Enunciado e Alternativas
-            content_no_comments = \
-            re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
-            content_no_comments = re.sub(r'www\.estrategia.*', '', content_no_comments)
+                # 3. IDENTIFICAÇÃO DO ENUNCIADO PARA CRIAR A ÂNCORA
+                # Fazemos o split temporário apenas no bloco bruto
+                temp_norm = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', q_conteudo_bruto)
+                parts_alt_temp = re.split(r'\b([A-E])\)', temp_norm, flags=re.IGNORECASE)
 
-            # Separação Enunciado/Alternativas
-            if tipo == "CE":
-                enunciado = re.sub(r'\(\s*\)\s*(?:Certo|Errado)|(?:Certo|Errado)\s*\(\s*\)', '', content_no_comments,
-                                   flags=re.IGNORECASE)
-                enunciado = sanitizar_texto(enunciado)
-                alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
-            else:
-                # --- CORREÇÃO PARA FORMATO (A), (B)... ---
-                if disciplina == "Conhecimentos Específicos" or disciplina == "Inglês":
-                    content_no_comments = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
+                enunciado_temp = parts_alt_temp[0].strip()
+                limiar = 15
+                # Pega os primeiros 15 caracteres do enunciado para ser a âncora de repetição
+                ancora = enunciado_temp[:limiar] if len(enunciado_temp) >= limiar else enunciado_temp
 
-                parts_alt = re.split(r'\b([A-E])\)', content_no_comments, flags=re.IGNORECASE)
+                # 4. CORTE DA REPETIÇÃO (Limpando o vazamento para a Alt E)
+                corpo_util = q_conteudo_bruto
+                if ancora:
+                    # Padroniza espaços para a busca ser robusta contra quebras de linha do PDF
+                    padrao_ancora = re.sub(r'\s+', r'\\s+', re.escape(ancora))
+                    matches_ancora = list(re.finditer(padrao_ancora, q_conteudo_bruto, re.IGNORECASE))
+
+                    # Se achou a repetição (segunda ocorrência), corta ali
+                    if len(matches_ancora) > 1:
+                        posicao_corte = matches_ancora[1].start()
+                        corpo_util = q_conteudo_bruto[:posicao_corte].strip()
+                        print(f"✅ Q{q_numero}: Corte realizado via âncora '{ancora}'")
+                    else:
+                        # Fallback: Se não achou a repetição do texto, corta se o número da questão se repetir
+                        # Isso evita o efeito dominó se a tradução começar com "11. De acordo..."
+                        match_num = re.search(rf'\n\s*{q_numero}\s+', q_conteudo_bruto[limiar:])
+                        if match_num:
+                            posicao_corte = limiar + match_num.start()
+                            corpo_util = q_conteudo_bruto[:posicao_corte].strip()
+                            print(f"⚡ Q{q_numero}: Corte realizado via número repetido.")
+
+                # 5. SEPARAÇÃO FINAL DAS ALTERNATIVAS (Agora no corpo já cortado)
+                content_final = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', corpo_util)
+                parts_alt = re.split(r'\b([A-E])\)', content_final, flags=re.IGNORECASE)
+
                 enunciado = sanitizar_texto(parts_alt[0].strip())
                 alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
+
                 if len(parts_alt) > 1:
                     for k in range(1, len(parts_alt), 2):
                         letra = parts_alt[k].upper()
                         if k + 1 < len(parts_alt):
                             alts[letra] = sanitizar_texto(parts_alt[k + 1].strip())
 
-            if enunciado:
-                if (tipo == "ME" and (alts["A"] or alts["B"])) or (tipo == "CE"):
+                # 6. SALVAMENTO
+                if enunciado and (alts["A"] or alts["B"]):
                     questoes.append({
                         "temp_id": str(uuid.uuid4()),
                         "banca": banca, "instituicao": instituicao, "ano": ano,
                         "assunto": assunto_atual, "enunciado": enunciado,
-                        "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"],
-                        "alt_e": alts["E"],
-                        "gabarito": gabarito, "dificuldade": "Médio", "tipo": tipo, "imagem": "",
-                        "texto_apoio_conteudo": texto_apoio_bloco if disciplina == "Inglês" else ""
+                        "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"],
+                        "alt_d": alts["D"], "alt_e": alts["E"],
+                        "gabarito": gabarito, "dificuldade": "Médio", "tipo": "ME",
+                        "imagem": "", "texto_apoio_conteudo": texto_apoio_bloco
                     })
 
     return questoes
