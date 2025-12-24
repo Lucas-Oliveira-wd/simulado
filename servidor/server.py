@@ -324,10 +324,18 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     if "Comentário" not in q_conteudo_bruto and "COMENTÁRIO" not in q_conteudo_bruto.upper():
                         gabarito = mapa_gabaritos_local[q_numero]
 
-                # Separa Enunciado e Alternativas
-                content_no_comments = \
-                re.split(r"(Comentários?|Comentário:)", q_conteudo_bruto, maxsplit=1, flags=re.IGNORECASE)[0]
+                partes_coment = re.split(r"(?i)Comentários?[:\s\-]*", q_conteudo_bruto, maxsplit=1)
+
+                comentario_extraido = ""
+                if len(partes_coment) > 1:
+                    comentario_extraido = partes_coment[1].strip()
+                    # Remove qualquer resquício de pontuação ou número de página no início
+                    comentario_extraido = re.sub(r'^[:\-\s\d\.]+', '', comentario_extraido)
+
+                # --- EXTRAÇÃO DO ENUNCIADO/ALTERNATIVAS (Corte anterior ao comentário) ---
+                content_no_comments = partes_coment[0].strip()
                 content_no_comments = re.sub(r'www\.estrategia.*', '', content_no_comments)
+
 
                 # Separação Enunciado/Alternativas
                 if tipo == "CE":
@@ -358,6 +366,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                             "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"], "alt_d": alts["D"],
                             "alt_e": alts["E"],
                             "gabarito": gabarito, "dificuldade": "Médio", "tipo": tipo, "imagem": "",
+                            "comentarios": comentario_extraido
                         })
 
 
