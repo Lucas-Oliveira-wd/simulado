@@ -249,7 +249,7 @@ function verificarDuplicidadeDinamica(index) {
     } catch (e) {
       console.error("Erro na verificação de duplicidade:", e);
     }
-  }, 500);
+  }, 200);
 }
 
 async function salvarIndividual(index) {
