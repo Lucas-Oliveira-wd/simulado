@@ -199,7 +199,7 @@ function renderPreview(lista) {
         ${areaAlternativas}
         <div style="margin-top:10px">
             <label style="font-size:0.8rem; font-weight:bold; color:var(--sec)">Comentários:</label>
-            <textarea class="imp-textarea imp-comentario" rows="4" style="background:#f0f4f8; font-size:0.85em;" onfocus="showToolbar(this)">${q.comentarios || ""}</textarea>
+            <textarea class="imp-textarea imp-comentario" rows="15" style="font-size:0.85em;" onfocus="showToolbar(this)">${q.comentarios || ""}</textarea>
         </div>
     </div>
     <div class="imp-gab"><select class="imp-gabarito">${optionsGab}</select></div>

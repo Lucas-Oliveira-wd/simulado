@@ -160,6 +160,12 @@ def limpar_ruido(texto, disciplina=""):
             r"^.*Available at:.*$",
             r"^\d+\s*de\s*[A-Z][a-z]+\s*de\s*\d+",
         ])
+    elif disciplina == "Estatística":
+        patterns_to_remove.extend([
+            r"^.*PETROBRAS \(Engenharia de Produção\).*\n?",
+            r"Conhecimentos Específicos",
+            r"Equipe Exatas Estratégia Concursos",
+        ])
 
     for pattern in patterns_to_remove:
         texto = re.sub(pattern, "", texto, flags=re.MULTILINE | re.IGNORECASE)
@@ -187,7 +193,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
     questoes = []
 
-    if disciplina == "Português" or disciplina == "Conhecimentos Específicos":
+    if disciplina == "Português" or disciplina == "Conhecimentos Específicos" or disciplina == "Estatística":
 
         # Segmentação por Blocos Lógicos
         regex_divisao_blocos = re.compile(
@@ -237,7 +243,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     r'^\s*(\d+)\.\s*(?:\(?)\s*((?:\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|EQUIPE|[A-Z][a-zçãõâêô]+).+?)\s*(?:\)?)\s*$',
                     re.MULTILINE
                 )
-            elif disciplina == "Conhecimentos Específicos":
+            elif disciplina == "Conhecimentos Específicos"  or disciplina == "Estatística":
                 # Sem ^ (início de linha) e sem $ (fim de linha). Pega inline.
                 pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*(\(.*?\))', re.MULTILINE)
             matches_questoes = list(pattern_questao.finditer(bloco))
@@ -254,7 +260,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     if not re.search(r'^\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS',
                                      q_meta.upper().strip()):
                         continue
-                elif disciplina == "Conhecimentos Específicos":
+                elif disciplina == "Conhecimentos Específicos" or disciplina == "Estatística":
                     if len(q_meta) < 3:
                         continue
 
@@ -297,6 +303,9 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     banca_cand = partes_meta[0].replace('(', '')
                     if len(banca_cand) > 2: banca = banca_cand
                 if len(partes_meta) > 1: instituicao = partes_meta[1].replace(')', '')
+
+                #substituindo BB por Banco do Brasil
+                if instituicao == "BB": instituicao = "Banco do Brasil"
 
                 # Busca Gabarito
                 gabarito = ""
@@ -343,7 +352,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
                 else:
                     # --- CORREÇÃO PARA FORMATO (A), (B)... ---
-                    if disciplina == "Conhecimentos Específicos" or disciplina == "Inglês":
+                    if disciplina == "Conhecimentos Específicos" or disciplina == "Inglês" or disciplina == "Estatística":
                         content_no_comments = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
 
                     parts_alt = re.split(r'\b([A-E])\)', content_no_comments, flags=re.IGNORECASE)
