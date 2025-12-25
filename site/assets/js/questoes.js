@@ -164,11 +164,11 @@ function renderPreview(lista) {
     } else {
         areaAlternativas = `
         <div style="margin-top:5px; display:grid; gap:5px">
-            <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${q.alt_a}" onfocus="showToolbar(this)"></div>
-            <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${q.alt_b}" onfocus="showToolbar(this)"></div>
-            <div class="input-group"><span>C)</span><input type="text" class="imp-alt-c" value="${q.alt_c}" onfocus="showToolbar(this)"></div>
-            <div class="input-group"><span>D)</span><input type="text" class="imp-alt-d" value="${q.alt_d}" onfocus="showToolbar(this)"></div>
-            <div class="input-group"><span>E)</span><input type="text" class="imp-alt-e" value="${q.alt_e}" onfocus="showToolbar(this)"></div>
+            <div class="input-group"><span>A)</span><input type="text" class="imp-alt-a" value="${q.alt_a}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
+            <div class="input-group"><span>B)</span><input type="text" class="imp-alt-b" value="${q.alt_b}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
+            <div class="input-group"><span>C)</span><input type="text" class="imp-alt-c" value="${q.alt_c}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
+            <div class="input-group"><span>D)</span><input type="text" class="imp-alt-d" value="${q.alt_d}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
+            <div class="input-group"><span>E)</span><input type="text" class="imp-alt-e" value="${q.alt_e}" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})"></div>
         </div>`;
     };
 
@@ -194,7 +194,7 @@ function renderPreview(lista) {
         </div>
     </div>
     <div class="imp-content">
-        <textarea class="imp-textarea imp-enunciado" rows="3" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})">${q.enunciado}</textarea>
+        <textarea class="imp-textarea imp-enunciado" rows="5" onfocus="showToolbar(this)" oninput="verificarDuplicidadeDinamica(${i})">${q.enunciado}</textarea>
         <div style="margin:5px 0"><input type="file" class="imp-imagem-file" accept="image/*" style="font-size:0.8em"></div>
         ${areaAlternativas}
         <div style="margin-top:10px">
@@ -213,21 +213,42 @@ function verificarDuplicidadeDinamica(index) {
   clearTimeout(checkDupTimeout);
   checkDupTimeout = setTimeout(async () => {
     let row = el(`imp-row-${index}`);
+    let enunciado = row.querySelector(".imp-enunciado").value;
+    let iA = row.querySelector(".imp-alt-a");
+    let iB = row.querySelector(".imp-alt-b");
+    let iC = row.querySelector(".imp-alt-c");
+    let iD = row.querySelector(".imp-alt-d");
+    let iE = row.querySelector(".imp-alt-e");
     let payload = {
-      enunciado: row.querySelector(".imp-enunciado").value,
-      alt_a: row.querySelector(".imp-alt-a").value,
+      enunciado: enunciado,
+      alt_a: iA ? iA.value : "",
+      alt_b: iB ? iB.value : "",
+      alt_c: iC ? iC.value : "",
+      alt_d: iD ? iD.value : "",
+      alt_e: iE ? iE.value : ""
     };
+
     if (!payload.enunciado) return;
-    const resp = await fetch(`${API}/check-duplicidade`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await resp.json();
-    el(`status-${index}`).innerHTML = data.existe
-      ? `<span class="aviso-dup">⚠️ Já Cadastrada</span>`
-      : "";
-    row.classList.toggle("ja-cadastrada", data.existe);
+
+    try {
+      const resp = await fetch(`${API}/check-duplicidade`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      
+      const data = await resp.json();
+      
+      // Atualiza o feedback visual e textual
+      el(`status-${index}`).innerHTML = data.existe
+        ? `<span class="aviso-dup">⚠️ Já Cadastrada</span>`
+        : "";
+      
+      row.classList.toggle("ja-cadastrada", data.existe);
+      
+    } catch (e) {
+      console.error("Erro na verificação de duplicidade:", e);
+    }
   }, 500);
 }
 

@@ -87,7 +87,9 @@ def gerar_assinatura(q):
         normalizar_para_comparacao(q.get('enunciado')),
         normalizar_para_comparacao(q.get('alt_a')),
         normalizar_para_comparacao(q.get('alt_b')),
-        normalizar_para_comparacao(q.get('alt_c'))
+        normalizar_para_comparacao(q.get('alt_c')),
+        normalizar_para_comparacao(q.get('alt_d')),
+        normalizar_para_comparacao(q.get('alt_e'))
     )
 
 
