@@ -202,8 +202,26 @@ function renderPreview(lista) {
             <textarea class="imp-textarea imp-comentario" rows="15" style="font-size:0.85em;" onfocus="showToolbar(this)">${q.comentarios || ""}</textarea>
         </div>
     </div>
-    <div class="imp-gab"><select class="imp-gabarito">${optionsGab}</select></div>
-    <div class="imp-acoes"><button class="btn-icon" style="color:#27ae60" onclick="salvarIndividual(${i})">💾</button><button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()">✖</button></div>
+    <div class="imp-side-r">
+      <div class="imp-gab"><select class="imp-gabarito">${optionsGab}</select></div>
+      <div class="imp-acoes">
+        <div class="imp-acoes-top">
+          <button class="btn-icon" style="color:#27ae60" onclick="salvarIndividual(${i})">💾</button>
+          <button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()">✖</button>
+        </div>
+        <div class="imp-acoes-bottom">
+          <button class="btn-icon" style="color:var(--purple); font-size: 0.7rem; font-weight: bold;" 
+                  onclick="preencherPadraoFigura(${i}, 'UPPER')" title="Preencher: Figura A)">FIG</button>
+          
+          <button class="btn-icon" style="color:var(--purple); font-size: 0.7rem; font-weight: bold;" 
+                  onclick="preencherPadraoFigura(${i}, 'lower')" title="Preencher: Figura a)">fig</button>
+        </div>
+        
+      </div>
+    </div>
+    
+    
+
 </div>`;
   });
   atualizarTodosSelectsTexto();
@@ -250,6 +268,28 @@ function verificarDuplicidadeDinamica(index) {
       console.error("Erro na verificação de duplicidade:", e);
     }
   }, 200);
+}
+
+function preencherPadraoFigura(index, format) {
+    const row = el(`imp-row-${index}`);
+    if (!row) return;
+
+    // Define as letras de acordo com a escolha do usuário
+    const letras = format === 'UPPER' 
+        ? ['A', 'B', 'C', 'D', 'E'] 
+        : ['a', 'b', 'c', 'd', 'e'];
+
+    // Localiza e preenche cada campo de alternativa
+    letras.forEach((letra, i) => {
+        const char = String.fromCharCode(65 + i).toLowerCase(); // mapeia a, b, c, d, e para a classe CSS
+        const input = row.querySelector(`.imp-alt-${char}`);
+        if (input) {
+            input.value = `Figura ${letra})`;
+        }
+    });
+
+    // Dispara a verificação de duplicidade para atualizar a assinatura da questão
+    verificarDuplicidadeDinamica(index);
 }
 
 async function salvarIndividual(index) {
