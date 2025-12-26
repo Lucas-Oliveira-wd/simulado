@@ -108,20 +108,20 @@
 }
 
 body.dark-mode .flip-card-front {
-    background-color: var(--dark-suface);
+    background-color: var(--dark-surface);
     color: var(--dark-text);
     border: 2px solid var(--dark-border);
 }
 
 .flip-card-back {
-    background-color: var(--suface);
+    background-color: var(--surface);
     color: white;
     transform: rotateY(180deg);
     border: 2px solid var(--sec);
 }
 
 body.dark-mode .flip-card-back {
-    background-color: var(--dark-suface);
+    background-color: var(--dark-surface);
     color: white;
     transform: rotateY(180deg);
     border: 2px solid var(--sec);
@@ -134,7 +134,7 @@ body.dark-mode .flip-card-back {
 }
 
 body.dark-mode .fc-content-back{
-    background-color: var(--dark-suface);
+    background-color: var(--dark-surface);
     color: var(--dark-text);
     overflow-y: auto;
 }
@@ -225,5 +225,5 @@ body.dark-mode .fc-content-back{
 }
 
 .dark-mode .flip-card-inner{
-    background-color: var(--dark-suface);
+    background-color: var(--dark-surface);
 }

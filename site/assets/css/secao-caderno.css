@@ -5,7 +5,35 @@
     padding: 20px 0;
 }
 .nota-bloco {
-    background: #fff;
+    min-height: 200px;
+    padding: 20px;
+    position: relative;
+    box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
+    transform: rotate(-1deg);
+    transition: transform 0.2s;
+    border-bottom: 2px solid #ddd;
+}
+
+body.dark-mode .nota-bloco {
+    background-color: var(--dark-surface);
+}
+
+.nota-corpo div{
+    white-space: pre-wrap;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #444;
+}
+
+body.dark-mode .nota-corpo div{
+    white-space: pre-wrap;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--dark-text);
+}
+
+body.dark-mode .nota-bloco {
+    background: var(--dark-surface);
     min-height: 200px;
     padding: 20px;
     position: relative;

@@ -552,7 +552,7 @@ function renderizarCaderno() {
             </div>
 
             <div class="nota-corpo" style="flex-grow: 1; margin: 10px 0; border-top: 1px dashed #eee; padding-top:10px;">
-                <div style="white-space: pre-wrap; font-size: 0.95rem; line-height: 1.5; color: #444;">${n.texto}</div>
+                <div style="">${n.texto}</div>
             </div>
 
             <div class="nota-footer" style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid #f0f0f0; padding-top:10px; margin-top:10px">
