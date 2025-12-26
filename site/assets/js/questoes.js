@@ -162,7 +162,7 @@ function renderPreview(lista) {
 
     let areaAlternativas = "";
     if (q.tipo === "CE") {
-        areaAlternativas = `<div style="padding:10px; color:#555; font-style:italic">Questão do tipo Certo/Errado (Sem alternativas A-E)</div>`;
+        areaAlternativas = `<div class="area-alternativas-ce" style="padding:10px; color:#555; font-style:italic">Questão do tipo Certo/Errado (Sem alternativas A-E)</div>`;
     } else {
         areaAlternativas = `
         <div style="margin-top:5px; display:grid; gap:5px">
@@ -244,7 +244,9 @@ function abrirPopupPreviewReal(index) {
     if (tipo === "ME") {
         ["a", "b", "c", "d", "e"].forEach(letra => {
             const val = row.querySelector(`.imp-alt-${letra}`).value;
-            if (val) altsHtml += `<p><strong>${letra.toUpperCase()})</strong> ${val}</p>`;
+            if (val && val.value) {
+              altsHtml += `<p><strong>${letra.toUpperCase()})</strong> ${val}</p>`
+          };
         });
     } else {
         altsHtml = `<p><em>Questão de Certo ou Errado</em></p>`;
