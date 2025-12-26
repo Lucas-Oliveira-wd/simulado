@@ -114,6 +114,12 @@
     border: 2px solid var(--sec);
 }
 
+.fc-content-back{
+    background-color: var(--bg);
+    color: var(--text);
+    overflow-y: auto;
+}
+
 .fc-botoes-resposta {
     display: flex;
     justify-content: center;
@@ -169,9 +175,6 @@
     display: flex;
     gap: 10px;
     justify-content: center;
-    margin-top: 15px;
-    padding-top: 10px;
-    border-top: 1px solid #eee;
 }
 
 .fc-botoes-internos button {
