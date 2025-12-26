@@ -25,6 +25,7 @@ const nav = n => {
     el(`nav-${n}`).classList.add('ativa');
 
     if (n === 'banco') carrTab();
+    if (n === 'caderno') carregarCaderno();
     if (n === 'praticar' && pratPool.length === 0) prepPratica();
     if (n === 'prova') prepProva();
     if (n === 'estatisticas') graf();

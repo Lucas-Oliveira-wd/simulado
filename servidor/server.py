@@ -747,8 +747,20 @@ def verificar_caderno_anotacoes():
         wb = Workbook()
         ws = wb.active
         ws.title = "anotacoes"
-        ws.append(["data", "questao_id", "disciplina", "assunto", "anotacao"])
+        ws.append(["id", "data", "questao_id", "disciplina", "assunto", "anotacao"])
         wb.save(ARQ_ANOTACOES)
+
+#Função para gerar id automático
+def obter_proximo_id(valores):
+    """
+    Recebe uma lista de valores brutos (números, strings ou None)
+    e retorna o maior valor numérico encontrado + 1.
+    """
+    if not valores:
+        return 1
+    # Filtra apenas o que pode ser convertido em número positivo
+    ids = [int(v) for v in valores if v is not None and str(v).isdigit()]
+    return max(ids) + 1 if ids else 1
 
 # --- ROTAS ---
 @app.route('/img/q_img/<filename>')
@@ -762,10 +774,15 @@ def salvar_anotacao():
     try:
         wb = load_workbook(ARQ_ANOTACOES)
         ws = wb.active
+
         from datetime import datetime
         data_atual = datetime.now().strftime("%d/%m/%Y %H:%M")
 
+        valores_coluna_id = [r[0].value for r in ws.iter_rows(min_row=2)]
+        proximo_id = obter_proximo_id(valores_coluna_id)
+
         ws.append([
+            proximo_id,
             data_atual,
             data.get("questao_id"),
             data.get("disciplina"),
@@ -773,9 +790,76 @@ def salvar_anotacao():
             data.get("anotacao")
         ])
         wb.save(ARQ_ANOTACOES)
-        return jsonify({"status": "Anotação salva!"}), 201
+        return jsonify({"status": "Anotação salva!", "id": proximo_id}), 201
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
+
+
+@app.route("/anotacoes", methods=["PUT", "DELETE"])
+def gerenciar_anotacoes():
+    data = request.json
+    alvo_id = data.get("id")  # Agora usamos APENAS o ID único para localizar
+    alvo_id_str = str(alvo_id).strip() if alvo_id else ""
+
+    try:
+        wb = load_workbook(ARQ_ANOTACOES)
+        ws = wb.active
+
+        if request.method == "DELETE":
+            encontrou = False
+
+            # Itera de baixo para cima para evitar problemas de deslocamento de índice
+            for i in range(ws.max_row, 1, -1):
+                celula_id = ws.cell(row=i, column=1).value
+                if celula_id is not None and str(celula_id).strip() == alvo_id_str:
+                    ws.delete_rows(i)
+                    encontrou = True
+                    break  # ID é único, pode parar
+
+            if encontrou:
+                wb.save(ARQ_ANOTACOES)
+                return jsonify({"status": "Removido"})
+            else:
+                return jsonify({"erro": "Anotação não encontrada no banco"}), 404
+
+        if request.method == "PUT":
+            for r in ws.iter_rows(min_row=2):
+                if r[0].value is not None and str(r[0].value).strip() == alvo_id_str:
+                    r[5].value = data.get("anotacao")  # Atualiza coluna F
+                    break
+            wb.save(ARQ_ANOTACOES)
+            return jsonify({"status": "Atualizado"})
+    except PermissionError:
+        return jsonify({"erro": "O Excel está aberto. Feche-o para permitir a exclusão."}), 500
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
+@app.route("/anotacoes", methods=["GET"])
+def listar_anotacoes():
+    verificar_caderno_anotacoes()
+    try:
+        wb = load_workbook(ARQ_ANOTACOES, data_only=True)
+        ws = wb.active
+        anotacoes = []
+        # Percorre as linhas a partir da segunda (pula o cabeçalho)
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            if r[0] is not None:
+                anotacoes.append({
+                    "id": r[0],
+                    "data": r[1],
+                    "q_id": r[2],
+                    "disciplina": r[3],
+                    "assunto": r[4],
+                    "texto": r[5]
+                })
+        # Inverte para mostrar as mais recentes primeiro
+        anotacoes.reverse()
+        return jsonify(anotacoes)
+    except PermissionError:
+        # Tratamento específico para arquivo travado pelo Excel
+        return jsonify({"erro": "O arquivo de anotações está aberto. Feche o Excel para carregar o quadro."}), 500
+    except Exception as e:
+        return jsonify({"erro": f"Falha ao ler anotações: {str(e)}"}), 500
 
 @app.route("/questoes", methods=["GET"])
 def get_q():
@@ -870,8 +954,8 @@ def post_q():
         nova["imagem"] = nova.get("imagem", "")
     sig = gerar_assinatura(nova)
     if any(gerar_assinatura(q) == sig for q in dados): return jsonify({"erro": "Duplicada"}), 409
-    if not nova.get("id"): ids = sorted([int(q["id"]) for q in dados if str(q["id"]).isdigit()]); nova[
-        "id"] = 1 if not ids else (ids[-1] + 1)
+    if not nova.get("id"):
+        nova["id"] = obter_proximo_id([q.get("id") for q in dados])
     nova.update({"respondidas": 0, "acertos": 0});
     dados.append(nova);
     salvar_questoes(dados)
@@ -947,8 +1031,7 @@ def handle_fc():
         if request.method == "POST":
             # Gera ID novo se não vier
             if not load.get("id"):
-                ids = sorted([int(f["id"]) for f in dados if str(f["id"]).isdigit()]);
-                load["id"] = 1 if not ids else (ids[-1] + 1)
+                load["id"] = obter_proximo_id([f.get("id") for f in dados])
 
             # Inicializa contadores
             load.update({"acertos": 0, "erros": 0});

@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="assets/css/secao-banco.css">
     <link rel="stylesheet" href="assets/css/secao-leitor-pdf.css">
     <link rel="stylesheet" href="assets/css/secao-stats.css">
+    <link rel="stylesheet" href="assets/css/secao-caderno.css">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/assets/img/favicon/favicon-16x16.png">
@@ -37,6 +38,7 @@
                 <button id="nav-praticar" onclick="nav('praticar')">Praticar</button>
                 <button id="nav-prova" onclick="nav('prova')">Simulado</button>
                 <button id="nav-flashcards" onclick="nav('flashcards')">Flashcards</button>
+                <button id="nav-caderno" onclick="nav('caderno')">Caderno</button>
                 <button id="nav-estatisticas" onclick="nav('estatisticas')">Estatísticas</button>
                 <button id="nav-importar" onclick="nav('importar')">Importar PDF</button>
                 <button id="btn-tema" onclick="toggleTema()" title="Alternar Tema (Claro/Escuro)"></button>
@@ -260,6 +262,18 @@
                             🤩</button></div>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <section id="secao-caderno" class="secao">
+        <div class="container">
+            <div class="flex" style="margin-bottom: 20px;">
+                <h2>📓 Caderno de Anotações</h2>
+                <input type="text" id="busca-caderno" placeholder="Filtrar anotações..." onkeyup="renderizarCaderno()" style="max-width: 300px;">
+            </div>
+            
+            <div id="lista-anotacoes" class="quadro-anotacoes">
+                </div>
         </div>
     </section>
 
