@@ -427,6 +427,7 @@
         </div>
     </div>
 
+    <!------------      modal descontinuado   =============================================
     <div id="modal-fc-pratica" class="modal-overlay" style="display:none; z-index: 9999;">
         <div class="modal-content" style="max-width: 500px;">
             <h3>📝 Transformar em Flashcard</h3>
@@ -439,6 +440,22 @@
             <div style="margin-top:15px; display:flex; gap:10px; justify-content:flex-end;">
                 <button onclick="el('modal-fc-pratica').style.display='none'" class="btn-sec">Cancelar</button>
                 <button onclick="salvarFlashcardRapido()" class="btn-prim">Salvar Card</button>
+            </div>
+        </div>
+    </div>
+    ======================================================================================---->
+
+    <div id="modal-anotacao" class="modal-overlay" style="display:none; z-index: 9999;">
+        <div class="modal-content" style="max-width: 500px; border-left: 5px solid var(--purple);">
+            <h3>📓 Caderno de Anotações</h3>
+            <p id="anotacao-info-questao" style="font-size: 0.85em; color: var(--sec); background: #f9f9f9; padding: 10px; border-radius: 4px;"></p>
+            
+            <label style="display:block; margin-top:15px; font-weight:bold;">O que deseja anotar sobre esta questão?</label>
+            <textarea id="nota-texto" class="imp-textarea" rows="5" placeholder="Ex: Esta questão aborda o conceito X que costuma cair associado a Y..."></textarea>
+            
+            <div style="margin-top:15px; display:flex; gap:10px; justify-content:flex-end;">
+                <button onclick="el('modal-anotacao').style.display='none'" class="btn-sec">Descartar</button>
+                <button onclick="enviarParaCaderno()" class="btn-prim">Salvar Anotação</button>
             </div>
         </div>
     </div>

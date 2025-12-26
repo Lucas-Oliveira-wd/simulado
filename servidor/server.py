@@ -15,6 +15,7 @@ DB_DIR = os.path.join(BASE_DIR, "../banco_de_dados")
 UPLOAD_FOLDER = os.path.join(DB_DIR, "img", "q_img")
 ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
 ARQ_FLASHCARDS = os.path.join(DB_DIR, "flashcards.xlsx")
+ARQ_ANOTACOES = os.path.join(DB_DIR, "caderno_anotacoes.xlsx")
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -740,10 +741,41 @@ def extrair_opcoes_do_banco():
     }
 
 
+def verificar_caderno_anotacoes():
+    garantir_diretorio()
+    if not os.path.exists(ARQ_ANOTACOES):
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "anotacoes"
+        ws.append(["data", "questao_id", "disciplina", "assunto", "anotacao"])
+        wb.save(ARQ_ANOTACOES)
+
 # --- ROTAS ---
 @app.route('/img/q_img/<filename>')
 def serve_image(filename): return send_from_directory(UPLOAD_FOLDER, filename)
 
+
+@app.route("/anotacoes", methods=["POST"])
+def salvar_anotacao():
+    verificar_caderno_anotacoes()
+    data = request.json
+    try:
+        wb = load_workbook(ARQ_ANOTACOES)
+        ws = wb.active
+        from datetime import datetime
+        data_atual = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+        ws.append([
+            data_atual,
+            data.get("questao_id"),
+            data.get("disciplina"),
+            data.get("assunto"),
+            data.get("anotacao")
+        ])
+        wb.save(ARQ_ANOTACOES)
+        return jsonify({"status": "Anotação salva!"}), 201
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 @app.route("/questoes", methods=["GET"])
 def get_q():

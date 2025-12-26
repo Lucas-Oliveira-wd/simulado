@@ -446,16 +446,12 @@ function confirmaPratica() {
   f.style.padding = "10px";
   f.style.borderRadius = "5px";
 
-  // Botões de Ação Extras (Flashcard e Comentários)
-  let htmlBotoes = "";
+  // O botão de Anotar aparece SEMPRE (acerto ou erro)
+  let htmlBotoes = `<div style="margin-top:10px; display:flex; gap:10px;">`;
+  htmlBotoes += `<button class="btn-padrao" onclick="abrirComentarioPratica()">💬 Explicação / PDF</button>`;
+  htmlBotoes += `<button class="btn-padrao" onclick="abrirModalAnotacao()" style="background:var(--purple); color:white;">📓 Anotar</button>`;
+  htmlBotoes += `</div>`;
   
-  // Botão de Comentários (sempre aparece, para ver explicação)
-  htmlBotoes += `<button class="btn-padrao" onclick="abrirComentarioPratica()" style="margin-right:10px; margin-top:10px;">💬 Comentários / Ver PDF</button>`;
-
-  // Botão de Criar Flashcard (Se errou ou se quiser revisar)
-  if (!acertou) {
-      htmlBotoes += `<button class="btn-padrao" onclick="prepararNotaFlashcard()" style="background:#e67e22; color:white; margin-top:10px;">⚡ Criar Flashcard do Erro</button>`;
-  }
 
   // Insere os botões no feedback
   f.innerHTML += `<div style="margin-top:5px">${htmlBotoes}</div>`;
@@ -468,6 +464,44 @@ function confirmaPratica() {
 
   el("prat-btn-confirma").style.display = "none";
   el("prat-btn-prox").style.display = "block";
+}
+
+// Funções de Suporte ao Caderno
+function abrirModalAnotacao() {
+    const q = pratPool[pratIdx];
+    el("anotacao-info-questao").innerText = `Questão ID: ${q.id} | ${q.disciplina} > ${q.assunto}`;
+    el("nota-texto").value = ""; 
+    el("modal-anotacao").style.display = "flex";
+    el("nota-texto").focus();
+}
+
+async function enviarParaCaderno() {
+    const q = pratPool[pratIdx];
+    const nota = el("nota-texto").value;
+
+    if(!nota.trim()) return alert("Escreva algo para anotar.");
+
+    const payload = {
+        questao_id: q.id,
+        disciplina: q.disciplina,
+        assunto: q.assunto,
+        anotacao: nota
+    };
+
+    try {
+        const resp = await fetch(`${API}/anotacoes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (resp.ok) {
+            alert("📓 Anotação salva com sucesso!");
+            el("modal-anotacao").style.display = "none";
+        }
+    } catch (e) {
+        alert("Erro ao salvar anotação.");
+    }
 }
 
 function salvarProgressoQuestao(q, acertou) {
