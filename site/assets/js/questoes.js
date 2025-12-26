@@ -614,11 +614,13 @@ function abrirCopy(id) {
         modal.querySelector(".btn-acao").innerText = "Salvar como Nova";
         modal.querySelector(".btn-acao").style.background = "#27ae60"; // Verde para novo
 
-        // LIMPA O ID: Isso é o que faz o salvamento virar um POST (Nova) em vez de PUT (Editar)
+        // Trava de Segurança: Limpa ID, Gabarito e Comentários
         el("edit-id").value = ""; 
+        el("edit-gabarito").value = ""; 
+        el("edit-comentario-form").value = ""; 
         
         console.log("Modo cópia ativado: ID removido, pronto para salvar como nova.");
-    }, 100);
+    }, 150);
 }
 
 function atualizarControlesPaginacao(totalItens) {
