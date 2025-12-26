@@ -16,6 +16,7 @@ UPLOAD_FOLDER = os.path.join(DB_DIR, "img", "q_img")
 ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
 ARQ_FLASHCARDS = os.path.join(DB_DIR, "flashcards.xlsx")
 ARQ_ANOTACOES = os.path.join(DB_DIR, "caderno_anotacoes.xlsx")
+ARQ_HISTORICO = os.path.join(DB_DIR, "historico_respostas.xlsx")
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -761,6 +762,52 @@ def obter_proximo_id(valores):
     # Filtra apenas o que pode ser convertido em número positivo
     ids = [int(v) for v in valores if v is not None and str(v).isdigit()]
     return max(ids) + 1 if ids else 1
+
+
+def verificar_historico():
+    garantir_diretorio()
+    if not os.path.exists(ARQ_HISTORICO):
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "historico"
+        # Estrutura solicitada: ID, Data, Q-ID, Disciplina, Assunto, Resultado
+        ws.append(["id", "data", "questao_id", "disciplina", "assunto", "resultado"])
+        wb.save(ARQ_HISTORICO)
+
+
+@app.route("/historico", methods=["POST"])
+def registrar_resposta():
+    verificar_historico()
+    data = request.json
+    try:
+        wb = load_workbook(ARQ_HISTORICO)
+        ws = wb.active
+
+        # Coleta IDs para gerar o próximo
+        valores_id = [r[0].value for r in ws.iter_rows(min_row=2)]
+        proximo_id = obter_proximo_id(valores_id)
+
+        from datetime import datetime
+        data_atual = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+        # 'resultado' será "Acertou" ou "Errou"
+        resultado = 1 if data.get("acertou") else 0
+
+        ws.append([
+            proximo_id,
+            data_atual,
+            data.get("questao_id"),
+            data.get("disciplina"),
+            data.get("assunto"),
+            resultado
+        ])
+        wb.save(ARQ_HISTORICO)
+        return jsonify({"status": "Resposta logada!", "id": proximo_id}), 201
+    except PermissionError:
+        return jsonify({"erro": "Arquivo de histórico aberto no Excel"}), 500
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
+
 
 # --- ROTAS ---
 @app.route('/img/q_img/<filename>')

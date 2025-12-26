@@ -625,6 +625,18 @@ function salvarProgressoQuestao(q, acertou) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(qOriginal),
       });
+
+      // 2. Registra o log individual no histórico cronológico
+      fetch(`${API}/historico`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questao_id: q.id,
+          disciplina: q.disciplina,
+          assunto: q.assunto,
+          acertou: acertou
+        }),
+      }).catch(err => console.error("Erro ao registrar no histórico:", err));
   }
 };
 
