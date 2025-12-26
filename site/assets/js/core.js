@@ -23,8 +23,12 @@ const nav = n => {
     el(`secao-${n}`).style.display = 'block';
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('ativa'));
     el(`nav-${n}`).classList.add('ativa');
-    if (n === 'banco') carrTab(); if (n === 'praticar') prepPratica(); if (n === 'prova') prepProva();
-    if (n === 'estatisticas') graf(); if (n === 'flashcards') initFC();
+
+    if (n === 'banco') carrTab();
+    if (n === 'praticar' && pratPool.length === 0) prepPratica();
+    if (n === 'prova') prepProva();
+    if (n === 'estatisticas') graf();
+    if (n === 'flashcards') initFC();
     el("floating-toolbar").style.display = "none";
     window.scrollTo(0, 0);
 };

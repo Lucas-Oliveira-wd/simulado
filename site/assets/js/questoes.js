@@ -153,7 +153,9 @@ function renderPreview(lista) {
       : "";
     let classeRow = q.ja_cadastrada ? "imp-row ja-cadastrada" : "imp-row";
     let optionsGab = `<option value="">?</option>`;
-    ["A", "B", "C", "D", "E"].forEach((l) => {
+    let letrasGabarito = (q.tipo === "CE") ? ["C", "E"] : ["A", "B", "C", "D", "E"]
+
+    letrasGabarito.forEach((l) => {
       let sel = q.gabarito === l ? "selected" : "";
       optionsGab += `<option value="${l}" ${sel}>${l}</option>`;
     });
@@ -206,6 +208,7 @@ function renderPreview(lista) {
       <div class="imp-gab"><select class="imp-gabarito">${optionsGab}</select></div>
       <div class="imp-acoes">
         <div class="imp-acoes-top">
+          <button class="btn-icon" onclick="abrirPopupPreviewReal(${i})" title="Visualizar Questão Renderizada">👁️</button>
           <button class="btn-icon" style="color:#27ae60" onclick="salvarIndividual(${i})">💾</button>
           <button class="btn-icon" style="color:red" onclick="el('imp-row-${i}').remove()">✖</button>
         </div>
@@ -225,6 +228,50 @@ function renderPreview(lista) {
 </div>`;
   });
   atualizarTodosSelectsTexto();
+}
+
+function abrirPopupPreviewReal(index) {
+    const row = el(`imp-row-${index}`);
+    const enunciado = row.querySelector(".imp-enunciado").value;
+    const comentarios = row.querySelector(".imp-comentario").value;
+    const tipo = row.querySelector(".area-alternativas-ce") ? "CE" : "ME";
+    
+    let altsHtml = "";
+    if (tipo === "ME") {
+        ["a", "b", "c", "d", "e"].forEach(letra => {
+            const val = row.querySelector(`.imp-alt-${letra}`).value;
+            if (val) altsHtml += `<p><strong>${letra.toUpperCase()})</strong> ${val}</p>`;
+        });
+    } else {
+        altsHtml = `<p><em>Questão de Certo ou Errado</em></p>`;
+    }
+
+    // Criar o container do modal se não existir
+    if (!el("modal-visualizacao-real")) {
+        const m = document.createElement("div");
+        m.id = "modal-visualizacao-real";
+        m.className = "modal-overlay";
+        m.innerHTML = `
+            <div class="modal-content" style="max-width:800px; max-height:90vh; overflow-y:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:15px;">
+                    <h3 style="margin:0">Visualização Renderizada (Tags Ativas)</h3>
+                    <button onclick="el('modal-visualizacao-real').style.display='none'" class="btn-icon" style="font-size:1.5rem">✖</button>
+                </div>
+                <div id="conteudo-renderizado"></div>
+            </div>`;
+        document.body.appendChild(m);
+    }
+
+    // Inserir o conteúdo interpretando as tags HTML (innerHTML)
+    el("conteudo-renderizado").innerHTML = `
+        <div class="preview-q-enunciado" style="margin-bottom:20px; line-height:1.6;">${enunciado}</div>
+        <div class="preview-q-alternativas" style="margin-bottom:20px;">${altsHtml}</div>
+        <div class="preview-q-comentarios" style="background:#f9f9f9; padding:15px; border-left:4px solid var(--purple); font-size:0.9em;">
+            <strong>Comentários:</strong><br>${comentarios}
+        </div>
+    `;
+
+    el("modal-visualizacao-real").style.display = "flex";
 }
 
 function verificarDuplicidadeDinamica(index) {

@@ -242,6 +242,42 @@ async function respFC(acertou) {
 
 // --- MODO PRATICAR ---
 
+// Abre o modal preenchendo com os dados da questão atual
+function prepararNotaFlashcard() {
+    const qAtual = pratPool[pratIdx];
+    if (!qAtual) return;
+
+    // Preenche a frente com o enunciado e o verso com o comentário/gabarito
+    el("fc-p-frente").value = qAtual.enunciado;
+    el("fc-p-verso").value = `Gabarito: ${qAtual.gabarito}\n\n${qAtual.comentarios || ''}`;
+    
+    el("modal-fc-pratica").style.display = "flex";
+}
+
+// Salva via API sem mudar de página
+async function salvarFlashcardRapido() {
+    const payload = {
+        disciplina: pratPool[pratIdx].disciplina,
+        assunto: pratPool[pratIdx].assunto,
+        frente: el("fc-p-frente").value,
+        verso: el("fc-p-verso").value
+    };
+
+    try {
+        const resp = await fetch(`${API}/flashcards`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (resp.ok) {
+            alert("✅ Flashcard salvo com sucesso!");
+            el('modal-fc-pratica').style.display = 'none';
+        }
+    } catch (e) {
+        alert("Erro ao salvar card.");
+    }
+}
+
 function prepPratica() {
   el("config-pratica").style.display = "block";
   el("area-pratica").style.display = "none";
@@ -418,7 +454,7 @@ function confirmaPratica() {
 
   // Botão de Criar Flashcard (Se errou ou se quiser revisar)
   if (!acertou) {
-      htmlBotoes += `<button class="btn-padrao" onclick="criarFlashcardDoErro()" style="background:#e67e22; color:white; margin-top:10px;">⚡ Criar Flashcard do Erro</button>`;
+      htmlBotoes += `<button class="btn-padrao" onclick="prepararNotaFlashcard()" style="background:#e67e22; color:white; margin-top:10px;">⚡ Criar Flashcard do Erro</button>`;
   }
 
   // Insere os botões no feedback
