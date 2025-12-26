@@ -593,12 +593,64 @@ function renderizarTabela(lista) {
           <td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td>
           <td>${q.gabarito}</td>
           <td>
+              <button class="btn-icon" onclick="visualizarQuestaoBanco('${q.id}')" title="Visualizar Renderizada">👁️</button>
               <button class="btn-icon" onclick="abrirCopy('${q.id}')" title="Copiar como Nova">📋</button>
               <button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button>
               <button class="btn-icon" onclick="del('${q.id}')">🗑️</button>
           </td>
       </tr>`;
   });
+}
+
+function visualizarQuestaoBanco(id) {
+    // Busca a questão no banco de dados local (memória)
+    const q = db.find(x => String(x.id) === String(id));
+    if (!q) return;
+
+    // Monta a imagem se ela existir no servidor
+    let imgHtml = q.imagem 
+        ? `<img src="${API}/img/q_img/${q.imagem}" style="max-width:100%; height:auto; margin: 15px 0; border: 1px solid #ccc; display:block;">` 
+        : "";
+
+    // Monta as alternativas
+    let altsHtml = "";
+    if (q.tipo === "ME") {
+        ["a", "b", "c", "d", "e"].forEach(l => {
+            if (q[`alt_${l}`]) {
+                const destaque = q.gabarito === l.toUpperCase() ? "color: var(--green); font-weight: bold;" : "";
+                altsHtml += `<p style="white-space: pre-wrap; ${destaque}"><strong>${l.toUpperCase()})</strong> ${q['alt_'+l]}</p>`;
+            }
+        });
+    } else {
+        const gab = q.gabarito === "C" ? "Certo" : "Errado";
+        altsHtml = `<p><em>Questão de Certo ou Errado. Gabarito: <strong>${gab}</strong></em></p>`;
+    }
+
+    // Reaproveita o modal que já criamos para a Importação
+    if (!el("modal-visualizacao-real")) {
+        // (O código de criação do modal é o mesmo que você já tem, o sistema apenas garante que ele exista)
+        const m = document.createElement("div");
+        m.id = "modal-visualizacao-real";
+        m.className = "modal-overlay";
+        m.innerHTML = `<div class="modal-content" style="max-width:800px; max-height:90vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:15px;">
+                <h3 style="margin:0">Visualização Banco (ID: ${q.id})</h3>
+                <button onclick="el('modal-visualizacao-real').style.display='none'" class="btn-icon" style="font-size:1.5rem">✖</button>
+            </div>
+            <div id="conteudo-renderizado"></div>
+        </div>`;
+        document.body.appendChild(m);
+    }
+
+    el("conteudo-renderizado").innerHTML = `
+        <div style="margin-bottom:20px; line-height:1.6; white-space: pre-wrap;">${q.enunciado}</div>
+        ${imgHtml}
+        <div style="margin-bottom:20px;">${altsHtml}</div>
+        <div style="background:#f9f9f9; padding:15px; border-left:4px solid var(--purple); font-size:0.9em; white-space: pre-wrap;">
+            <strong>Comentários:</strong><br>${q.comentarios || "Sem comentários registrados."}
+        </div>
+    `;
+    el("modal-visualizacao-real").style.display = "flex";
 }
 
 // Função para abrir o modal em modo Cópia

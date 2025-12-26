@@ -833,7 +833,7 @@ def post_q():
         ext = arq.filename.rsplit('.', 1)[1].lower();
         nome_img = f"{uuid.uuid4()}.{ext}";
         arq.save(os.path.join(UPLOAD_FOLDER, nome_img));
-        nova["imagem"] = nome_img
+        nova["imagem"] = nova.get("imagem", "")
     else:
         nova["imagem"] = ""
     sig = gerar_assinatura(nova)
