@@ -593,10 +593,14 @@ function renderizarTabela(lista) {
           <td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td>
           <td>${q.gabarito}</td>
           <td>
+            <div class="tab-action-top">
               <button class="btn-icon" onclick="visualizarQuestaoBanco('${q.id}')" title="Visualizar Renderizada">👁️</button>
               <button class="btn-icon" onclick="abrirCopy('${q.id}')" title="Copiar como Nova">📋</button>
+            </div>
+            <div class="tab-action-bottom">
               <button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button>
               <button class="btn-icon" onclick="del('${q.id}')">🗑️</button>
+            </div>
           </td>
       </tr>`;
   });
@@ -634,13 +638,16 @@ function visualizarQuestaoBanco(id) {
         m.className = "modal-overlay";
         m.innerHTML = `<div class="modal-content" style="max-width:800px; max-height:90vh; overflow-y:auto;">
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:15px;">
-                <h3 style="margin:0">Visualização Banco (ID: ${q.id})</h3>
+                <h3 style="margin:0">Visualização Banco (ID: <span id="visualiza-id-title"></span>)</h3>
                 <button onclick="el('modal-visualizacao-real').style.display='none'" class="btn-icon" style="font-size:1.5rem">✖</button>
             </div>
             <div id="conteudo-renderizado"></div>
         </div>`;
         document.body.appendChild(m);
     }
+
+    // ATUALIZAÇÃO DO TÍTULO: Garante que o ID mude a cada clique
+    el("visualiza-id-title").innerText = q.id;
 
     el("conteudo-renderizado").innerHTML = `
         <div style="margin-bottom:20px; line-height:1.6; white-space: pre-wrap;">${q.enunciado}</div>

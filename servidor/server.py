@@ -833,9 +833,9 @@ def post_q():
         ext = arq.filename.rsplit('.', 1)[1].lower();
         nome_img = f"{uuid.uuid4()}.{ext}";
         arq.save(os.path.join(UPLOAD_FOLDER, nome_img));
-        nova["imagem"] = nova.get("imagem", "")
+        nova["imagem"] = nome_img
     else:
-        nova["imagem"] = ""
+        nova["imagem"] = nova.get("imagem", "")
     sig = gerar_assinatura(nova)
     if any(gerar_assinatura(q) == sig for q in dados): return jsonify({"erro": "Duplicada"}), 409
     if not nova.get("id"): ids = sorted([int(q["id"]) for q in dados if str(q["id"]).isdigit()]); nova[
