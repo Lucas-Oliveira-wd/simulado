@@ -102,13 +102,26 @@
 }
 
 .flip-card-front {
-    background-color: #fff;
+    background-color: var(--bg);
     color: #333;
     border: 2px solid #eee;
 }
 
+body.dark-mode .flip-card-front {
+    background-color: var(--dark-suface);
+    color: var(--dark-text);
+    border: 2px solid var(--dark-border);
+}
+
 .flip-card-back {
-    background-color: var(--sec);
+    background-color: var(--suface);
+    color: white;
+    transform: rotateY(180deg);
+    border: 2px solid var(--sec);
+}
+
+body.dark-mode .flip-card-back {
+    background-color: var(--dark-suface);
     color: white;
     transform: rotateY(180deg);
     border: 2px solid var(--sec);
@@ -117,6 +130,12 @@
 .fc-content-back{
     background-color: var(--bg);
     color: var(--text);
+    overflow-y: auto;
+}
+
+body.dark-mode .fc-content-back{
+    background-color: var(--dark-suface);
+    color: var(--dark-text);
     overflow-y: auto;
 }
 
@@ -203,4 +222,8 @@
 .flip-card-front ul br,
 .flip-card-back ul br {
     display: none;
+}
+
+.dark-mode .flip-card-inner{
+    background-color: var(--dark-suface);
 }

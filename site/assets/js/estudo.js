@@ -130,7 +130,7 @@ function renderGrid() {
                   
                   <span class="fc-tag">${c.disciplina} > ${c.assunto}</span>
                   <div class="fc-content-front">${frente}</div>
-                  <span style="font-size:0.8rem; color:#999; margin-top:auto; display:block; padding-top:20px">(Clique para virar)</span>
+                  <span style="font-size:0.8rem; margin-top:auto; display:block; padding-top:20px">(Clique para virar)</span>
               </div>
 
               <div class="flip-card-back">
@@ -755,34 +755,6 @@ async function salvarComentarioApi() {
   el("edit-comentario").style.display = "none";
   el("btn-salvar-coment").style.display = "none";
   el("btn-editar-coment").style.display = "inline-block";
-}
-
-// Flashcard Rápido a partir do Erro
-function criarFlashcardDoErro() {
-  let q = pratPool[pratIdx];
-  
-  // Prepara o modal de Flashcards
-  toggleModeFC('gerenciar'); // Vai para a tela de flashcards
-  nav('flashcards'); // Troca a aba visualmente
-  
-  // Preenche o formulário automaticamente
-  el("fc-disciplina").value = q.disciplina;
-  carregarAssuntos("fc"); // Dispara carregamento (pode precisar de um delay pequeno)
-  
-  setTimeout(() => {
-      el("fc-assunto").value = q.assunto;
-  }, 100);
-  
-  // Frente: O Enunciado da Questão
-  el("fc-frente").value = `[Questão de Erro]\n${q.banca} - ${q.instituicao}\n\n${q.enunciado}`;
-  
-  // Verso: O Gabarito + Comentário (se houver)
-  let txtVerso = `Gabarito: ${q.gabarito}\n\n`;
-  if(q.comentarios) txtVerso += `Comentário:\n${q.comentarios}`;
-  
-  el("fc-verso").value = txtVerso;
-  
-  el("fc-titulo-form").scrollIntoView();
 }
 
 function proxPratica() {
