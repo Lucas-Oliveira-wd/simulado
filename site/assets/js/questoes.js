@@ -593,11 +593,32 @@ function renderizarTabela(lista) {
           <td style="text-align:center"><span class="dots ${difClass}">${dots}</span></td>
           <td>${q.gabarito}</td>
           <td>
+              <button class="btn-icon" onclick="abrirCopy('${q.id}')" title="Copiar como Nova">📋</button>
               <button class="btn-icon" onclick="abrirEd('${q.id}')">✏️</button>
               <button class="btn-icon" onclick="del('${q.id}')">🗑️</button>
           </td>
       </tr>`;
   });
+}
+
+// Função para abrir o modal em modo Cópia
+function abrirCopy(id) {
+    // 1. Usa a lógica de preenchimento que você já tem para edição
+    abrirEd(id);
+
+    // 2. Pequeno delay para garantir que abrirEd terminou de preencher
+    setTimeout(() => {
+        // Altera o Título do Modal e a cor do Botão
+        const modal = el("modal-edicao");
+        modal.querySelector("h2").innerText = "Copiar Questão (Nova)";
+        modal.querySelector(".btn-acao").innerText = "Salvar como Nova";
+        modal.querySelector(".btn-acao").style.background = "#27ae60"; // Verde para novo
+
+        // LIMPA O ID: Isso é o que faz o salvamento virar um POST (Nova) em vez de PUT (Editar)
+        el("edit-id").value = ""; 
+        
+        console.log("Modo cópia ativado: ID removido, pronto para salvar como nova.");
+    }, 100);
 }
 
 function atualizarControlesPaginacao(totalItens) {
@@ -649,6 +670,11 @@ function aplOrd() {
 }
 
 function abrirEd(id) {
+  const modal = el("modal-edicao");
+  modal.querySelector("h2").innerText = "Editar Questão"; // Reseta o título
+  modal.querySelector(".btn-acao").innerText = "Salvar Alterações";
+  modal.querySelector(".btn-acao").style.background = "#f39c12"; // Cor original laranja
+  
   let q = db.find((x) => String(x.id) === String(id));
   if (!q) return;
   el("edit-id").value = q.id;
@@ -705,7 +731,13 @@ function abrirEd(id) {
 el("form-edicao").onsubmit = async (e) => {
   e.preventDefault();
   const formData = new FormData();
-  formData.append("id", el("edit-id").value);
+  const idExistente = el("edit-id").value;
+
+  // Se houver ID, enviamos (é um PUT). Se não houver, o servidor gera um novo (é um POST).
+  if (idExistente) {
+      formData.append("id", idExistente);
+  }
+
   formData.append("banca", el("edit-banca").value);
   formData.append("instituicao", el("edit-instituicao").value);
   formData.append("ano", el("edit-ano").value);
@@ -725,9 +757,27 @@ el("form-edicao").onsubmit = async (e) => {
   formData.append("imagem", el("edit-imagem-nome").value);
   let fileInput = el("edit-imagem-file");
   if (fileInput.files[0]) formData.append("imagem_file", fileInput.files[0]);
-  await fetch(`${API}/questoes`, { method: "PUT", body: formData });
-  el("modal-edicao").style.display = "none";
-  carrTab(paginaAtual);
+
+  // DECIDE O MÉTODO: Se tem ID é PUT, se não tem é POST
+  const metodo = idExistente ? "PUT" : "POST";
+
+  try {
+        const res = await fetch(`${API}/questoes`, { method: metodo, body: formData });
+        if (res.ok) {
+          alert(metodo === "POST" ? "Nova questão criada com sucesso!" : "Questão atualizada!");
+          el("modal-edicao").style.display = "none";
+          // 1. Atualiza o banco global (db) para que Praticar/Simulado vejam a mudança
+          await init(); 
+          
+          // 2. Força a tabela a permanecer na página onde você estava
+          carrTab(paginaAtual);
+        } else {
+          const erro = await res.json();
+          alert("Erro: " + (erro.erro || "Falha na comunicação"));
+        }
+    } catch (err) {
+        alert("Erro ao salvar.");
+    }
 };
 
 // Função para replicar o assunto global em tempo real
