@@ -235,7 +235,11 @@ function abrirPopupPreviewReal(index) {
     const enunciado = row.querySelector(".imp-enunciado").value;
     const comentarios = row.querySelector(".imp-comentario").value;
     const tipo = row.querySelector(".area-alternativas-ce") ? "CE" : "ME";
-    
+    const fileInput = row.querySelector(".imp-imagem-file");
+
+    let imgHtml = "";
+
+    // 2. Monta o HTML das alternativas
     let altsHtml = "";
     if (tipo === "ME") {
         ["a", "b", "c", "d", "e"].forEach(letra => {
@@ -246,32 +250,51 @@ function abrirPopupPreviewReal(index) {
         altsHtml = `<p><em>Questão de Certo ou Errado</em></p>`;
     }
 
-    // Criar o container do modal se não existir
-    if (!el("modal-visualizacao-real")) {
-        const m = document.createElement("div");
-        m.id = "modal-visualizacao-real";
-        m.className = "modal-overlay";
-        m.innerHTML = `
-            <div class="modal-content" style="max-width:800px; max-height:90vh; overflow-y:auto;">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:15px;">
-                    <h3 style="margin:0">Visualização Renderizada (Tags Ativas)</h3>
-                    <button onclick="el('modal-visualizacao-real').style.display='none'" class="btn-icon" style="font-size:1.5rem">✖</button>
-                </div>
-                <div id="conteudo-renderizado"></div>
-            </div>`;
-        document.body.appendChild(m);
+    // 3. Função interna para montar e mostrar o popup (será chamada com ou sem imagem)
+    const mostrarPopup = () => {
+        // Cria o container do modal se não existir
+        if (!el("modal-visualizacao-real")) {
+            const m = document.createElement("div");
+            m.id = "modal-visualizacao-real";
+            m.className = "modal-overlay";
+            m.innerHTML = `
+                <div class="modal-content" style="max-width:800px; max-height:90vh; overflow-y:auto;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:15px;">
+                        <h3 style="margin:0">Visualização Renderizada (Tags Ativas)</h3>
+                        <button onclick="el('modal-visualizacao-real').style.display='none'" class="btn-icon" style="font-size:1.5rem">✖</button>
+                    </div>
+                    <div id="conteudo-renderizado"></div>
+                </div>`;
+            document.body.appendChild(m);
+        }
+
+        // Inserir o conteúdo, incluindo a imagem se houver
+        el("conteudo-renderizado").innerHTML = `
+            <div class="preview-q-enunciado" style="margin-bottom:20px; line-height:1.6; white-space: pre-wrap;">${enunciado}</div>
+            ${imgHtml} <div class="preview-q-alternativas" style="margin-bottom:20px;">${altsHtml}</div>
+            <div class="preview-q-comentarios" style="background:#f9f9f9; padding:15px; border-left:4px solid var(--purple); font-size:0.9em; white-space: pre-wrap;">
+                <strong>Comentários:</strong><br>${comentarios}
+            </div>
+        `;
+        el("modal-visualizacao-real").style.display = "flex";
+    };
+
+    // 4. Lógica Principal: Verifica se há imagem para carregar
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+        // Se houver arquivo, usa o FileReader para ler e gerar a prévia
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            // Cria a tag <img> com o resultado da leitura (data URL)
+            imgHtml = `<img src="${e.target.result}" style="max-width:100%; height:auto; margin: 15px 0; border: 1px solid #ccc; display:block;">`;
+            // Só mostra o popup DEPOIS que a imagem foi lida
+            mostrarPopup();
+        };
+        // Inicia a leitura do arquivo
+        reader.readAsDataURL(fileInput.files[0]);
+    } else {
+        // Se não houver imagem, mostra o popup imediatamente
+        mostrarPopup();
     }
-
-    // Inserir o conteúdo interpretando as tags HTML (innerHTML)
-    el("conteudo-renderizado").innerHTML = `
-        <div class="preview-q-enunciado" style="margin-bottom:20px; line-height:1.6;">${enunciado}</div>
-        <div class="preview-q-alternativas" style="margin-bottom:20px;">${altsHtml}</div>
-        <div class="preview-q-comentarios" style="background:#f9f9f9; padding:15px; border-left:4px solid var(--purple); font-size:0.9em;">
-            <strong>Comentários:</strong><br>${comentarios}
-        </div>
-    `;
-
-    el("modal-visualizacao-real").style.display = "flex";
 }
 
 function verificarDuplicidadeDinamica(index) {
