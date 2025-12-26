@@ -502,7 +502,7 @@ async function enviarParaCaderno() {
     } catch (e) {
         alert("Erro ao salvar anotação.");
     }
-}
+} 
 
 function salvarProgressoQuestao(q, acertou) {
   // Busca a referência original para atualizar no banco

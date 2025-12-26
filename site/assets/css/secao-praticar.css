@@ -18,6 +18,10 @@
     /* Alternativas geralmente ficam melhor alinhadas à esquerda, mas se quiser justificado, mude para justify */
 }
 
+.questao-card{
+    padding: 5px 20px;
+}
+
 /* Efeito ao passar o mouse */
 .alternativa-wrapper:hover {
     background: #f9f9f9;
