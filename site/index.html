@@ -357,16 +357,46 @@
 
     <section id="secao-estatisticas" class="secao">
         <div class="container">
-            <div class="flex" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h2 id="titulo-estatistica">Desempenho Geral</h2>
-                <button id="btn-voltar-estatistica" class="btn-acao" onclick="graf()" 
-                        style="display:none; width:auto; background:#95a5a6; padding: 5px 15px;">
-                    ⬅ Voltar para Disciplinas
-                </button>
-            </div>
+            <div class="graf-geral">
+                <div class="flex" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 id="titulo-estatistica">Desempenho Geral</h2>
+                    <button id="btn-voltar-estatistica" class="btn-acao" onclick="graf()" 
+                            style="display:none; width:auto; background:#95a5a6; padding: 5px 15px;">
+                        ⬅ Voltar para Disciplinas
+                    </button>
+                </div>
 
-            <div id="legenda-quartis"></div>
-            <canvas id="chart"></canvas>
+                <div id="legenda-quartis"></div>
+                <canvas id="chart"></canvas>
+                <hr style="margin: 40px 0; border: 1px solid #eee;">    
+            </div>
+            <div class="graf-by-tyme">
+                <div class="flex" style="justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3>📈 Evolução de Acertos (%)</h3>
+                    <div id="stats-resumo-rapido" style="font-size: 0.9rem; color: var(--sec);"></div>
+                </div>
+
+                <div style="height: 300px; margin-bottom: 40px;">
+                    <canvas id="chart-evolucao"></canvas>
+                </div>
+
+                <h3>🕒 Últimas Respostas</h3>
+                <div style="overflow-x: auto; background: #fff; border-radius: 8px; box-shadow: var(--shadow);">
+                    <table id="tabela-historico-recente" style="width: 100%; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 10px;">Data</th>
+                                <th>Questão</th>
+                                <th>Disciplina</th>
+                                <th>Assunto</th>
+                                <th>Resultado</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            
         </div>
     </section>
 

@@ -615,6 +615,7 @@ function prepararEdicaoNota(index) {
 function salvarProgressoQuestao(q, acertou) {
   // Busca a referência original para atualizar no banco
   let qOriginal = db.find((d) => d.id === q.id);
+
   if (qOriginal) {
       qOriginal.respondidas = (qOriginal.respondidas || 0) + 1;
       if (acertou) qOriginal.acertos = (qOriginal.acertos || 0) + 1;
@@ -639,6 +640,72 @@ function salvarProgressoQuestao(q, acertou) {
       }).catch(err => console.error("Erro ao registrar no histórico:", err));
   }
 };
+
+let chartEvolucao = null;
+
+async function renderizarHistoricoStats() {
+    try {
+        const resp = await fetch(`${API}/historico`);
+        const logs = await resp.json();
+
+        if (!logs.length) return;
+
+        // 1. Processamento de Dados: Agrupar por Data
+        const dadosPorDia = {};
+        logs.forEach(log => {
+            // Extrai apenas a data (DD/MM/YYYY) descartando a hora
+            const dataPura = log.data.split(' ')[0]; 
+            if (!dadosPorDia[dataPura]) {
+                dadosPorDia[dataPura] = { respondidas: 0, acertos: 0 };
+            }
+            dadosPorDia[dataPura].respondidas++;
+            dadosPorDia[dataPura].acertos += log.resultado; // Soma 0 ou 1
+        });
+
+        const labels = Object.keys(dadosPorDia);
+        const valores = labels.map(d => ((dadosPorDia[d].acertos / dadosPorDia[d].respondidas) * 100).toFixed(1));
+
+        // 2. Renderizar Gráfico de Linha (Evolução)
+        const ctx = document.getElementById('chart-evolucao').getContext('2d');
+        if (chartEvolucao) chartEvolucao.destroy();
+
+        chartEvolucao = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '% de Acerto Diário',
+                    data: valores,
+                    borderColor: '#27ae60',
+                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: { y: { beginAtZero: true, max: 100 } }
+            }
+        });
+
+        // 3. Preencher Tabela de Últimas Respostas
+        const tbody = document.querySelector("#tabela-historico-recente tbody");
+        tbody.innerHTML = logs.slice(-10).reverse().map(log => `
+            <tr>
+                <td style="padding: 8px;">${log.data}</td>
+                <td>${log.q_id}</td>
+                <td>${log.disciplina}</td>
+                <td>${log.assunto}</td>
+                <td style="font-weight:bold; color: ${log.resultado ? 'var(--green)' : 'var(--red)'}">
+                    ${log.resultado ? 'Acertou' : 'Errou'}
+                </td>
+            </tr>
+        `).join('');
+
+    } catch (e) { console.error("Erro nas estatísticas históricas:", e); }
+}
 
 // Lógica de Comentários
 let questaoAtualComent = null;

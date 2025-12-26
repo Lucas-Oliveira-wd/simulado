@@ -775,6 +775,8 @@ def verificar_historico():
         wb.save(ARQ_HISTORICO)
 
 
+
+# --- ROTAS ---
 @app.route("/historico", methods=["POST"])
 def registrar_resposta():
     verificar_historico()
@@ -808,8 +810,29 @@ def registrar_resposta():
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
+@app.route("/historico", methods=["GET"])
+def listar_historico():
+    verificar_historico()
+    try:
+        # data_only=True para ler o valor 0/1 sem erros
+        wb = load_workbook(ARQ_HISTORICO, data_only=True)
+        ws = wb.active
+        logs = []
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            if r[0] is not None:
+                logs.append({
+                    "id": r[0],
+                    "data": r[1],
+                    "q_id": r[2],
+                    "disciplina": r[3],
+                    "assunto": r[4],
+                    "resultado": int(r[5]) # 0 ou 1
+                })
+        return jsonify(logs)
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
-# --- ROTAS ---
+
 @app.route('/img/q_img/<filename>')
 def serve_image(filename): return send_from_directory(UPLOAD_FOLDER, filename)
 

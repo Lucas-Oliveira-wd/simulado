@@ -28,7 +28,10 @@ const nav = n => {
     if (n === 'caderno') carregarCaderno();
     if (n === 'praticar' && pratPool.length === 0) prepPratica();
     if (n === 'prova') prepProva();
-    if (n === 'estatisticas') graf();
+    if (n === 'estatisticas') {
+        graf();
+        renderizarHistoricoStats()
+    } 
     if (n === 'flashcards') initFC();
     el("floating-toolbar").style.display = "none";
     window.scrollTo(0, 0);
