@@ -584,9 +584,9 @@ function renderizarTabela(lista) {
       
       tb.innerHTML += `<tr>
           <td>${q.id}</td>
-          <td style="font-size:0.75rem; color:#888;">${q.data_insercao || '-'}</td> <td>${q.banca || '-'}</td>
+          <td>${q.data_insercao || '-'}</td>
           <td>${q.banca || '-'}</td>
-          <td style="font-size:0.85em; color:#555;">${q.instituicao || "-"}</td>
+          <td>${q.instituicao || "-"}</td>
           <td>${q.ano || "-"}</td>
           <td>${q.disciplina || '-'}</td>
           <td title="${(q.enunciado||'').replace(/"/g, "&quot;")}">${(q.enunciado||'').substring(0, 40)}...</td>

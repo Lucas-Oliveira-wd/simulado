@@ -33,58 +33,213 @@ function calcTotalPorcentagemPratica() {
     el("total-porc-pratica").style.color = t === 100 ? "var(--green)" : "var(--red)";
 }
 
-// Gatilho que decide qual pool de questões montar
-function lancarPraticaUnificada() {
+
+async function lancarPraticaUnificada() {
+    console.log("🚀 Iniciando lançamento de estudo unificado...");
     const modoRadio = document.querySelector('input[name="modo-estudo"]:checked').value;
     let poolFinal = [];
     let tipoSessao = 'praticar';
     let tempoSegundos = 0;
 
-    if (modoRadio === 'lista') {
-        const dis = el("prat-disciplina").value;
-        const ban = el("prat-banca").value;
-        const ass = el("prat-assunto").value;
-        const qtd = parseInt(el("prat-qtd").value);
+    showLoader("Processando banco de dados...");
 
-        let filtradas = db.filter(q => 
-            (dis === "" || q.disciplina === dis) &&
-            (ban === "" || q.banca === ban) &&
-            (ass === "" || q.assunto === ass)
+    try {
+        if (modoRadio === 'lista') {
+            console.log("📝 Modo: Lista de Questões");
+            const filtros = {
+                disciplina: el("prat-disciplina").value,
+                banca: el("prat-banca").value,
+                assunto: el("prat-assunto").value
+            };
+            const qtdTotal = parseInt(el("prat-qtd").value);
+
+            let grade = {};
+            if (filtros.disciplina) {
+                grade[filtros.disciplina] = 100;
+            } else {
+                opcoes.disciplinas.forEach(d => grade[d] = (100 / opcoes.disciplinas.length));
+            }
+
+            console.log("📊 Grade inicial calculada. Chamando prepararPoolInteligente...");
+            poolFinal = await prepararPoolInteligente(grade, qtdTotal, filtros);
+            if (el("prat-modo-cego").checked) tipoSessao = 'cego';
+
+        } else { 
+            console.log("🏆 Modo: Simulado Real");
+            const grade = {};
+            document.querySelectorAll(".inp-dist-prat").forEach(i => {
+                const p = parseInt(i.value || 0);
+                if (p > 0) grade[i.dataset.disc] = p;
+            });
+
+            console.log("📊 Grade do Simulado:", grade);
+            const totalPerc = Object.values(grade).reduce((a, b) => a + b, 0);
+            if (totalPerc !== 100) {
+                hideLoader();
+                return alert("A soma das porcentagens deve ser 100%");
+            }
+
+            const qtdTotal = parseInt(el("prova-total").value);
+            tempoSegundos = parseInt(el("prova-tempo").value) * 60;
+            tipoSessao = 'simulado';
+
+            poolFinal = await prepararPoolInteligente(grade, qtdTotal, { banca: "", assunto: "" });
+        }
+
+        console.log(`✅ Pool final gerado com ${poolFinal.length} questões.`);
+        hideLoader();
+        if (poolFinal.length === 0) return alert("Nenhuma questão encontrada.");
+        iniciarSessaoExecucao(poolFinal, tipoSessao, tempoSegundos);
+
+    } catch (err) {
+        console.error("❌ Erro crítico no lançamento:", err);
+        hideLoader();
+        alert("Erro ao processar o banco de dados. Veja o console (F12).");
+    }
+}
+
+async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) {
+    const respHist = await fetch(`${API}/historico`);
+    const logs = await respHist.json();
+
+    const mapaHist = {};
+    logs.forEach(log => {
+        const [dia, mes, ano, hora] = log.data.split(/[\/\s:]/);
+        const ts = new Date(ano, mes - 1, dia, hora.substring(0, 2), hora.substring(3)).getTime();
+        if (!mapaHist[log.q_id]) mapaHist[log.q_id] = { ts: 0, count: 0 };
+        mapaHist[log.q_id].count++;
+        if (ts > mapaHist[log.q_id].ts) mapaHist[log.q_id].ts = ts;
+    });
+
+    let distribuicao = redistribuirCotas(gradeDesejada, qtdTotal, filtrosGlobais);
+    let resultadoFinal = [];
+
+    for (const [disc, alvo] of Object.entries(distribuicao)) {
+        if (alvo <= 0) continue;
+        console.log(`📦 Processando ${disc} (Alvo: ${alvo})`);
+
+        const todasDaDisc = db.filter(q => 
+            q.disciplina === disc &&
+            (filtrosGlobais.banca === "" || q.banca === filtrosGlobais.banca) &&
+            (filtrosGlobais.assunto === "" || q.assunto === filtrosGlobais.assunto)
         );
 
-        let agrupadasEEmbaralhadas = embaralharAgrupado(filtradas);
-        poolFinal = filtradas.sort(() => 0.5 - Math.random()).slice(0, qtd);
-        if (el("prat-modo-cego").checked) tipoSessao = 'cego';
+        // Agrupamento em Unidades Atômicas
+        let unidades = [];
+        let gruposPorTexto = new Map();
+        let isoladas = [];
 
-    } else { // MODO SIMULADO
-        let totalPerc = 0;
-        document.querySelectorAll(".inp-dist-prat").forEach(i => totalPerc += parseInt(i.value || 0));
-        if (totalPerc !== 100) return alert("A soma das porcentagens deve ser 100%");
+        todasDaDisc.forEach(q => {
+            if (q.texto_apoio && q.texto_apoio !== "0") {
+                if (!gruposPorTexto.has(q.texto_apoio)) gruposPorTexto.set(q.texto_apoio, []);
+                gruposPorTexto.get(q.texto_apoio).push(q);
+            } else isoladas.push(q);
+        });
 
-        const qtdTotal = parseInt(el("prova-total").value);
-        tempoSegundos = parseInt(el("prova-tempo").value) * 60;
-        tipoSessao = 'simulado';
+        gruposPorTexto.forEach((grupo) => {
+            const stats = grupo.map(x => mapaHist[x.id] || { ts: 0, count: 0 });
+            unidades.push({ tipo: 'bloco', questoes: grupo, ts: Math.min(...stats.map(s => s.ts)), count: Math.min(...stats.map(s => s.count)) });
+        });
 
-        let poolBrutoSimulado = [];
+        isoladas.forEach(q => {
+            const s = mapaHist[q.id] || { ts: 0, count: 0 };
+            unidades.push({ tipo: 'isolada', questoes: [q], ts: s.ts, count: s.count });
+        });
 
-        document.querySelectorAll(".inp-dist-prat").forEach(i => {
-            let perc = parseInt(i.value || 0);
-            if (perc > 0) {
-                let disc = i.dataset.disc;
-                let qtdDisc = Math.round((perc / 100) * qtdTotal);
+        let poolDisc = [];
+        const inéditas = unidades.filter(u => u.count === 0).sort(() => 0.5 - Math.random());
+        const respondidas = unidades.filter(u => u.count > 0);
 
-                let questoesDisc = db.filter(q => q.disciplina === disc);
+        // 1. Processamento de Inéditas com Gestão de Estouro
+        for (let u of inéditas) {
+            if (poolDisc.length >= alvo) break;
+            const novas = u.questoes;
+            poolDisc.push(...novas);
+            
+            // CORREÇÃO: Se o bloco inédito estourar o alvo, removemos do próprio bloco (os últimos)
+            if (poolDisc.length > alvo) {
+                console.log(`⚠️ Estouro com inéditas (${poolDisc.length}/${alvo}). Ajustando...`);
+                poolDisc = poolDisc.slice(0, alvo);
+            }
+        }
 
-                let agrupadasDisc = embaralharAgrupado(questoesDisc);
-                poolBrutoSimulado = poolBrutoSimulado.concat(agrupadasDisc.slice(0, qtdDisc));
+        // 2. Processamento de Respondidas (Sorteio Ponderado)
+        if (poolDisc.length < alvo && respondidas.length > 0) {
+            const tsValues = respondidas.map(u => u.ts);
+            const tMin = Math.min(...tsValues), tMax = Math.max(...tsValues);
+            const diff = tMax - tMin || 1;
+
+            let candidatos = respondidas.map(u => ({ u, peso: 0.01 + (0.99 * (tMax - u.ts) / diff) }));
+
+            while (poolDisc.length < alvo && candidatos.length > 0) {
+                const soma = candidatos.reduce((a, b) => a + b.peso, 0);
+                let r = Math.random() * soma, acumulado = 0, selIdx = -1;
+                for (let i = 0; i < candidatos.length; i++) {
+                    acumulado += candidatos[i].peso;
+                    if (r <= acumulado) { selIdx = i; break; }
+                }
+                if (selIdx === -1) selIdx = candidatos.length - 1;
+
+                const item = candidatos.splice(selIdx, 1)[0].u;
+                const novas = item.questoes;
+                
+                // Regra de Substituição: Novas questões expulsam as "piores" (as primeiras que entraram na pool)
+                poolDisc.push(...novas);
+                while (poolDisc.length > alvo) {
+                    console.log(`🔄 Substituindo questão antiga para manter o alvo de ${alvo}`);
+                    poolDisc.shift(); // Remove a primeira (mais antiga na pool atual)
+                }
+            }
+        }
+        resultadoFinal = resultadoFinal.concat(poolDisc);
+    }
+    return resultadoFinal;
+}
+
+// CORREÇÃO: Função de redistribuição sem loop infinito
+function redistribuirCotas(grade, total, filtros) {
+    let dist = {};
+    let ativos = Object.keys(grade);
+    ativos.forEach(d => dist[d] = Math.round((grade[d] / 100) * total));
+
+    let mudou = true;
+    let limitador = 0; // Prevenção contra loops infinitos
+    while (mudou && limitador < 50) {
+        limitador++;
+        mudou = false;
+        let deficit = 0, comVagas = [];
+        
+        ativos.forEach(d => {
+            const disponiveis = db.filter(q => 
+                q.disciplina === d &&
+                (filtros.banca === "" || q.banca === filtros.banca) &&
+                (filtros.assunto === "" || q.assunto === filtros.assunto)
+            ).length;
+
+            if (dist[d] > disponiveis) {
+                deficit += (dist[d] - disponiveis);
+                dist[d] = disponiveis;
+                mudou = true;
+            } else if (dist[d] < disponiveis) {
+                comVagas.push(d);
             }
         });
 
-        poolFinal = poolBrutoSimulado;
+        if (deficit > 0 && comVagas.length > 0) {
+            // CORREÇÃO: Usa o resto (%) para garantir que todo o déficit seja distribuído
+            const extra = Math.floor(deficit / comVagas.length);
+            const resto = deficit % comVagas.length;
+            
+            comVagas.forEach((d, index) => {
+                dist[d] += extra + (index < resto ? 1 : 0);
+            });
+            mudou = extra > 0 || resto > 0;
+        }
     }
-
-    iniciarSessaoExecucao(poolFinal, tipoSessao, tempoSegundos);
+    return dist;
 }
+
+
 
 async function iniciarSessaoExecucao(lista, modo, segundos) {
     if (!lista.length) return alert("Nenhuma questão encontrada.");
