@@ -150,49 +150,81 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
         const inéditas = unidades.filter(u => u.count === 0).sort(() => 0.5 - Math.random());
         const respondidas = unidades.filter(u => u.count > 0);
 
+        // Função auxiliar para gerenciar a entrada de uma unidade (pedra ou areia)
+        const tentarAdicionarUnidade = (unidade, alvoDisc) => {
+          let totalAtual = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+          const qtdNovas = unidade.questoes.length;
+
+          if (totalAtual + qtdNovas <= alvoDisc) {
+            // Cabe perfeitamente
+            poolDisc.push(unidade);
+          } else {
+            // Estouro detectado. Lógica de "Pedras e Areia":
+            if (unidade.tipo === 'bloco') {
+              // Tenta remover "areia" (isoladas) para salvar a "pedra" (bloco)
+              while ((totalAtual + qtdNovas > alvoDisc) && poolDisc.some(u => u.tipo === 'isolada')) {
+                  const idxIsolada = poolDisc.findIndex(u => u.tipo === 'isolada');
+                  if (idxIsolada !== -1) {
+                      poolDisc.splice(idxIsolada, 1);
+                      totalAtual = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+                  }
+              }
+            }
+
+            // Após tentar limpar a areia, verifica se o bloco cabe ou se precisa ser quebrado
+            if (totalAtual + qtdNovas <= alvoDisc) {
+              poolDisc.push(unidade);
+            } else {
+              // Se ainda não cabe, quebra a unidade atual (seja bloco ou isolada) para fechar o pote
+              const vagasRestantes = alvoDisc - totalAtual;
+              if (vagasRestantes > 0) {
+                const parteQuebrada = {
+                    tipo: unidade.tipo,
+                    questoes: unidade.questoes.slice(0, vagasRestantes)
+                };
+                poolDisc.push(parteQuebrada);
+              }
+            }
+          }
+        };
+        
+        
         // 1. Processamento de Inéditas com Gestão de Estouro
         for (let u of inéditas) {
-            if (poolDisc.length >= alvo) break;
-            const novas = u.questoes;
-            poolDisc.push(...novas);
-            
-            // CORREÇÃO: Se o bloco inédito estourar o alvo, removemos do próprio bloco (os últimos)
-            if (poolDisc.length > alvo) {
-                console.log(`⚠️ Estouro com inéditas (${poolDisc.length}/${alvo}). Ajustando...`);
-                poolDisc = poolDisc.slice(0, alvo);
-            }
+          let total = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+          if (total >= alvo) break;
+          tentarAdicionarUnidade(u, alvo);
         }
 
         // 2. Processamento de Respondidas (Sorteio Ponderado)
-        if (poolDisc.length < alvo && respondidas.length > 0) {
+        let totalAposIneditas = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+        if (totalAposIneditas < alvo && respondidas.length > 0) {
             const tsValues = respondidas.map(u => u.ts);
             const tMin = Math.min(...tsValues), tMax = Math.max(...tsValues);
             const diff = tMax - tMin || 1;
 
             let candidatos = respondidas.map(u => ({ u, peso: 0.01 + (0.99 * (tMax - u.ts) / diff) }));
 
-            while (poolDisc.length < alvo && candidatos.length > 0) {
-                const soma = candidatos.reduce((a, b) => a + b.peso, 0);
-                let r = Math.random() * soma, acumulado = 0, selIdx = -1;
+            while (poolDisc.reduce((acc, item) => acc + item.questoes.length, 0) < alvo && candidatos.length > 0) {
+                const somaPesos = candidatos.reduce((a, b) => a + b.peso, 0);
+                let r = Math.random() * somaPesos, acumulado = 0, selIdx = -1;
+
                 for (let i = 0; i < candidatos.length; i++) {
                     acumulado += candidatos[i].peso;
                     if (r <= acumulado) { selIdx = i; break; }
                 }
                 if (selIdx === -1) selIdx = candidatos.length - 1;
 
-                const item = candidatos.splice(selIdx, 1)[0].u;
-                const novas = item.questoes;
-                
-                // Regra de Substituição: Novas questões expulsam as "piores" (as primeiras que entraram na pool)
-                poolDisc.push(...novas);
-                while (poolDisc.length > alvo) {
-                    console.log(`🔄 Substituindo questão antiga para manter o alvo de ${alvo}`);
-                    poolDisc.shift(); // Remove a primeira (mais antiga na pool atual)
-                }
+                const selecionado = candidatos.splice(selIdx, 1)[0].u;
+                tentarAdicionarUnidade(selecionado, alvo);
             }
         }
-        resultadoFinal = resultadoFinal.concat(poolDisc);
+
+        // Concatena as questões extraídas das unidades selecionadas
+        const questoesFinaisDisc = poolDisc.flatMap(u => u.questoes);
+        resultadoFinal = resultadoFinal.concat(questoesFinaisDisc);
     }
+
     return resultadoFinal;
 }
 
