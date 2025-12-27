@@ -553,7 +553,8 @@ def verificar_questoes():
         ws.append(
             ["id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto", "dificuldade", "tipo", "alt_a",
              "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem", "comentarios",
-             "texto_apoio"])
+             "texto_apoio", "data_insercao"
+             ])
         wb.save(ARQ_QUESTOES)
 
 
@@ -571,18 +572,23 @@ def carregar_questoes():
             coment = row[18] if len(row) > 18 else ""
             txt_apoio = row[19] if len(row) > 19 else ""
 
-            dados.append({"id": row[0], "banca": row[1], "instituicao": row[2], "ano": row[3], "enunciado": row[4],
-                          "disciplina": row[5], "assunto": row[6], "dificuldade": row[7], "tipo": row[8], "alt_a": row[9],
-                          "alt_b": row[10], "alt_c": row[11], "alt_d": row[12], "alt_e": row[13], "gabarito": row[14],
-                          "respondidas": row[15] or 0, "acertos": row[16] or 0, "imagem": img, "comentarios": coment,
-                          "texto_apoio": txt_apoio})
+            dados.append({
+                "id": row[0], "banca": row[1], "instituicao": row[2], "ano": row[3],
+                "enunciado": row[4], "disciplina": row[5], "assunto": row[6],
+                "dificuldade": row[7], "tipo": row[8], "alt_a": row[9],
+                "alt_b": row[10], "alt_c": row[11], "alt_d": row[12], "alt_e": row[13],
+                "gabarito": row[14], "respondidas": row[15] or 0, "acertos": row[16] or 0,
+                "imagem": row[17] if len(row) > 17 else "",
+                "comentarios": row[18] if len(row) > 18 else "",
+                "texto_apoio": row[19] if len(row) > 19 else "",
+                "data_insercao": row[20] if len(row) > 20 else ""  # Nova Coluna
+            })
         return dados
     except Exception as e:
-        print(f"--- AVISO: Arquivo Excel ilegível ou corrompido ({e}) ---")
+        print(f"Erro ao carregar questões: {e}")
         return []
 
 def salvar_questoes(dados):
-    # 1. Tenta carregar o arquivo existente para PRESERVAR a aba 'textos'
     if os.path.exists(ARQ_QUESTOES):
         try:
             wb = load_workbook(ARQ_QUESTOES)
@@ -605,29 +611,29 @@ def salvar_questoes(dados):
     if "Sheet" in wb.sheetnames and len(wb.sheetnames) > 1:
         del wb["Sheet"]
 
-    ws.append(
-        ["id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto", "dificuldade", "tipo", "alt_a",
-         "alt_b", "alt_c", "alt_d", "alt_e", "gabarito", "respondidas", "acertos", "imagem", "comentarios",
-         "texto_apoio"])
+    ws.append([
+        "id", "banca", "instituicao", "ano", "enunciado", "disciplina", "assunto",
+        "dificuldade", "tipo", "alt_a", "alt_b", "alt_c", "alt_d", "alt_e",
+        "gabarito", "respondidas", "acertos", "imagem", "comentarios",
+        "texto_apoio", "data_insercao"
+    ])
 
     for i in dados:
-        # APLICA A LIMPEZA AQUI: Garante que nada entra sujo no Excel
-        enunciado_limpo = normalizar_texto_para_banco(i.get("enunciado", ""))
-        alt_a = normalizar_texto_para_banco(i.get("alt_a", ""))
-        alt_b = normalizar_texto_para_banco(i.get("alt_b", ""))
-        alt_c = normalizar_texto_para_banco(i.get("alt_c", ""))
-        alt_d = normalizar_texto_para_banco(i.get("alt_d", ""))
-        alt_e = normalizar_texto_para_banco(i.get("alt_e", ""))
-
-        coment_limpo = normalizar_texto_para_banco(i.get("comentarios", ""))
-
-        ws.append(
-            [i["id"], i.get("banca"), i.get("instituicao"), i.get("ano"),
-             enunciado_limpo, i["disciplina"], i["assunto"],
-             i["dificuldade"], i["tipo"],
-             alt_a, alt_b, alt_c, alt_d, alt_e,
-             i["gabarito"], i["respondidas"], i["acertos"], i.get("imagem", ""), coment_limpo,
-             i.get("texto_apoio", "")])
+        ws.append([
+            i["id"], i.get("banca"), i.get("instituicao"), i.get("ano"),
+            normalizar_texto_para_banco(i.get("enunciado", "")),
+            i["disciplina"], i["assunto"], i["dificuldade"], i["tipo"],
+            normalizar_texto_para_banco(i.get("alt_a", "")),
+            normalizar_texto_para_banco(i.get("alt_b", "")),
+            normalizar_texto_para_banco(i.get("alt_c", "")),
+            normalizar_texto_para_banco(i.get("alt_d", "")),
+            normalizar_texto_para_banco(i.get("alt_e", "")),
+            i["gabarito"], i["respondidas"], i["acertos"],
+            i.get("imagem", ""),
+            normalizar_texto_para_banco(i.get("comentarios", "")),
+            i.get("texto_apoio", ""),
+            i.get("data_insercao", "")
+        ])
 
     try:
         wb.save(ARQ_QUESTOES)
@@ -1022,8 +1028,15 @@ def post_q():
         nova["imagem"] = nome_img
     else:
         nova["imagem"] = nova.get("imagem", "")
+
+    # Gerar Data de Inserção automática
+    from datetime import datetime
+    if not nova.get("data_insercao"):
+        nova["data_insercao"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+
     sig = gerar_assinatura(nova)
     if any(gerar_assinatura(q) == sig for q in dados): return jsonify({"erro": "Duplicada"}), 409
+
     if not nova.get("id"):
         nova["id"] = obter_proximo_id([q.get("id") for q in dados])
     nova.update({"respondidas": 0, "acertos": 0});

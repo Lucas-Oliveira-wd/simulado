@@ -584,6 +584,7 @@ function renderizarTabela(lista) {
       
       tb.innerHTML += `<tr>
           <td>${q.id}</td>
+          <td style="font-size:0.75rem; color:#888;">${q.data_insercao || '-'}</td> <td>${q.banca || '-'}</td>
           <td>${q.banca || '-'}</td>
           <td style="font-size:0.85em; color:#555;">${q.instituicao || "-"}</td>
           <td>${q.ano || "-"}</td>
