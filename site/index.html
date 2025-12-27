@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="assets/css/secao-stats.css">
     <link rel="stylesheet" href="assets/css/secao-caderno.css">
     <link rel="stylesheet" href="assets/css/secao-simulado.css">
+    <link rel="stylesheet" href="assets/css/secao-estatisticas.css">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/assets/img/favicon/favicon-16x16.png">
@@ -37,7 +38,6 @@
                 <button id="nav-cadastro" onclick="nav('cadastro')">Cadastrar</button>
                 <button id="nav-banco" onclick="nav('banco')">Banco</button>
                 <button id="nav-praticar" onclick="nav('praticar')">Praticar</button>
-                <button id="nav-prova" onclick="nav('prova')">Simulado</button>
                 <button id="nav-flashcards" onclick="nav('flashcards')">Flashcards</button>
                 <button id="nav-caderno" onclick="nav('caderno')">Caderno</button>
                 <button id="nav-estatisticas" onclick="nav('estatisticas')">Estatísticas</button>
@@ -201,6 +201,71 @@
         </div>
     </section>
 
+    <section id="secao-praticar" class="secao">
+        <div class="container">
+            <div id="prat-config-container">
+                <h2>Praticar Questões</h2>
+                
+                <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 20px; border: 1px solid #ddd; box-shadow: var(--shadow);">
+                    <label style="cursor:pointer; font-weight:bold;">
+                        <input type="radio" name="modo-estudo" value="lista" checked onchange="alternarInterfacePratica('lista')"> Lista de Questões
+                    </label>
+                    <label style="cursor:pointer; font-weight:bold;">
+                        <input type="radio" name="modo-estudo" value="simulado" onchange="alternarInterfacePratica('simulado')"> Simulado Real
+                    </label>
+                </div>
+
+                <div id="prat-config-lista">
+                    <div class="filtro-grid">
+                        <select id="prat-disciplina" onchange="carregarAssuntos('prat')"></select>
+                        <select id="prat-assunto"><option value="">Todos Assuntos</option></select>
+                        <select id="prat-banca"><option value="">Todas as Bancas</option></select>
+                        <input type="number" id="prat-qtd" value="10" placeholder="Qtd">
+                        <div style="display:flex; align-items:center; gap:5px; margin-top:5px">
+                            <input type="checkbox" id="prat-modo-cego">
+                            <label for="prat-modo-cego" style="cursor:pointer">Modo Cego</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="prat-config-simulado" style="display:none">
+                    <div class="filtro-grid">
+                        <div><label>Total de Questões:</label><input type="number" id="prova-total" value="10" min="1"></div>
+                        <div><label>Tempo (minutos):</label><input type="number" id="prova-tempo" value="30" min="1"></div>
+                    </div>
+                    <div id="lista-distribuicao-pratica" style="margin-top:15px; background: var(--bg-card); padding: 10px; border-radius: 5px; border: 1px solid #eee;"></div>
+                    <div id="total-porc-pratica" style="text-align:right; font-weight:bold; margin-top:10px;">Total: 0%</div>
+                </div>
+
+                <button class="btn-acao" onclick="lancarPraticaUnificada()" style="width:100%; margin-top:20px; font-size:1.1rem;">Iniciar Sessão de Estudo</button>
+            </div>
+
+            <div id="prat-resolucao-container" style="display:none">
+                <div id="sessao-barra-tempo" style="display:none; height:6px; background:#eee; margin-bottom:15px; border-radius:10px; overflow:hidden;">
+                    <div id="sessao-tempo-fill" style="height:100%; background:var(--acc); width:100%; transition: width 1s linear;"></div>
+                </div>
+
+                <div class="flex" style="justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 id="sessao-progresso"></h3>
+                    <div style="display:flex; gap:15px; align-items:center">
+                        <span id="sessao-timer" style="font-weight:bold; color:var(--acc); display:none; font-size:1.2rem;">00:00</span>
+                        <button onclick="cancelarSessaoPratica()" class="btn-sec" style="background:#e74c3c; color:white; padding:5px 12px; border:none; border-radius:4px; cursor:pointer">Sair</button>
+                    </div>
+                </div>
+
+                <div class="questao-card" id="container-questao-pratica">
+                    </div>
+
+                <div id="sessao-controles" style="margin-top:25px; display:flex; gap:12px">
+                    <button id="sessao-btn-confirma" class="btn-acao" onclick="confirmarRespostaPratica()">Confirmar Resposta</button>
+                    <button id="sessao-btn-prox" class="btn-acao" onclick="proximaQuestaoPratica()" style="display:none">Próxima Questão</button>
+                </div>
+                
+                <div id="sessao-feedback" style="margin-top:20px; padding:15px; border-radius:8px; display:none"></div>
+            </div>
+        </div>
+    </section>
+
     <section id="secao-flashcards" class="secao">
         <div class="container">
             <div class="flex" style="margin-bottom: 20px;">
@@ -279,83 +344,6 @@
         </div>
     </section>
 
-    <section id="secao-praticar" class="secao">
-        <div class="container">
-            <h2>Praticar</h2>
-            <div id="config-pratica">
-                <div class="filtro-grid">
-                    <select id="prat-disciplina" onchange="carregarAssuntos('prat')"></select>
-                    <select id="prat-assunto">
-                        <option value="">Todos Assuntos</option>
-                    </select>
-                    <select id="prat-banca">
-                        <option value="">Todas as Bancas</option>
-                    </select>
-                    <input type="number" id="prat-qtd" value="10" placeholder="Qtd">
-                    <div style="display:flex; align-items:center; gap:5px; margin-top:5px">
-                        <input type="checkbox" id="prat-modo-cego">
-                        <label for="prat-modo-cego" style="cursor:pointer">Modo Cego</label>
-                    </div>
-                </div>
-                <button class="btn-acao" onclick="iniciarPratica()">Começar Prática</button>
-            </div>
-            <div id="area-pratica" style="display:none">
-                <div class="flex">
-                    <h3 id="prat-progresso"></h3>
-                    <button onclick="cancelarPratica()"
-                        style="background:#e74c3c; border:none; color:white; padding:5px 10px; border-radius:4px; cursor:pointer;">Sair</button>
-                </div>
-                <div class="questao-card">
-                    <div class="info-questao" id="prat-meta"></div>
-                    <div class="enunciado render-html" id="prat-enunciado"></div>
-                    <div id="prat-alternativas"></div>
-                </div>
-                <button id="prat-btn-confirma" class="btn-acao" onclick="confirmaPratica()">Confirmar</button>
-                <button id="prat-btn-prox" class="btn-acao" onclick="proxPratica()"
-                    style="display:none">Próxima</button>
-                <div id="prat-feedback" style="margin-top:15px; font-weight:bold; padding:10px; border-radius:4px;">
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="secao-prova" class="secao">
-        <div class="container">
-            <h2>Simulado Real</h2>
-            <div id="config-prova">
-                <div class="filtro-grid">
-                    <div><label>Total:</label><input type="number" id="prova-total" value="10" min="1"
-                            onchange="prepProva();"></div>
-                    <div><label>Tempo (min):</label><input type="number" id="prova-tempo" value="30" min="1"></div>
-                </div>
-                <div id="lista-distribuicao"></div>
-                <div id="total-porc" style="text-align:right; font-weight:bold;">Total: 0%</div><button class="btn-acao"
-                    onclick="iniciarProva()">Iniciar Prova</button>
-            </div>
-            <div id="area-prova" style="display:none">
-                <div id="barra-tempo-container">
-                    <div id="barra-tempo-fill"></div>
-                </div>
-                <div class="flex">
-                    <h3 id="prova-progresso"></h3><span id="prova-timer"
-                        style="font-weight:bold; color:var(--acc)">00:00</span>
-                </div>
-                <div class="questao-card">
-                    <div class="info-questao" id="prova-meta"></div>
-                    <div class="enunciado render-html" id="prova-enunciado"></div>
-                    <div id="prova-alternativas"></div>
-                </div><button class="btn-acao" onclick="proxProva()">Próxima / Finalizar</button>
-            </div>
-            <div id="resultado-prova" style="display:none; text-align:center;">
-                <h2>Resultado</h2>
-                <div style="font-size:3em; font-weight:bold; color:var(--primary)" id="nota-prova"></div>
-                <p id="msg-prova"></p>
-                <div id="detalhes-prova" style="text-align:left; margin-top:20px;"></div><button class="btn-acao"
-                    onclick="prepProva(); nav('prova');">Novo Simulado</button>
-            </div>
-        </div>
-    </section>
-
     <section id="secao-estatisticas" class="secao">
         <div class="container">
             <div class="graf-geral">
@@ -382,7 +370,7 @@
                 </div>
 
                 <h3>🕒 Últimas Respostas</h3>
-                <div style="overflow-x: auto; background: #fff; border-radius: 8px; box-shadow: var(--shadow);">
+                <div class="row-list">
                     <table id="tabela-historico-recente" style="width: 100%; font-size: 0.85rem;">
                         <thead>
                             <tr style="background: #f8f9fa;">

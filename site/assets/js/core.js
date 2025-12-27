@@ -9,9 +9,8 @@ if (localStorage.getItem("temaEscuro") === "true") document.body.classList.add("
 
 const API = "http://localhost:5000";
 let db = [], opcoes = {}, flashDb = [], flashPool = [], flashIdx = 0;
-let pratPool = [], pratIdx = 0, pratAcertos = 0;
-let provaPool = [], provaIdx = 0, provaRespostas = [], provaTempoTotal = 0, provaIntervalo = null;
 let checkDupTimeout = null;
+let sessao = { pool: [], idx: 0, acertos: 0, modo: '', timer: null, tempo: 0 };
 let foco = null, ordCol = { c: null, d: 'asc' };
 
 const el = id => document.getElementById(id);
@@ -22,12 +21,10 @@ const nav = n => {
     document.querySelectorAll('.secao').forEach(s => s.style.display = 'none');
     el(`secao-${n}`).style.display = 'block';
     document.querySelectorAll('nav button').forEach(b => b.classList.remove('ativa'));
-    el(`nav-${n}`).classList.add('ativa');
+    if(el(`nav-${n}`)) el(`nav-${n}`).classList.add('ativa');
 
     if (n === 'banco') carrTab();
     if (n === 'caderno') carregarCaderno();
-    if (n === 'praticar' && pratPool.length === 0) prepPratica();
-    if (n === 'prova') prepProva();
     if (n === 'estatisticas') {
         graf();
         renderizarHistoricoStats()

@@ -1,3 +1,265 @@
+// VARIÁVEIS DE ESTADO
+let sessaoAtiva = { pool: [], idx: 0, acertos: 0, modo: '', timer: null, tempo: 0 };
+
+// Alterna entre Lista e Simulado na tela de configuração
+function alternarInterfacePratica(modo) {
+    el('prat-config-lista').style.display = modo === 'lista' ? 'block' : 'none';
+    el('prat-config-simulado').style.display = modo === 'simulado' ? 'block' : 'none';
+    
+    if (modo === 'simulado') {
+        renderizarGradeProporcao();
+    }
+}
+
+// CORREÇÃO: Carrega as disciplinas para escolha de %
+function renderizarGradeProporcao() {
+    const div = el("lista-distribuicao-pratica");
+    if (!div) return;
+    div.innerHTML = "";
+    opcoes.disciplinas.forEach(d => {
+        div.innerHTML += `
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;">
+                <label style="flex-grow:1">${d}:</label>
+                <input type="number" class="inp-dist-prat" data-disc="${d}" value="0" min="0" max="100" 
+                       onchange="calcTotalPorcentagemPratica()" style="width:60px"> %
+            </div>`;
+    });
+}
+
+function calcTotalPorcentagemPratica() {
+    let t = 0;
+    document.querySelectorAll(".inp-dist-prat").forEach(i => t += parseInt(i.value || 0));
+    el("total-porc-pratica").innerText = `Total: ${t}%`;
+    el("total-porc-pratica").style.color = t === 100 ? "var(--green)" : "var(--red)";
+}
+
+// Gatilho que decide qual pool de questões montar
+function lancarPraticaUnificada() {
+    const modoRadio = document.querySelector('input[name="modo-estudo"]:checked').value;
+    let poolFinal = [];
+    let tipoSessao = 'praticar';
+    let tempoSegundos = 0;
+
+    if (modoRadio === 'lista') {
+        const dis = el("prat-disciplina").value;
+        const ban = el("prat-banca").value;
+        const ass = el("prat-assunto").value;
+        const qtd = parseInt(el("prat-qtd").value);
+
+        let filtradas = db.filter(q => 
+            (dis === "" || q.disciplina === dis) &&
+            (ban === "" || q.banca === ban) &&
+            (ass === "" || q.assunto === ass)
+        );
+
+        let agrupadasEEmbaralhadas = embaralharAgrupado(filtradas);
+        poolFinal = filtradas.sort(() => 0.5 - Math.random()).slice(0, qtd);
+        if (el("prat-modo-cego").checked) tipoSessao = 'cego';
+
+    } else { // MODO SIMULADO
+        let totalPerc = 0;
+        document.querySelectorAll(".inp-dist-prat").forEach(i => totalPerc += parseInt(i.value || 0));
+        if (totalPerc !== 100) return alert("A soma das porcentagens deve ser 100%");
+
+        const qtdTotal = parseInt(el("prova-total").value);
+        tempoSegundos = parseInt(el("prova-tempo").value) * 60;
+        tipoSessao = 'simulado';
+
+        let poolBrutoSimulado = [];
+
+        document.querySelectorAll(".inp-dist-prat").forEach(i => {
+            let perc = parseInt(i.value || 0);
+            if (perc > 0) {
+                let disc = i.dataset.disc;
+                let qtdDisc = Math.round((perc / 100) * qtdTotal);
+
+                let questoesDisc = db.filter(q => q.disciplina === disc);
+
+                let agrupadasDisc = embaralharAgrupado(questoesDisc);
+                poolBrutoSimulado = poolBrutoSimulado.concat(agrupadasDisc.slice(0, qtdDisc));
+            }
+        });
+
+        poolFinal = poolBrutoSimulado;
+    }
+
+    iniciarSessaoExecucao(poolFinal, tipoSessao, tempoSegundos);
+}
+
+async function iniciarSessaoExecucao(lista, modo, segundos) {
+    if (!lista.length) return alert("Nenhuma questão encontrada.");
+    
+    // Agrupa por texto de apoio
+    sessaoAtiva = { pool: lista, idx: 0, acertos: 0, modo: modo, tempo: segundos };
+
+    // Troca de Container
+    el('prat-config-container').style.display = 'none';
+    el('prat-resolucao-container').style.display = 'block';
+
+    // Configura Cronômetro
+    if (modo === 'simulado') {
+        el("sessao-timer").style.display = 'block';
+        el("sessao-barra-tempo").style.display = 'block';
+        iniciarTimerPratica();
+    } else {
+        el("sessao-timer").style.display = 'none';
+        el("sessao-barra-tempo").style.display = 'none';
+    }
+
+    renderizarQuestaoPratica();
+}
+
+function renderizarQuestaoPratica() {
+    let q = sessaoAtiva.pool[sessaoAtiva.idx];
+    el("sessao-progresso").innerText = `Questão ${sessaoAtiva.idx + 1} de ${sessaoAtiva.pool.length}`;
+    
+    // Busca texto de apoio no cache global
+    const txt = cacheTextos.find(t => String(t.id) === String(q.texto_apoio));
+    
+    // Monta o cabeçalho e corpo da questão
+    let htmlCorpo = `
+        <div class="info-questao" style="margin-bottom:15px; font-size:0.9rem; color:var(--sec)">
+            <b>${q.banca} (${q.ano || "-"})</b> | ${q.disciplina} > ${q.assunto}
+        </div>
+        ${txt ? `
+            <div class="texto-apoio-box" style="margin-bottom:20px; border-left: 4px solid var(--purple); padding-left:15px;">
+                <h4 style="margin-top:0">${txt.titulo}</h4>
+                <div style="font-size:0.95rem; line-height:1.6">${txt.conteudo.replace(/\n/g, '<br>')}</div>
+            </div>
+        ` : ''}
+        <div class="enunciado render-html" style="font-size:1.1rem; line-height:1.5; margin-bottom:20px;">
+            ${q.imagem ? `<img src="${API}/img/q_img/${q.imagem}" class="questao-img" style="max-width:100%; display:block; margin:10px 0;">` : ''}
+            ${q.enunciado}
+        </div>
+        <div class="alternativas" id="sessao-alternativas-container">
+            ${(q.tipo === "CE" ? ["C", "E"] : ["A", "B", "C", "D", "E"]).map(l => {
+                let val = q.tipo === "CE" ? (l === "C" ? "Certo" : "Errado") : q[`alt_${l.toLowerCase()}`];
+                if (!val) return '';
+                
+                // Restaura a estrutura com Radio Button e Botão de Riscar
+                return `
+                    <div class="alternativa-wrapper" onclick="selecionarOpcaoPratica(this, '${l}')">
+                        <span class="btn-riscar" onclick="event.stopPropagation(); this.parentElement.classList.toggle('riscado-ativo')" title="Riscar alternativa">✖</span>
+                        <input type="radio" name="opt-prat" value="${l}" style="margin:0 10px; pointer-events:none">
+                        <span class="render-html"><b>${l})</b> ${val}</span>
+                    </div>`;
+            }).join('')}
+        </div>
+    `;
+    
+    el("container-questao-pratica").innerHTML = htmlCorpo;
+    
+    // Reset de feedback e botões
+    el("sessao-feedback").style.display = "none";
+    el("sessao-btn-confirma").style.display = "block";
+    el("sessao-btn-prox").style.display = "none";
+    
+    window.scrollTo(0, 0);
+}
+
+async function confirmarRespostaPratica() {
+    const opt = document.querySelector('input[name="opt-prat"]:checked');
+    if (!opt) return alert("Selecione uma alternativa.");
+
+    const q = sessaoAtiva.pool[sessaoAtiva.idx];
+    const acertou = opt.value === q.gabarito;
+    if (acertou) sessaoAtiva.acertos++;
+
+    // Salva no histórico
+    await salvarProgressoQuestao(q, acertou);
+
+    if (sessaoAtiva.modo === 'praticar') {
+        const f = el("sessao-feedback");
+        f.style.display = "block";
+        f.className = acertou ? "feedback-correto" : "feedback-errado";
+
+        let htmlFeedback = `<div>${acertou ? 'Correto! ✅' : 'Errado! ❌ Gabarito: ' + q.gabarito}</div>`;
+        htmlFeedback += `
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="btn-padrao" onclick="abrirComentarioSessao()">💬 Explicação / PDF</button>
+                <button class="btn-padrao" onclick="abrirAnotacaoSessao()" style="background:var(--purple); color:white;">📓 Anotar</button>
+            </div>`;
+        
+        f.innerHTML = htmlFeedback;
+
+        el("sessao-btn-confirma").style.display = "none";
+        el("sessao-btn-prox").style.display = "block";
+    } else {
+        proximaQuestaoPratica();
+    }
+}
+
+// Abre o comentário/explicação da questão que está na tela da sessão
+function abrirComentarioSessao() {
+    const q = sessaoAtiva.pool[sessaoAtiva.idx];
+    if (!q) return;
+
+    // Reaproveita a lógica de comentários que já existe no seu questoes.js
+    // Se quiser usar o modal simples:
+    questaoAtualComent = q; 
+    el("modal-comentario").style.display = "block";
+    let texto = q.comentarios || "Nenhum comentário registrado.";
+    el("view-comentario").innerHTML = texto.replace(/\n/g, "<br>");
+    
+    el("view-comentario").style.display = "block";
+    el("edit-comentario").style.display = "none";
+    el("btn-salvar-coment").style.display = "none";
+    el("btn-editar-coment").style.display = "inline-block";
+}
+
+// Abre o modal de anotação preenchido com os dados da sessão atual
+function abrirAnotacaoSessao() {
+    const q = sessaoAtiva.pool[sessaoAtiva.idx];
+    if (!q) return;
+
+    el("anotacao-info-questao").innerText = `Questão ID: ${q.id} | ${q.disciplina} > ${q.assunto}`;
+    el("nota-texto").value = ""; 
+    el("modal-anotacao").style.display = "flex";
+    el("nota-texto").focus();
+}
+
+function proximaQuestaoPratica() {
+    sessaoAtiva.idx++;
+    if (sessaoAtiva.idx < sessaoAtiva.pool.length) renderizarQuestaoPratica();
+    else finalizarSessaoPratica();
+}
+
+function finalizarSessaoPratica() {
+    if (sessaoAtiva.timer) clearInterval(sessaoAtiva.timer);
+    alert(`Fim! Acertos: ${sessaoAtiva.acertos}/${sessaoAtiva.pool.length}`);
+    cancelarSessaoPratica();
+}
+
+function cancelarSessaoPratica() {
+    el('prat-config-container').style.display = 'block';
+    el('prat-resolucao-container').style.display = 'none';
+}
+
+// Garante que o clique na div marque o radio button e mude a cor
+function selecionarOpcaoPratica(elWrap, val) {
+    // Remove seleção de todos
+    document.querySelectorAll("#sessao-alternativas-container .alternativa-wrapper").forEach(e => e.classList.remove("selected"));
+    
+    // Adiciona ao clicado
+    elWrap.classList.add("selected");
+    
+    // Marca o radio input interno
+    const radioInput = elWrap.querySelector('input[type="radio"]');
+    if (radioInput) radioInput.checked = true;
+}
+
+function iniciarTimerPratica() {
+    let total = sessaoAtiva.tempo;
+    sessaoAtiva.timer = setInterval(() => {
+        sessaoAtiva.tempo--;
+        let m = Math.floor(sessaoAtiva.tempo/60), s = sessaoAtiva.tempo%60;
+        el("sessao-timer").innerText = `${m}:${s < 10 ? '0' + s : s}`;
+        el("sessao-tempo-fill").style.width = `${(sessaoAtiva.tempo/total)*100}%`;
+        if (sessaoAtiva.tempo <= 0) finalizarSessaoPratica();
+    }, 1000);
+}
+
+
 // --- FLASHCARDS ---
 function initFC() {
   toggleModeFC("estudo");
@@ -240,168 +502,135 @@ async function respFC(acertou) {
   renderCard();
 }
 
-// --- MODO PRATICAR ---
+// --- MODO PRATICAR/SIMULADO ---
 
-// Abre o modal preenchendo com os dados da questão atual
-function prepararNotaFlashcard() {
-    const qAtual = pratPool[pratIdx];
-    if (!qAtual) return;
+let sessaoAtual = {
+    questoes: [],
+    indice: 0,
+    acertos: 0,
+    modo: '', // 'praticar', 'simulado'
+    config: {} 
+};
 
-    // Preenche a frente com o enunciado e o verso com o comentário/gabarito
-    el("fc-p-frente").value = qAtual.enunciado;
-    el("fc-p-verso").value = `Gabarito: ${qAtual.gabarito}\n\n${qAtual.comentarios || ''}`;
-    
-    el("modal-fc-pratica").style.display = "flex";
-}
+/**
+ * Motor Unificado de Questões
+ * @param {Array} lista - Questões filtradas ou sorteadas
+ * @param {String} modo - 'praticar' ou 'simulado'
+ */
+async function iniciarSessaoEstudo(lista, modo) {
+    if (!lista.length) return alert("Nenhuma questão encontrada.");
 
-// Salva via API sem mudar de página
-async function salvarFlashcardRapido() {
-    const payload = {
-        disciplina: pratPool[pratIdx].disciplina,
-        assunto: pratPool[pratIdx].assunto,
-        frente: el("fc-p-frente").value,
-        verso: el("fc-p-verso").value
+    // 1. Lógica de Agrupamento por Texto (Melhoria do Praticar)
+    // Move questões com o mesmo texto de apoio para ficarem juntas
+    lista.sort((a, b) => {
+        if (a.texto_apoio && b.texto_apoio) return a.texto_apoio.localeCompare(b.texto_apoio);
+        return 0;
+    });
+
+    sessaoAtual = {
+        questoes: lista,
+        indice: 0,
+        acertos: 0,
+        modo: modo,
+        config: {
+            mostrarFeedback: modo === 'praticar',
+            tempo: modo === 'simulado' ? 240 : 0 // Exemplo: 4h para simulado
+        }
     };
 
-    try {
-        const resp = await fetch(`${API}/flashcards`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        if (resp.ok) {
-            alert("✅ Flashcard salvo com sucesso!");
-            el('modal-fc-pratica').style.display = 'none';
-        }
-    } catch (e) {
-        alert("Erro ao salvar card.");
+    renderizarQuestaoSessao();
+    nav('praticar'); // Ambos usam a mesma tela de visualização agora
+}
+
+function renderizarQuestaoSessao() {
+    const q = sessaoAtual.questoes[sessaoAtual.indice];
+    const container = el("container-questao"); // Onde a questão aparece
+    
+    // Resolve o problema do Texto de Apoio sumido
+    const temTexto = q.texto_conteudo && q.texto_conteudo.trim() !== "";
+    
+    container.innerHTML = `
+        <div class="header-questao">
+            <span>Questão ${sessaoAtual.indice + 1} de ${sessaoAtual.questoes.length}</span>
+            <small>${q.banca} (${q.ano}) | ${q.disciplina} > ${q.assunto}</small>
+        </div>
+
+        ${temTexto ? `
+            <div class="tabs-texto">
+                <button class="tab-btn ativa" onclick="mudarTabQuestao('texto')">Texto de Apoio</button>
+                <button class="tab-btn" onclick="mudarTabQuestao('enunciado')">Enunciado</button>
+            </div>
+            <div id="conteudo-texto" class="texto-apoio-box">
+                <h4 style="margin-top:0">${q.texto_titulo}</h4>
+                ${q.texto_conteudo}
+            </div>
+        ` : ''}
+
+        <div id="conteudo-enunciado" class="enunciado" style="${temTexto ? 'display:none' : 'display:block'}">
+            <p>${q.enunciado}</p>
+            <div class="alternativas">
+                ${['A','B','C','D','E'].map(letra => {
+                    const alt = q[`alt_${letra.toLowerCase()}`];
+                    if(!alt) return '';
+                    return `
+                        <label class="alt-item">
+                            <input type="radio" name="resp" value="${letra}">
+                            <span>${letra}) ${alt}</span>
+                        </label>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+
+        <div class="footer-sessao">
+            <button class="btn-prim" id="btn-confirmar" onclick="confirmarRespostaSessao()">Confirmar</button>
+            <button class="btn-sec" onclick="proximaQuestaoSessao()" id="btn-proxima" style="display:none">Próxima</button>
+        </div>
+        <div id="feedback-sessao" style="display:none"></div>
+    `;
+}
+
+async function confirmarRespostaSessao() {
+    const escolhida = document.querySelector('input[name="resp"]:checked');
+    if (!escolhida) return alert("Selecione uma alternativa.");
+
+    const q = sessaoAtual.questoes[sessaoAtual.indice];
+    const acertou = escolhida.value.toUpperCase() === q.gabarito.toUpperCase();
+
+    // 1. REGISTRO NO HISTÓRICO (O que estava faltando no simulado)
+    // Chama sua função já existente que grava no Excel de histórico e atualiza acumulados
+    await salvarProgressoQuestao(q, acertou);
+
+    if (sessaoAtual.config.mostrarFeedback) {
+        exibirFeedbackVisual(acertou, q.gabarito, q.comentarios);
+    } else {
+        // No modo Simulado (cego), apenas avança ou marca como respondida
+        proximaQuestaoSessao();
     }
 }
 
-function prepPratica() {
-  el("config-pratica").style.display = "block";
-  el("area-pratica").style.display = "none";
-}
+function gerarSimuladoProporcional() {
+    // Definição das proporções padrão (Exemplo Petrobras)
+    const grade = {
+        "Português": 10,
+        "Inglês": 10,
+        "Conhecimentos Específicos": 40,
+        "Estatística": 10
+    };
 
-function iniciarPratica() {
-  let dis = el("prat-disciplina").value,
-    ban = el("prat-banca").value,
-    ass = el("prat-assunto").value,
-    qtd = parseInt(el("prat-qtd").value);
-
-  let pool = db.filter(
-    (q) =>
-      (dis === "" || q.disciplina === dis) &&
-      (ban === "" || q.banca === ban) &&
-      (ass === "" || q.assunto === ass)
-  );
-
-  if (pool.length === 0) return alert("Nenhuma questão encontrada");
-
-  // Primeiro embaralha agrupado, DEPOIS corta a quantidade
-  let poolOrdenado = embaralharAgrupado(pool);
-
-  pratPool = poolOrdenado.slice(0, qtd);
-
-  pratIdx = 0;
-  pratAcertos = 0;
-  el("config-pratica").style.display = "none";
-  el("area-pratica").style.display = "block";
-  renPratica();
-}
-
-function renPratica() {
-  let q = pratPool[pratIdx];
-
-  // --- LÓGICA DE CONTAGEM DO TEXTO ---
-  let htmlAvisoTexto = "";
-  
-  if (q.texto_apoio && q.texto_conteudo) {
-      // Conta quantas questões NO POOL ATUAL (pratPool) pertencem a esse mesmo texto
-      let questoesDoTexto = pratPool.filter(x => x.texto_apoio === q.texto_apoio);
-      let totalDoTexto = questoesDoTexto.length;
-      
-      // Descobre qual é a posição desta questão dentro do grupo do texto
-      // (Ex: Esta é a 2ª questão de 5 sobre este texto)
-      let indiceNoGrupo = questoesDoTexto.findIndex(x => x.id === q.id) + 1;
-
-      if (totalDoTexto > 1) {
-          htmlAvisoTexto = `<div>
-              📖 Questão <b>${indiceNoGrupo}</b> de <b>${totalDoTexto}</b> vinculadas a este texto
-          </div>`;
-      }
-  }
-  // -----------------------------------
-
-  el("prat-progresso").innerText = `Questão ${pratIdx + 1} de ${
-    pratPool.length
-  }`;
-  el("prat-meta").innerHTML = `<b>${q.banca}</b> (${q.ano || "-"}) | ${
-    q.instituicao || "-"
-  } | ${q.disciplina} > ${q.assunto}`;
-
-  let htmlImg = q.imagem
-    ? `<img src="${API}/img/q_img/${q.imagem}" class="questao-img">`
-    : "";
-
-  let htmlTexto = "";
-  // Note que usamos "texto_conteudo", que foi injetado pelo backend via JOIN
-  if (q.texto_conteudo) { 
-    // Mapeia linhas para parágrafos com classe CSS, mantendo quebras vazias
-    let textoFormatado = q.texto_conteudo
-      .split('\n')
-      .map(linha => {
-          if (linha.trim() !== '') {
-              // Usa a classe .texto-paragrafo definida no CSS
-              return `<p class="texto-paragrafo">${linha}</p>`;
-          } else {
-              return '<br>';
-          }
-      })
-      .join('');
+    let simulado = [];
     
-    htmlTexto = `
-        <div class="texto-apoio-box">
-            <div class="texto-apoio-header">
-              <div class="texto-header-info">
-                  <span class="texto-label">📄 Texto de Referência</span>
-                  <span class="texto-titulo">${(q.texto_titulo || '').trim() || 'Sem Título'}</span>
-              </div>
-              ${htmlAvisoTexto} 
-            </div>
-            <div class="texto-apoio-content">
-                ${textoFormatado}
-            </div>
-        </div>`;
-  } 
-  
-  el("prat-enunciado").innerHTML = htmlTexto + htmlImg + `<div style="font-size:1.1em; line-height:1.5">${q.enunciado}</div>`;
+    for (const [disc, qtd] of Object.entries(grade)) {
+        const filtradas = db.filter(q => q.disciplina === disc);
+        // Sorteia questões e adiciona ao bolo
+        const sorteadas = filtradas.sort(() => 0.5 - Math.random()).slice(0, qtd);
+        simulado = simulado.concat(sorteadas);
+    }
 
-  let div = el("prat-alternativas");
-  div.innerHTML = "";
-
-  if (q.tipo === "CE") {
-    radio(div, "C", "Certo", "prat");
-    radio(div, "E", "Errado", "prat");
-  } else {
-    ["A", "B", "C", "D", "E"].forEach((l) => {
-      if (q[`alt_${l.toLowerCase()}`])
-        radio(div, l, q[`alt_${l.toLowerCase()}`], "prat");
-    });
-  }
-
-  el("prat-feedback").innerHTML = "";
-  el("prat-feedback").style.background = "transparent";
-  el("prat-btn-confirma").style.display = "block";
-  el("prat-btn-prox").style.display = "none";
-
-  // Rola para o topo da questão suavemente (importante se o texto for longo)
-  el("area-pratica").scrollIntoView({ behavior: 'smooth' });
+    iniciarSessaoEstudo(simulado, 'simulado');
 }
 
-function radio(d, v, t, n) {
-  d.innerHTML += `<div class="alternativa-wrapper" onclick="selecionarAlternativa(this, '${n}', '${v}')"><span class="btn-riscar" onclick="event.stopPropagation();this.parentElement.classList.toggle('riscado-ativo')">✖</span><input type="radio" name="${n}" value="${v}" style="margin:0 10px; pointer-events:none"><span class="render-html">${v}) ${t}</span></div>`;
-}
+
 function selecionarAlternativa(elWrapper, name, val) {
   document
     .querySelectorAll(`input[name='${name}']`)
@@ -412,58 +641,6 @@ function selecionarAlternativa(elWrapper, name, val) {
   elWrapper.classList.add("selected");
   elWrapper.querySelector("input").checked = true;
   if (name === "prova") provaRespostas[provaIdx] = val;
-}
-function confirmaPratica() {
-  let s = document.querySelector('input[name="prat"]:checked');
-  if (!s) return alert("Selecione");
-
-  let q = pratPool[pratIdx], acertou = s.value === q.gabarito;
-
-  // --- LÓGICA MODO CEGO ---
-  let modoCego = el("prat-modo-cego").checked;
-  
-  if (modoCego) {
-      // No modo cego, apenas registra, não dá feedback visual
-      if (acertou) pratAcertos++;
-      // Pula direto para a lógica de salvar progresso silenciosamente
-      salvarProgressoQuestao(q, acertou);
-      proxPratica(); 
-      return; // Sai da função para não mostrar feedback visual
-  }
-  // -------------------------
-
-  let f = el("prat-feedback");
-  let textoGab = q.gabarito;
-  if (q.tipo === "CE") {
-      textoGab = q.gabarito === "C" ? "Certo" : "Errado";
-  }
-
-  f.innerHTML = acertou ? "Correto! ✅" : `Errado! ❌ Gabarito: ${textoGab}`;
-
-
-  f.style.background = acertou ? "#d4edda" : "#f8d7da";
-  f.style.color = "#000"; // Força preto para legibilidade no feedback
-  f.style.padding = "10px";
-  f.style.borderRadius = "5px";
-
-  // O botão de Anotar aparece SEMPRE (acerto ou erro)
-  let htmlBotoes = `<div style="margin-top:10px; display:flex; gap:10px;">`;
-  htmlBotoes += `<button class="btn-padrao" onclick="abrirComentarioPratica()">💬 Explicação / PDF</button>`;
-  htmlBotoes += `<button class="btn-padrao" onclick="abrirModalAnotacao()" style="background:var(--purple); color:white;">📓 Anotar</button>`;
-  htmlBotoes += `</div>`;
-  
-
-  // Insere os botões no feedback
-  f.innerHTML += `<div style="margin-top:5px">${htmlBotoes}</div>`;
-
-  if (acertou) {
-    pratAcertos++;
-  }
-
-  salvarProgressoQuestao(q, acertou);
-
-  el("prat-btn-confirma").style.display = "none";
-  el("prat-btn-prox").style.display = "block";
 }
 
 // Funções de Suporte ao Caderno
@@ -476,7 +653,7 @@ function abrirModalAnotacao() {
 }
 
 async function enviarParaCaderno() {
-    const q = pratPool[pratIdx];
+    const q = sessaoAtiva.pool[sessaoAtiva.idx];
     const nota = el("nota-texto").value;
 
     if(!nota.trim()) return alert("Escreva algo para anotar.");
@@ -498,8 +675,12 @@ async function enviarParaCaderno() {
         if (resp.ok) {
             alert("📓 Anotação salva com sucesso!");
             el("modal-anotacao").style.display = "none";
+            if (typeof carregarCaderno === "function") carregarCaderno();
+        } else {
+            alert("Erro ao salvar no servidor.");
         }
     } catch (e) {
+        console.error("Erro na conexão:", e);
         alert("Erro ao salvar anotação.");
     }
 };
@@ -757,18 +938,6 @@ async function salvarComentarioApi() {
   el("btn-editar-coment").style.display = "inline-block";
 }
 
-function proxPratica() {
-  pratIdx++;
-  if (pratIdx < pratPool.length) renPratica();
-  else {
-    alert(`Fim! Acertos: ${pratAcertos}/${pratPool.length}`);
-    nav("praticar");
-  }
-}
-function cancelarPratica() {
-  if (confirm("Sair?")) nav("praticar");
-}
-
 // --- MODO SIMULADO / PROVA ---
 function prepProva() {
   el("resultado-prova").style.display = "none";
@@ -787,139 +956,6 @@ function calcDistribuicao() {
     .forEach((i) => (total += parseInt(i.value || 0)));
   el("total-porc").innerText = `Total: ${total}%`;
   el("total-porc").style.color = total === 100 ? "green" : "red";
-}
-function iniciarProva() {
-  let totalPerc = 0;
-  document
-    .querySelectorAll(".inp-dist")
-    .forEach((i) => (totalPerc += parseInt(i.value || 0)));
-  if (totalPerc !== 100) return alert("A soma das porcentagens deve ser 100%");
-  let qtdTotal = parseInt(el("prova-total").value);
-  provaTempoTotal = parseInt(el("prova-tempo").value) * 60;
-  provaPool = [];
-  document.querySelectorAll(".inp-dist").forEach((i) => {
-    let perc = parseInt(i.value || 0);
-    if (perc > 0) {
-      let disc = i.dataset.disc;
-      let qtdDisc = Math.round((perc / 100) * qtdTotal);
-      let questoesDisc = db
-        .filter((q) => q.disciplina === disc)
-        .sort(() => 0.5 - Math.random())
-        .slice(0, qtdDisc);
-      provaPool = provaPool.concat(questoesDisc);
-    }
-  });
-  if (provaPool.length === 0) return alert("Nenhuma questão disponível.");
-  provaPool = provaPool.sort(() => 0.5 - Math.random());
-  provaIdx = 0;
-  provaRespostas = [];
-  el("config-prova").style.display = "none";
-  el("area-prova").style.display = "block";
-  el("barra-tempo-container").style.display = "block";
-  iniciarTimer();
-  renProva();
-}
-function iniciarTimer() {
-  let tempoRestante = provaTempoTotal;
-  if (provaIntervalo) clearInterval(provaIntervalo);
-  provaIntervalo = setInterval(() => {
-    tempoRestante--;
-    let min = Math.floor(tempoRestante / 60),
-      sec = tempoRestante % 60;
-    el("prova-timer").innerText = `${min}:${sec < 10 ? "0" + sec : sec}`;
-    el("barra-tempo-fill").style.width = `${
-      (tempoRestante / provaTempoTotal) * 100
-    }%`;
-    if (tempoRestante <= 0) {
-      clearInterval(provaIntervalo);
-      finalizarProva();
-    }
-  }, 1000);
-}
-function renProva() {
-  let q = provaPool[provaIdx];
-  el("prova-progresso").innerText = `Questão ${provaIdx + 1} de ${
-    provaPool.length
-  }`;
-  el("prova-meta").innerText = `${q.banca} (${q.ano || "-"}) | ${
-    q.instituicao || "-"
-  } | ${q.disciplina} > ${q.assunto}`;
-  let htmlImg = q.imagem
-    ? `<img src="${API}/img/q_img/${q.imagem}" class="questao-img">`
-    : "";
-  el("prova-enunciado").innerHTML = htmlImg + q.enunciado;
-  let div = el("prova-alternativas");
-  div.innerHTML = "";
-  let respSalva = provaRespostas[provaIdx] || null;
-  if (q.tipo === "CE") {
-    radioProva(div, "C", "Certo", respSalva);
-    radioProva(div, "E", "Errado", respSalva);
-  } else
-    ["A", "B", "C", "D", "E"].forEach((l) => {
-      if (q[`alt_${l.toLowerCase()}`])
-        radioProva(div, l, q[`alt_${l.toLowerCase()}`], respSalva);
-    });
-}
-function radioProva(div, val, txt, selecionado) {
-  let cls = selecionado === val ? "selected" : "";
-  div.innerHTML += `<div class="alternativa-wrapper ${cls}" onclick="selecionarAlternativa(this, 'prova', '${val}')"><span class="btn-riscar" onclick="event.stopPropagation();this.parentElement.classList.toggle('riscado-ativo')">✖</span><input type="radio" name="prova" value="${val}" ${
-    selecionado === val ? "checked" : ""
-  } style="margin:0 10px; pointer-events:none"><span class="render-html">${val}) ${txt}</span></div>`;
-}
-function proxProva() {
-  provaIdx++;
-  if (provaIdx < provaPool.length) {
-    renProva();
-  } else {
-    if (confirm("Finalizar Prova?")) finalizarProva();
-    else provaIdx--;
-  }
-}
-function finalizarProva() {
-  clearInterval(provaIntervalo);
-  el("area-prova").style.display = "none";
-  el("resultado-prova").style.display = "block";
-  let acertos = 0;
-  let html = "<ul style='list-style:none; padding:0'>";
-  let acertosPorDisc = {};
-  provaPool.forEach((q, i) => {
-    let resp = provaRespostas[i],
-      correta = q.gabarito,
-      isCorrect = resp === correta;
-    if (isCorrect) acertos++;
-    if (!acertosPorDisc[q.disciplina])
-      acertosPorDisc[q.disciplina] = { total: 0, acertos: 0 };
-    acertosPorDisc[q.disciplina].total++;
-    if (isCorrect) acertosPorDisc[q.disciplina].acertos++;
-    let realQ = db.find((d) => d.id === q.id);
-    if (realQ) {
-      realQ.respondidas = (realQ.respondidas || 0) + 1;
-      if (isCorrect) realQ.acertos = (realQ.acertos || 0) + 1;
-      fetch(`${API}/questoes`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(realQ),
-      });
-    }
-    html += `<li style="margin-bottom:10px; border-bottom:1px solid #eee; padding:5px;"><b>Q${i+1} (${q.disciplina}):</b> Sua: <b style="color:${isCorrect ? "green" : "red"}">${resp || "-"}</b> | Gab: <b>${correta}</b></li>`;
-  });
-  let discHtml =
-    '<h3>Desempenho por Disciplina</h3><ul style="list-style:none; padding:0;">';
-  for (const disc in acertosPorDisc) {
-    let stats = acertosPorDisc[disc];
-    let perc = (stats.acertos / stats.total) * 100;
-    discHtml += `<li style="margin-bottom:5px;"><b>${disc}:</b> ${
-      stats.acertos
-    } / ${stats.total} (${perc.toFixed(1)}%)</li>`;
-  }
-  discHtml += "</ul>";
-  el("nota-prova").innerText = `${acertos}/${provaPool.length}`;
-  el("msg-prova").innerText =
-    acertos / provaPool.length >= 0.7
-      ? "Aprovado! 🚀"
-      : "Continue Estudando 📚";
-  el("detalhes-prova").innerHTML = discHtml + html;
-  init();
 }
 
 // --- ESTATÍSTICAS ---
