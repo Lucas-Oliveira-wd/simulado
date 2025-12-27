@@ -274,7 +274,7 @@ function abrirPopupPreviewReal(index) {
         el("conteudo-renderizado").innerHTML = `
             <div class="preview-q-enunciado" style="margin-bottom:20px; line-height:1.6; white-space: pre-wrap;">${enunciado}</div>
             ${imgHtml} <div class="preview-q-alternativas" style="margin-bottom:20px;">${altsHtml}</div>
-            <div class="preview-q-comentarios" style="background:#f9f9f9; padding:15px; border-left:4px solid var(--purple); font-size:0.9em; white-space: pre-wrap;">
+            <div class="preview-q-comentarios">
                 <strong>Comentários:</strong><br>${comentarios}
             </div>
         `;
@@ -653,7 +653,7 @@ function visualizarQuestaoBanco(id) {
         <div style="margin-bottom:20px; line-height:1.6; white-space: pre-wrap;">${q.enunciado}</div>
         ${imgHtml}
         <div style="margin-bottom:20px;">${altsHtml}</div>
-        <div style="background:#f9f9f9; padding:15px; border-left:4px solid var(--purple); font-size:0.9em; white-space: pre-wrap;">
+        <div class="preview-q-comentarios" style="">
             <strong>Comentários:</strong><br>${q.comentarios || "Sem comentários registrados."}
         </div>
     `;

@@ -15,6 +15,7 @@
     --dark-primary: #001f11;
     --dark-bg: #1a1a1a;        /* Fundo da página */
     --dark-surface: #2b2b2b;   /* Cards, modais e containers */
+    --dark-surface-lighter: #494949;
     --dark-input: #464646;     /* Campos de texto */
     --dark-border: #616161;    /* Bordas e separadores */
     --dark-text: #e0e0e0ef;      /* Texto principal */
@@ -492,6 +493,19 @@ body.dark-mode .ja-cadastrada {
     height: 60px;
     animation: spin 1s linear infinite;
     margin-bottom: 15px;
+}
+
+.preview-q-comentarios{
+    background:#f9f9f9;
+    padding:15px;
+    border-left:4px solid var(--purple);
+    font-size:0.9em;
+    white-space: pre-wrap;
+}
+
+body.dark-mode .preview-q-comentarios{
+    background: var(--dark-surface-lighter);
+    border-left:4px solid var(--purple);
 }
 
 @keyframes spin {

@@ -1,0 +1,10 @@
+#lista-distribuicao{
+    background: var(--light);
+    padding:10px;
+    border-radius:6px;
+    margin-bottom:10px;
+}
+
+body.dark-mode #lista-distribuicao{
+    background: var(--dark-surface);
+}
