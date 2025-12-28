@@ -51,41 +51,72 @@ async function carregarListaTextos() {
 }
 
 // 2. Funções do Modal de Novo Texto
-function abrirModalTexto() {
+function abrirModalTexto(id = null) {
+    if (id) {
+        const t = cacheTextos.find(x => String(x.id) === String(id));
+        if (!t) return;
+        
+        el("edit-texto-id").value = t.id;
+        el("novo-texto-titulo").value = t.titulo;
+        el("novo-texto-conteudo").value = t.conteudo;
+        el("titulo-modal-texto").innerText = "Editar Texto ID: " + t.id;
+    } else {
+        // Limpa para novo cadastro
+        el("edit-texto-id").value = "";
+        el("novo-texto-titulo").value = "";
+        el("novo-texto-conteudo").value = "";
+        el("titulo-modal-texto").innerText = "Cadastrar Novo Texto";
+    }
     el('modal-novo-texto').style.display = 'block';
-    el('novo-texto-titulo').value = "";
-    el('novo-texto-conteudo').value = "";
-    el('novo-texto-titulo').focus();
 }
 
 async function salvarNovoTextoApi() {
-    let titulo = el('novo-texto-titulo').value;
-    let conteudo = el('novo-texto-conteudo').value;
+  const id = el("edit-texto-id").value;
+  
+  // Captura os valores brutos para salvar
+  const tituloRaw = el("novo-texto-titulo").value;
+  const conteudoRaw = el("novo-texto-conteudo").value;
     
-    if(!conteudo) return alert("O texto precisa de conteúdo.");
+  // Usa o .trim() apenas para validação, mas mantém o dado bruto
+  if (!tituloRaw.trim() || !conteudoRaw.trim()) {
+      return alert("Preencha o título e o conteúdo do texto.");
+  }
+
+
+  // O payload agora recebe as variáveis sem o tratamento de trim
+  const payload = { 
+      titulo: tituloRaw, 
+      conteudo: conteudoRaw 
+  };
+
+  const metodo = id ? "PUT" : "POST";
+  if (id) payload.id = id;
+
+  try {
+    const resp = await fetch(`${API}/textos`, {
+        method: metodo,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
     
-    try {
-        const res = await fetch(`${API}/textos`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ titulo, conteudo })
-        });
-        
-        if(res.ok) {
-            let novo = await res.json();
-            alert("Texto salvo!");
-            el('modal-novo-texto').style.display = 'none';
-            await carregarListaTextos(); // Recarrega as listas
-            
-            // Seleciona automaticamente o novo texto nos selects
-            document.querySelectorAll('.sel-texto-apoio').forEach(s => s.value = novo.id);
-        }else {
-            // Se der erro (ex: Excel aberto), mostra o alerta do servidor
-            let erroJson = await res.json();
-            alert("ERRO AO SALVAR: " + (erroJson.erro || "Erro desconhecido"));
-        }
-        
-    } catch(e) { alert("Erro ao salvar texto"); }
+    if(resp.ok) {
+      alert("Texto salvo com sucesso!");
+      el('modal-novo-texto').style.display = 'none';
+      
+      const res = await fetch(`${API}/textos`);
+      cacheTextos = await res.json();
+      
+      if (typeof renderListaTextos === "function") renderListaTextos();
+
+    } else {
+      const err = await resp.json();
+      alert("Erro: " + (err.erro || "Falha ao processar requisição"));
+    }
+      
+  } catch(e) {
+    console.error("Erro ao salvar texto:", e);
+    alert("Erro de conexão com o servidor.");;
+  }
 }
 
 
@@ -567,6 +598,88 @@ async function carrTab(pagina = 1) {
   } finally {
       hideLoader();
   }
+}
+
+/**
+ * Alterna entre a visão de Questões e Textos na aba Banco
+ * CODIGO INSERIDO
+ */
+function alternarVisaoBanco(visao) {
+    const contQuestoes = document.getElementById('container-questoes-banco');
+    const contTextos = document.getElementById('container-gerenciador-textos');
+    const btnQ = document.getElementById('btn-tab-questoes');
+    const btnT = document.getElementById('btn-tab-textos');
+
+    if (visao === 'questoes') {
+        contQuestoes.style.display = 'block';
+        contTextos.style.display = 'none';
+        btnQ.classList.add('active');
+        btnT.classList.remove('active');
+    } else {
+        contQuestoes.style.display = 'none';
+        contTextos.style.display = 'block';
+        btnQ.classList.remove('active');
+        btnT.classList.add('active');
+        renderListaTextos();
+    }
+}
+
+/**
+ * Renderiza a lista de textos no corpo da tabela
+ * CODIGO INSERIDO
+ */
+function renderListaTextos() {
+    const busca = document.getElementById("busca-texto-banco").value.toLowerCase();
+    const tbody = document.getElementById("corpo-tabela-textos");
+    tbody.innerHTML = "";
+
+    const filtrados = cacheTextos.filter(t => 
+        String(t.id).includes(busca) || 
+        t.titulo.toLowerCase().includes(busca) ||
+        t.conteudo.toLowerCase().includes(busca)
+    );
+
+    filtrados.forEach(t => {
+        const previa = t.conteudo.length > 100 ? t.conteudo.substring(0, 100) + "..." : t.conteudo;
+        tbody.innerHTML += `
+            <tr style="border-bottom: 1px solid var(--dark-light);">
+                <td style="padding: 12px;">${t.id}</td>
+                <td style="font-weight: bold;">${t.titulo}</td>
+                <td style="font-size: 0.85rem; color: #888;">${previa}</td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <button class="btn-icon" onclick="abrirModalTexto('${t.id}')" title="Editar">✏️</button>
+                    <button class="btn-icon" onclick="excluirTextoApi('${t.id}')" title="Excluir" style="color: var(--red);">🗑️</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+async function excluirTextoApi(id) {
+    const vinculadas = db.filter(q => String(q.texto_apoio) === String(id));
+    let msg = "Excluir este texto permanentemente?";
+    if (vinculadas.length > 0) {
+        msg = `Este texto está em ${vinculadas.length} questões. Elas ficarão sem texto. Confirmar exclusão?`;
+    }
+
+    if (!confirm(msg)) return;
+
+    try {
+        const resp = await fetch(`${API}/textos`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: id })
+        });
+
+        if (resp.ok) {
+            cacheTextos = cacheTextos.filter(x => String(x.id) !== String(id));
+            renderListaTextos();
+        } else {
+            alert("Erro ao excluir do servidor.");
+        }
+    } catch (e) {
+        console.error("Erro:", e);
+    }
 }
 
 function renderizarTabela(lista) {

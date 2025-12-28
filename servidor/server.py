@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, render_template, redirect, request, url_for, jsonify, send_from_directory
+from flask_sqlalchemy import SQLAlchemy
 from openpyxl import load_workbook, Workbook
 from flask_cors import CORS
 import os
@@ -7,6 +8,8 @@ import re
 import uuid
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///banco_estudos.db'
+db = SQLAlchemy(app)
 CORS(app)
 
 # --- CONFIGURAÇÕES ---

@@ -157,6 +157,10 @@
 
     <section id="secao-banco" class="secao">
         <div class="container">
+            <div class="banco-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button class="btn-padrao" onclick="alternarVisaoBanco('questoes')">Gerenciar Questões</button>
+                <button class="btn-padrao" onclick="alternarVisaoBanco('textos')" style="background: var(--purple); color: white;">Gerenciar Textos</button>
+            </div>
             <div class="flex">
                 <h2>Banco de Questões</h2><span id="total-db" style="color:#777"></span>
             </div>
@@ -454,9 +458,12 @@
         <div class="modal-content" style="max-width: 600px;">
             <span class="close" onclick="el('modal-novo-texto').style.display='none'">&times;</span>
             <h2>Cadastrar Novo Texto</h2>
+
+            <input type="hidden" id="edit-texto-id">
+
             <input type="text" id="novo-texto-titulo" class="imp-input input-com-toolbar" onfocus="showToolbar(this)" placeholder="Título / Identificador (Ex: Texto 1 - Aula 05)">
             <textarea id="novo-texto-conteudo" class="imp-textarea input-com-toolbar" onfocus="showToolbar(this)" rows="10" placeholder="Cole o texto aqui..."></textarea>
-            <button class="btn-padrao" onclick="salvarNovoTextoApi()" style="width:100%; margin-top:10px;">Salvar Texto</button>
+            <button class="btn-padrao" id="btn-salvar-texto" onclick="salvarNovoTextoApi()" style="width:100%; margin-top:10px;">Salvar Texto</button>
         </div>
     </div>
 
