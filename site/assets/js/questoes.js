@@ -261,73 +261,78 @@ function renderPreview(lista) {
   atualizarTodosSelectsTexto();
 }
 
-function abrirPopupPreviewReal(index) {
-    const row = el(`imp-row-${index}`);
-    const enunciado = row.querySelector(".imp-enunciado").value;
-    const comentarios = row.querySelector(".imp-comentario").value;
-    const tipo = row.querySelector(".area-alternativas-ce") ? "CE" : "ME";
-    const fileInput = row.querySelector(".imp-imagem-file");
+/**
+ * Visualização de questões ainda não salvas na aba Importar
+ * CODIGO MODIFICADO: Ajustado para ler diretamente dos inputs da linha e evitar erro de 'null'
+ */
+function abrirPopupPreviewReal(idx) {
+    const row = document.getElementById('imp-row-' + idx);
+    if (!row) return;
 
+    // CAPTURA DE DADOS DOS INPUTS (Igual à sua estrutura original de classes)
+    const enunciado = row.querySelector('.imp-enunciado').value;
+    const gab = row.querySelector('.imp-gabarito').value;
+    const coment = row.querySelector('.imp-comentario').value;
+    const fileInput = row.querySelector('.imp-imagem-file');
+
+    // CÓDIGO INSERIDO: Inicialização da variável imgHtml
     let imgHtml = "";
 
-    // 2. Monta o HTML das alternativas
+    // CÓDIGO MODIFICADO: Atribuição correta do let e tratamento da imagem local
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+        const urlTemp = URL.createObjectURL(fileInput.files[0]);
+        imgHtml = `<img src="${urlTemp}" style="max-width:100%; height:auto; margin: 15px 0; border: 1px solid #ccc; display:block;" onload="URL.revokeObjectURL(this.src)">`;
+    }
+
+    // CODIGO INSERIDO: Identifica se é Certo/Errado (CE) ou Múltipla Escolha (ME)
+    // Verifica se o campo da alternativa B está vazio para definir o tipo
+    const campoB = row.querySelector('.imp-alt-b');
+    const isCE = (gab === "C" || gab === "E") && (!campoB || campoB.value.trim() === "");
+
     let altsHtml = "";
-    if (tipo === "ME") {
-        ["a", "b", "c", "d", "e"].forEach(letra => {
-            const val = row.querySelector(`.imp-alt-${letra}`).value;
-            if (val && val.value) {
-              altsHtml += `<p><strong>${letra.toUpperCase()})</strong> ${val}</p>`
-          };
+    if (!isCE) {
+        ['a', 'b', 'c', 'd', 'e'].forEach(l => {
+            const campoAlt = row.querySelector('.imp-alt-' + l);
+            if (campoAlt && campoAlt.value.trim() !== "") {
+                const destaque = gab.toUpperCase() === l.toUpperCase() ? "color: var(--green); font-weight: bold;" : "";
+                altsHtml += `<p style="white-space: pre-wrap; ${destaque}"><strong>${l.toUpperCase()})</strong> ${campoAlt.value}</p>`;
+            }
         });
     } else {
-        altsHtml = `<p><em>Questão de Certo ou Errado</em></p>`;
+        const gabExtenso = (gab === "C") ? "Certo" : "Errado";
+        altsHtml = `<p style="color: var(--green); font-weight: bold;">Gabarito: ${gabExtenso}</p>`;
     }
 
-    // 3. Função interna para montar e mostrar o popup (será chamada com ou sem imagem)
-    const mostrarPopup = () => {
-        // Cria o container do modal se não existir
-        if (!el("modal-visualizacao-real")) {
-            const m = document.createElement("div");
-            m.id = "modal-visualizacao-real";
-            m.className = "modal-overlay";
-            m.innerHTML = `
-                <div class="modal-content" style="max-width:800px; max-height:90vh; overflow-y:auto;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:15px;">
-                        <h3 style="margin:0">Visualização Renderizada (Tags Ativas)</h3>
-                        <button onclick="el('modal-visualizacao-real').style.display='none'" class="btn-icon" style="font-size:1.5rem">✖</button>
-                    </div>
-                    <div id="conteudo-renderizado"></div>
-                </div>`;
-            document.body.appendChild(m);
-        }
-
-        // Inserir o conteúdo, incluindo a imagem se houver
-        el("conteudo-renderizado").innerHTML = `
-            <div class="preview-q-enunciado" style="margin-bottom:20px; line-height:1.6; white-space: pre-wrap;">${enunciado}</div>
-            ${imgHtml} <div class="preview-q-alternativas" style="margin-bottom:20px;">${altsHtml}</div>
-            <div class="preview-q-comentarios">
-                <strong>Comentários:</strong><br>${comentarios}
-            </div>
-        `;
-        el("modal-visualizacao-real").style.display = "flex";
-    };
-
-    // 4. Lógica Principal: Verifica se há imagem para carregar
-    if (fileInput && fileInput.files && fileInput.files[0]) {
-        // Se houver arquivo, usa o FileReader para ler e gerar a prévia
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            // Cria a tag <img> com o resultado da leitura (data URL)
-            imgHtml = `<img src="${e.target.result}" style="max-width:100%; height:auto; margin: 15px 0; border: 1px solid #ccc; display:block;">`;
-            // Só mostra o popup DEPOIS que a imagem foi lida
-            mostrarPopup();
-        };
-        // Inicia a leitura do arquivo
-        reader.readAsDataURL(fileInput.files[0]);
-    } else {
-        // Se não houver imagem, mostra o popup imediatamente
-        mostrarPopup();
+    // CODIGO MODIFICADO: Garante que o modal e o container existam para evitar erro de 'null'
+    if (!el("modal-visualizacao-real")) {
+        const m = document.createElement("div");
+        m.id = "modal-visualizacao-real";
+        m.className = "modal-overlay";
+        m.innerHTML = `
+            <div class="modal-content" style="max-width:800px; max-height:90vh; overflow-y:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #ddd; padding-bottom:10px; margin-bottom:15px;">
+                    <h3 style="margin:0">Visualização Renderizada (Tags Ativas)</h3>
+                    <button onclick="el('modal-visualizacao-real').style.display='none'" class="btn-icon" style="font-size:1.5rem">✖</button>
+                </div>
+                <div id="conteudo-renderizado"></div>
+            </div>`;
+        document.body.appendChild(m);
     }
+
+    /* CODIGO EXCLUIDO (Causa do erro de null se o ID não existir no HTML):
+    el("visualiza-id-title").innerText = q.id;
+    */
+
+    el("conteudo-renderizado").innerHTML = `
+        ${imgHtml}
+        <div class="preview-q-enunciado" style="margin-bottom:20px; line-height:1.6; white-space: pre-wrap;">${enunciado}</div>
+        <div class="preview-q-alternativas" style="margin-bottom:20px;">${altsHtml}</div>
+        <div class="preview-q-comentarios" style="margin-top:20px; padding-top:10px; border-top:1px dashed #ccc;">
+            <strong>Comentários:</strong><br>${coment}
+        </div>
+    `;
+
+    el("modal-visualizacao-real").style.display = "flex";
 }
 
 function verificarDuplicidadeDinamica(index) {
@@ -661,7 +666,7 @@ function renderListaTextos() {
 
     filtrados.forEach(t => {
         const txtConteudo = String(t.conteudo || "");
-        const previa = txtConteudo.length > 100 ? t.conteudo.substring(0, 100) + "..." : t.conteudo;
+        const previa = txtConteudo.length > 100 ? txtConteudo.substring(0, 100) + "..." : txtConteudo;
         tbody.innerHTML += `
             <tr style="border-bottom: 1px solid var(--dark-light);">
                 <td style="padding: 12px;">${t.id}</td>
@@ -742,47 +747,43 @@ function renderizarTabela(lista) {
 }
 
 function visualizarQuestaoBanco(id) {
-    // Busca a questão no banco de dados local (memória)
     const q = db.find(x => String(x.id) === String(id));
     if (!q) return alert("Questão não encontrada no banco local.");
 
-    // CODIGO INSERIDO: Busca o texto de apoio vinculado no cache global
+    // CODIGO INSERIDO: Busca o texto de apoio se houver vínculo no cache global
     let txtHtml = "";
     if (q.texto_apoio && q.texto_apoio !== "0" && q.texto_apoio !== 0) {
         const textoObj = cacheTextos.find(t => String(t.id) === String(q.texto_apoio));
         if (textoObj) {
             txtHtml = `
-                <div class="texto-apoio-renderizado" style="margin-bottom:25px; padding:15px; background:#f0f0f0; border-left:5px solid var(--purple); border-radius:4px;">
-                    <h4 style="margin-top:0; color:var(--purple); border-bottom:1px solid #ddd; padding-bottom:5px;">${textoObj.titulo}</h4>
+                <div class="texto-apoio-box" style="margin-bottom:20px; padding:15px; background:#f4f4f4; border-left:4px solid var(--purple); border-radius:4px;">
+                    <h4 style="margin-top:0; color:var(--purple);">${textoObj.titulo}</h4>
                     <div style="font-size:0.95rem; line-height:1.6; white-space: pre-wrap; color:#333;">${textoObj.conteudo}</div>
                 </div>
             `;
         }
     }
-    
 
-    // Monta a imagem se ela existir no servidor
     let imgHtml = q.imagem 
         ? `<img src="${API}/img/q_img/${q.imagem}" style="max-width:100%; height:auto; margin: 15px 0; border: 1px solid #ccc; display:block;">` 
         : "";
 
-    // Monta as alternativas
+    // CODIGO MODIFICADO: Verificação de tipo de questão (ME ou CE)
     let altsHtml = "";
     if (q.tipo === "ME") {
         ["a", "b", "c", "d", "e"].forEach(l => {
             if (q[`alt_${l}`]) {
-                const destaque = q.gabarito === l.toUpperCase() ? "color: var(--green); font-weight: bold;" : "";
+                const destaque = q.gabarito.toUpperCase() === l.toUpperCase() ? "color: var(--green); font-weight: bold;" : "";
                 altsHtml += `<p style="white-space: pre-wrap; ${destaque}"><strong>${l.toUpperCase()})</strong> ${q['alt_'+l]}</p>`;
             }
         });
     } else {
-        const gab = q.gabarito === "C" ? "Certo" : "Errado";
-        altsHtml = `<p><em>Questão de Certo ou Errado. Gabarito: <strong>${gab}</strong></em></p>`;
+        // Lógica para Certo/Errado
+        const gabExtenso = q.gabarito === "C" ? "Certo" : "Errado";
+        altsHtml = `<p style="color: var(--green); font-weight: bold;">Gabarito: ${gabExtenso}</p>`;
     }
 
-    // Reaproveita o modal que já criamos para a Importação
     if (!el("modal-visualizacao-real")) {
-        // (O código de criação do modal é o mesmo que você já tem, o sistema apenas garante que ele exista)
         const m = document.createElement("div");
         m.id = "modal-visualizacao-real";
         m.className = "modal-overlay";
@@ -796,7 +797,6 @@ function visualizarQuestaoBanco(id) {
         document.body.appendChild(m);
     }
 
-    // ATUALIZAÇÃO DO TÍTULO: Garante que o ID mude a cada clique
     el("visualiza-id-title").innerText = q.id;
 
     el("conteudo-renderizado").innerHTML = `
@@ -804,12 +804,15 @@ function visualizarQuestaoBanco(id) {
         <div style="margin-bottom:20px; line-height:1.6; white-space: pre-wrap;">${q.enunciado}</div>
         ${imgHtml}
         <div style="margin-bottom:20px;">${altsHtml}</div>
-        <div class="preview-q-comentarios" style="">
+        <div class="preview-q-comentarios" style="margin-top:20px; padding-top:10px; border-top:1px dashed #ccc;">
             <strong>Comentários:</strong><br>${q.comentarios || "Sem comentários registrados."}
         </div>
     `;
     el("modal-visualizacao-real").style.display = "flex";
 }
+
+
+
 
 // Função para abrir o modal em modo Cópia
 function abrirCopy(id) {
