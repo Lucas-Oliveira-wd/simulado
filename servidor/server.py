@@ -178,6 +178,12 @@ def limpar_ruido(texto, disciplina=""):
             r"PETROBRAS \(Engenharia de Produção\) Matemática Financeira\s*\d*",
             r"Equipe Exatas Estratégia Concursos",
         ])
+    elif disciplina == "Contabilidade Gerencial":
+        patterns_to_remove.extend([
+            r"^.*PETROBRAS \(Engenharia de Produção\) Contabilidade Gerencial\s*\d*.*$\n?",
+            r"^.*Luciano Rosa.*$\n?",
+            r"^.*Júlio Cardozo.*$\n?"
+        ])
 
     for pattern in patterns_to_remove:
         texto = re.sub(pattern, "", texto, flags=re.MULTILINE | re.IGNORECASE)
@@ -206,11 +212,13 @@ def parsear_questoes(texto_bruto, disciplina=""):
     desc_g1 = ["Português",
                "Conhecimentos Específicos",
                "Estatística",
-               "Matemática Financeira",]
+               "Matemática Financeira",
+               "Contabilidade Gerencial"]
 
     desc_g2 = ["Conhecimentos Específicos",
                "Estatística",
-               "Matemática Financeira",]
+               "Matemática Financeira",
+               "Contabilidade Gerencial"]
 
     questoes = []
 
