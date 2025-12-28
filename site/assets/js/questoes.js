@@ -642,18 +642,26 @@ function alternarVisaoBanco(visao) {
  * CODIGO INSERIDO
  */
 function renderListaTextos() {
-    const busca = document.getElementById("busca-texto-banco").value.toLowerCase();
+    const campoBusca = document.getElementById("busca-texto-banco");
     const tbody = document.getElementById("corpo-tabela-textos");
+
+    if (!campoBusca || !tbody) return;
+
+    // Remove espaços do início/fim da busca para não falhar o filtro
+    const busca = campoBusca.value.toLowerCase().trim();
     tbody.innerHTML = "";
 
-    const filtrados = cacheTextos.filter(t => 
-        String(t.id).includes(busca) || 
-        t.titulo.toLowerCase().includes(busca) ||
-        t.conteudo.toLowerCase().includes(busca)
-    );
+    const filtrados = cacheTextos.filter(t => {
+        const id = String(t.id || "").toLowerCase();
+        const titulo = String(t.titulo || "").toLowerCase();
+        const conteudo = String(t.conteudo || "").toLowerCase();
+
+        return id.includes(busca) || titulo.includes(busca) || conteudo.includes(busca);
+    });
 
     filtrados.forEach(t => {
-        const previa = t.conteudo.length > 100 ? t.conteudo.substring(0, 100) + "..." : t.conteudo;
+        const txtConteudo = String(t.conteudo || "");
+        const previa = txtConteudo.length > 100 ? t.conteudo.substring(0, 100) + "..." : t.conteudo;
         tbody.innerHTML += `
             <tr style="border-bottom: 1px solid var(--dark-light);">
                 <td style="padding: 12px;">${t.id}</td>
@@ -736,7 +744,22 @@ function renderizarTabela(lista) {
 function visualizarQuestaoBanco(id) {
     // Busca a questão no banco de dados local (memória)
     const q = db.find(x => String(x.id) === String(id));
-    if (!q) return;
+    if (!q) return alert("Questão não encontrada no banco local.");
+
+    // CODIGO INSERIDO: Busca o texto de apoio vinculado no cache global
+    let txtHtml = "";
+    if (q.texto_apoio && q.texto_apoio !== "0" && q.texto_apoio !== 0) {
+        const textoObj = cacheTextos.find(t => String(t.id) === String(q.texto_apoio));
+        if (textoObj) {
+            txtHtml = `
+                <div class="texto-apoio-renderizado" style="margin-bottom:25px; padding:15px; background:#f0f0f0; border-left:5px solid var(--purple); border-radius:4px;">
+                    <h4 style="margin-top:0; color:var(--purple); border-bottom:1px solid #ddd; padding-bottom:5px;">${textoObj.titulo}</h4>
+                    <div style="font-size:0.95rem; line-height:1.6; white-space: pre-wrap; color:#333;">${textoObj.conteudo}</div>
+                </div>
+            `;
+        }
+    }
+    
 
     // Monta a imagem se ela existir no servidor
     let imgHtml = q.imagem 
@@ -777,6 +800,7 @@ function visualizarQuestaoBanco(id) {
     el("visualiza-id-title").innerText = q.id;
 
     el("conteudo-renderizado").innerHTML = `
+        ${txtHtml}
         <div style="margin-bottom:20px; line-height:1.6; white-space: pre-wrap;">${q.enunciado}</div>
         ${imgHtml}
         <div style="margin-bottom:20px;">${altsHtml}</div>
