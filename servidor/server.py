@@ -784,6 +784,32 @@ def verificar_historico():
         wb.save(ARQ_HISTORICO)
 
 
+# CODIGO INSERIDO: Necessário para atualizar o arquivo após edições ou exclusões
+def reescrever_todos_textos(dados):
+    try:
+        verificar_tabela_textos()
+        wb = load_workbook(ARQ_QUESTOES)
+
+        # Se a aba já existe, removemos para recriar com os dados atualizados
+        if "textos" in wb.sheetnames:
+            wb.remove(wb["textos"])
+
+        ws = wb.create_sheet("textos")
+        ws.append(["id", "titulo", "conteudo"])
+
+        for t in dados:
+            ws.append([t["id"], t["titulo"], t["conteudo"]])
+
+        wb.save(ARQ_QUESTOES)
+        return True
+    except PermissionError:
+        print("--- ERRO: Excel aberto. Não foi possível salvar os textos. ---")
+        return False
+    except Exception as e:
+        print(f"--- ERRO AO REESCREVER TEXTOS: {e} ---")
+        return False
+
+
 
 # --- ROTAS ---
 @app.route("/historico", methods=["POST"])
@@ -1188,7 +1214,7 @@ def get_opcoes():
     return jsonify(extrair_opcoes_do_banco())
 
 
-@app.route("/textos", methods=["GET", "POST"])
+@app.route("/textos", methods=["GET", "POST", "PUT", "DELETE"])
 def handle_textos():
     if request.method == "GET":
         return jsonify(carregar_todos_textos())
@@ -1202,8 +1228,38 @@ def handle_textos():
             "titulo": data.get("titulo", "Sem Título"),
             "conteudo": normalizar_texto_para_banco(data.get("conteudo"))
         }
-        salvar_novo_texto(novo)
-        return jsonify(novo), 201
+        if salvar_novo_texto(novo):
+            return jsonify(novo), 201
+        return jsonify({"erro": "Erro ao salvar no Excel"}), 500
+
+    # CODIGO INSERIDO: Lógica para Editar Texto existente
+    if request.method == "PUT":
+        data = request.json
+        textos = carregar_todos_textos()
+        encontrou = False
+        for t in textos:
+            if str(t["id"]) == str(data.get("id")):
+                t["titulo"] = data.get("titulo")
+                t["conteudo"] = normalizar_texto_para_banco(data.get("conteudo"))
+                encontrou = True
+                break
+
+        if encontrou and reescrever_todos_textos(textos):
+            return jsonify({"status": "Atualizado"})
+        return jsonify({"erro": "Texto não encontrado ou erro no arquivo"}), 404
+
+    # CODIGO INSERIDO: Lógica para Remover Texto
+    if request.method == "DELETE":
+        data = request.json
+        id_alvo = str(data.get("id"))
+        textos_atuais = carregar_todos_textos()
+        novos_textos = [t for t in textos_atuais if str(t["id"]) != id_alvo]
+
+        if len(novos_textos) < len(textos_atuais):
+            if reescrever_todos_textos(novos_textos):
+                return jsonify({"status": "Excluído"})
+            return jsonify({"erro": "Erro ao salvar arquivo"}), 500
+        return jsonify({"erro": "ID não encontrado"}), 404
 
 
 if __name__ == "__main__": app.run(debug=True, port=5000)

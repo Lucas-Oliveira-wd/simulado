@@ -158,51 +158,80 @@
     <section id="secao-banco" class="secao">
         <div class="container">
             <div class="banco-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button class="btn-padrao" onclick="alternarVisaoBanco('questoes')">Gerenciar Questões</button>
-                <button class="btn-padrao" onclick="alternarVisaoBanco('textos')" style="background: var(--purple); color: white;">Gerenciar Textos</button>
+                <button class="btn-padrao active" id="btn-tab-questoes" onclick="alternarVisaoBanco('questoes')">Gerenciar Questões</button>
+                <button class="btn-padrao" id="btn-tab-textos" onclick="alternarVisaoBanco('textos')" style="background: var(--purple); color: white;">Gerenciar Textos</button>
             </div>
-            <div class="flex">
-                <h2>Banco de Questões</h2><span id="total-db" style="color:#777"></span>
-            </div>
-            <div class="filtro-grid" style="background:#f9f9f9;padding:10px;border-radius:6px">
-                <input type="text" id="busca-texto" placeholder="Buscar..." onkeyup="filtrar()">
-                <select id="busca-disciplina" onchange="carregarAssuntos('busca'); filtrar()"></select>
-                <select id="busca-assunto" onchange="filtrar()">
-                    <option value="">Todos Assuntos</option>
-                </select>
-                <select id="busca-banca" onchange="filtrar()"></select>
-                <select id="busca-instituicao" onchange="filtrar()">
-                    <option value="">Instituição...</option>
-                </select>
-                <select id="busca-dificuldade" onchange="filtrar()">
-                    <option value="">Dif.</option>
-                    <option>Fácil</option>
-                    <option>Médio</option>
-                    <option>Difícil</option>
-                </select>
-            </div>
-            <div style="overflow-x:auto">
-                <table id="tabela-questoes">
-                    <thead>
-                        <tr>
-                            <th width="40" onclick="ord('id')">ID</th>
-                            <th width="100">Inserção</th>
-                            <th width="90">Banca</th>
-                            <th width="90">Inst.</th>
-                            <th width="50">Ano</th>
-                            <th width="100">Disc.</th>
-                            <th>Enunciado</th>
-                            <th width="100">Assunto</th>
-                            <th width="50">Dif</th>
-                            <th width="40">Gab</th>
-                            <th width="60">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div id="paginacao-container" style="display:flex; justify-content:center; align-items:center; margin-top:20px; gap:10px"></div>
-        </div>
+
+            <div id="container-questoes-banco">
+                <div class="flex banco-header">
+                    <h2>Banco de Questões</h2>
+                    <span id="total-db" style="color:#777"></span>
+                </div>
+
+                <div class="filtro-grid" style="background:#f9f9f9;padding:10px;border-radius:6px">
+                    <input type="text" id="busca-texto" placeholder="Buscar..." onkeyup="filtrar()">
+                    <select id="busca-disciplina" onchange="carregarAssuntos('busca'); filtrar()"></select>
+                    <select id="busca-assunto" onchange="filtrar()">
+                        <option value="">Todos Assuntos</option>
+                    </select>
+                    <select id="busca-banca" onchange="filtrar()"></select>
+                    <select id="busca-instituicao" onchange="filtrar()">
+                        <option value="">Instituição...</option>
+                    </select>
+                    <select id="busca-dificuldade" onchange="filtrar()">
+                        <option value="">Dif.</option>
+                        <option>Fácil</option>
+                        <option>Médio</option>
+                        <option>Difícil</option>
+                    </select>
+                </div>
+
+                <div style="overflow-x:auto">
+                    <table id="tabela-questoes">
+                        <thead>
+                            <tr>
+                                <th width="40" onclick="ord('id')">ID</th>
+                                <th width="100">Inserção</th>
+                                <th width="90">Banca</th>
+                                <th width="90">Inst.</th>
+                                <th width="50">Ano</th>
+                                <th width="100">Disc.</th>
+                                <th>Enunciado</th>
+                                <th width="100">Assunto</th>
+                                <th width="50">Dif</th>
+                                <th width="40">Gab</th>
+                                <th width="60">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div id="paginacao-container" style="display:flex; justify-content:center; align-items:center; margin-top:20px; gap:10px"></div>
+            </div> <div id="container-gerenciador-textos" style="display: none;">
+                <div class="flex banco-header">
+                    <h2>Gerenciar Textos de Apoio</h2>
+                </div>
+                
+                <div class="acoes-banco" style="display: flex; gap: 10px; margin-bottom: 15px; background:#f9f9f9; padding:10px; border-radius:6px">
+                    <input type="text" id="busca-texto-banco" placeholder="Buscar por título ou conteúdo..." oninput="renderListaTextos()" style="flex-grow: 1;">
+                    <button class="btn-prim" onclick="abrirModalTexto()">+ Novo Texto</button>
+                </div>
+                
+                <div style="overflow-x:auto">
+                    <table class="tabela-banco" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: var(--dark-light); text-align: left;">
+                                <th style="padding: 12px; width: 60px;">ID</th>
+                                <th>Título</th>
+                                <th>Prévia</th>
+                                <th style="text-align: center; width: 100px;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo-tabela-textos">
+                            </tbody>
+                    </table>
+                </div>
+            </div> </div>
     </section>
 
     <section id="secao-praticar" class="secao">

@@ -610,18 +610,31 @@ function alternarVisaoBanco(visao) {
     const btnQ = document.getElementById('btn-tab-questoes');
     const btnT = document.getElementById('btn-tab-textos');
 
+
+    // Verificação de segurança para evitar erro de 'null'
+    if (!contQuestoes || !contTextos) {
+        console.error("Erro: Containers do banco não encontrados no HTML. Verifique os IDs 'container-questoes-banco' e 'container-gerenciador-textos'.");
+        return;
+    }
+
     if (visao === 'questoes') {
         contQuestoes.style.display = 'block';
         contTextos.style.display = 'none';
-        btnQ.classList.add('active');
-        btnT.classList.remove('active');
+        // Adiciona classe de destaque se os botões existirem
+        if (btnQ) btnQ.classList.add('active');
+        if (btnT) btnT.classList.remove('active');
     } else {
         contQuestoes.style.display = 'none';
         contTextos.style.display = 'block';
-        btnQ.classList.remove('active');
-        btnT.classList.add('active');
-        renderListaTextos();
+        if (btnQ) btnQ.classList.remove('active');
+        if (btnT) btnT.classList.add('active');
+        
+        // Chama a renderização da lista de textos
+        if (typeof renderListaTextos === "function") {
+            renderListaTextos();
+        }
     }
+    
 }
 
 /**
