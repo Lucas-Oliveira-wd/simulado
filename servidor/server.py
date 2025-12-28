@@ -380,8 +380,15 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     enunciado = sanitizar_texto(enunciado)
                     alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
                 else:
+                    # CÓDIGO MODIFICADO: Interceptação exclusiva para evitar sobreposição de lógica
+                    if disciplina == "Contabilidade Gerencial":
+                        # 1. Normaliza o padrão específico "A - texto" ou "A texto" -> "A) "
+                        content_no_comments = re.sub(r'(?m)^\s*([A-E])(?:\s*-\s*|\s+)(?=[A-Z0-9]|$)', r'\1) ',
+                                                     content_no_comments)
+                        # 2. Também aplica a normalização de "(A)" -> "A) " para esta disciplina
+                        content_no_comments = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
                     # --- CORREÇÃO PARA FORMATO (A), (B)... ---
-                    if disciplina in desc_g2:
+                    elif disciplina in desc_g2:
                         content_no_comments = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
 
                     parts_alt = re.split(r'\b([A-E])\)', content_no_comments, flags=re.IGNORECASE)
