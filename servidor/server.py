@@ -138,6 +138,8 @@ def reconstruir_header_logico(texto):
 
 
 def limpar_ruido(texto, disciplina=""):
+    print(f"\n[DEBUG LIMPEZA] Iniciando limpeza para disciplina: {disciplina}")
+    
     texto = reconstruir_header_logico(texto)
     # Normaliza a palavra GABARITO que pode vir espaçada ou quebrada
     texto = re.sub(r'G\s*\n?\s*A\s*B\s*A\s*R\s*I\s*T\s*O', 'Gabarito', texto, flags=re.IGNORECASE)
@@ -234,9 +236,13 @@ def parsear_questoes(texto_bruto, disciplina=""):
         if not blocos:
             blocos = [texto_limpo]
 
+        # CÓDIGO INSERIDO: Debug inicial de segmentação
+        print(f"\n--- DEBUG PDF: {disciplina} ---")
+        print(f"Total de Blocos (QUESTÕES COMENTADAS/LISTA) encontrados: {len(blocos)}")
+
         assunto_atual = "Geral"
 
-        for bloco in blocos:
+        for idx_bloco, bloco in enumerate(blocos):
             # Detecta o assunto do bloco pelo título
             match_titulo = re.match(r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)', bloco,
                                 re.IGNORECASE)
@@ -245,6 +251,8 @@ def parsear_questoes(texto_bruto, disciplina=""):
                 linha_completa = match_titulo.group(1).strip()
                 idx_primeiro_hifen = linha_completa.find('-')
                 idx_ultimo_hifen = linha_completa.rfind('-')
+
+
                 if idx_primeiro_hifen != -1 and idx_ultimo_hifen != -1 and idx_primeiro_hifen < idx_ultimo_hifen:
                     assunto_raw = linha_completa[idx_primeiro_hifen + 1: idx_ultimo_hifen].strip()
                     assunto_atual = re.sub(r'Cesgranrio', '', assunto_raw.title(), flags=re.IGNORECASE).strip()
@@ -258,6 +266,8 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     assunto_atual = "Sinônimos e Antônimos"
                 elif "DENOTAÇÃO" in linha_completa.upper():
                     assunto_atual = "Denotação e Conotação"
+
+                print(f"Bloco {idx_bloco + 1}: Assunto detectado -> {assunto_atual}")
 
             banca = "CESGRANRIO"
             instituicao = ""
@@ -277,6 +287,8 @@ def parsear_questoes(texto_bruto, disciplina=""):
                 pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*(\(.*?\))', re.MULTILINE)
             matches_questoes = list(pattern_questao.finditer(bloco))
 
+            print(f"Bloco {idx_bloco + 1}: Questões detectadas pelo Regex: {[m.group(1) for m in matches_questoes]}")
+
             # --- Extração do Conteúdo do Texto de Apoio ---
             texto_apoio_bloco = ""
 
@@ -291,13 +303,16 @@ def parsear_questoes(texto_bruto, disciplina=""):
                         continue
                 elif disciplina in desc_g2:
                     if len(q_meta) < 3:
+                        print(f"Questão {q_numero}: Descartada por metadados muito curtos: '{q_meta}'")
                         continue
 
 
                 start_index = m.end()
                 end_index = matches_questoes[i + 1].start() if i + 1 < len(matches_questoes) else len(bloco)
 
+
                 q_conteudo_bruto = bloco[start_index:end_index]
+
 
                 # Remover tabela de gabarito do final do texto da questão
                 # Se encontrar "Gabarito 1." ou "Gabarito 1 ", corta o texto ali.
@@ -383,15 +398,23 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     # CÓDIGO MODIFICADO: Interceptação exclusiva para evitar sobreposição de lógica
                     if disciplina == "Contabilidade Gerencial":
                         # 1. Normaliza o padrão específico "A - texto" ou "A texto" -> "A) "
-                        content_no_comments = re.sub(r'(?m)^\s*([A-E])(?:\s*-\s*|\s+)(?=[A-Z0-9]|$)', r'\1) ',
+                        content_no_comments = re.sub(r'(?<!^)\n\s*([A-E])(?:\s*-\s*|\s+)', r'\n\1) ',
                                                      content_no_comments)
                         # 2. Também aplica a normalização de "(A)" -> "A) " para esta disciplina
-                        content_no_comments = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
+                        content_no_comments = re.sub(r'(?i)(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
                     # --- CORREÇÃO PARA FORMATO (A), (B)... ---
                     elif disciplina in desc_g2:
                         content_no_comments = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
 
-                    parts_alt = re.split(r'\b([A-E])\)', content_no_comments, flags=re.IGNORECASE)
+                        # CÓDIGO INSERIDO PARA DEBUG: Veja o que o split está tentando processar
+                    if q_numero in ['2', '3', '4']:
+                        print(f"--- DEBUG TEXTO Q{q_numero} ANTES DO SPLIT ---")
+                        print(repr(content_no_comments[:200]))  # O repr mostra caracteres ocultos como \n e \t
+
+                    if disciplina == "Contabilidade Gerencial":
+                        parts_alt = re.split(r'(?i)(?:^|\n|\s)([A-E])\)', content_no_comments)
+                    else:
+                        parts_alt = re.split(r'(?i)(?:^|\n|\s)([A-E])\)', content_no_comments, flags=re.IGNORECASE)
                     enunciado = sanitizar_texto(parts_alt[0].strip())
                     alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
                     if len(parts_alt) > 1:
@@ -399,6 +422,11 @@ def parsear_questoes(texto_bruto, disciplina=""):
                             letra = parts_alt[k].upper()
                             if k + 1 < len(parts_alt):
                                 alts[letra] = sanitizar_texto(parts_alt[k + 1].strip())
+
+                    # CÓDIGO INSERIDO: Debug de conteúdo de alternativas
+                    if not alts["A"] and not alts["B"]:
+                        print(
+                            f"Questão {q_numero}: Falha ao particionar alternativas (ME). Verifique delimitadores no texto.")
 
                 if enunciado:
                     if (tipo == "ME" and (alts["A"] or alts["B"])) or (tipo == "CE"):
@@ -411,6 +439,9 @@ def parsear_questoes(texto_bruto, disciplina=""):
                             "gabarito": gabarito, "dificuldade": "Médio", "tipo": tipo, "imagem": "",
                             "comentarios": comentario_extraido
                         })
+                    else:
+                        # CÓDIGO INSERIDO: Log de descarte final
+                        print(f"Questão {q_numero}: Descartada por falta de alternativas válidas após limpeza.")
 
 
 
