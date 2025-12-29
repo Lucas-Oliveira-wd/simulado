@@ -389,7 +389,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
             # O (?:(\d+)\s*[\.\-\)]\s*)? torna a captura do número opcional no início da questão.
             # O padrão ([^)]+) captura o conteúdo dos parênteses em múltiplas linhas devido ao re.S.
                 pattern_questao = re.compile(
-                r'(?:^|\n)\s*(?:(\d+)\s*[\.\-\)]\s*)?(\((?:CESGRANRIO|QUADRIX|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|CFC|CVM|BNDES|FAFIPA|NC UFPR|FEPESE|IBGP|FUNDEP|FAURGS|FUNDATEC|LEGALLE|FUMARC|AOCP|IBFC|ANS|CONSULPLAN|FAUEL|IDECAN)[^)]+\))',
+                r'(?:^|\n)\s*(?:(\d+)\s*[\.\-\)]\s*)?(\((?:CESGRANRIO|QUADRIX|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|CFC|CVM|BNDES|FAFIPA|NC UFPR|FEPESE|IBGP|FUNDEP|FAURGS|FUNDATEC|LEGALLE|FUMARC|AOCP|IBFC|ANS|CONSULPLAN|FAUEL|IDECAN|SELECON)[^)]+\))',
                 re.IGNORECASE | re.S)
 
 

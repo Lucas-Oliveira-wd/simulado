@@ -6,3 +6,7 @@
 .imp-acoes-bottom{
     margin-top: 150px;
 }
+
+body.dark-mode .imp-row.sucesso-salvo{
+    background-color: var(--dark-primary) !important;
+}
