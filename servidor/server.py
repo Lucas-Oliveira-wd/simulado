@@ -102,67 +102,88 @@ def gerar_assinatura(q):
 def reconstruir_header_logico(texto, disciplina=""):
 
     if disciplina == "Contabilidade Gerencial":
-        print(f"\n[DEBUG HEADER] Disciplina detectada: Contabilidade Gerencial")
-        pattern = r"([A-ZÀ-Ú\s\-\–—]+)[\r\n]+\s*((?:QUESTÕES|ISTA)[^\r\n]+)(?:[\r\n]+\s*([A-ZÀ-Ú])\s*[\r\n]+\s*([A-ZÀ-Ú]{2,}))?"
+        # CÓDIGO MODIFICADO: O pattern agora proíbe quebras de linha dentro dos grupos através de [^\r\n]*.
+        # Cada grupo de palavras (G2 e G4) é interrompido obrigatoriamente no fim da linha.
+        # G1: Linha 1 (Letras) | G2: Linha 2 (Palavras) | G3: Linha 3 (Letras) | G4: Linha 4 (Palavras)
+        pattern = r"([A-ZÀ-Ú \t\-\–—]+)[\r\n]+\s*((?:QUESTÕES|ISTA|UESTÕES|LISTA)[^\r\n]*)[\r\n]+\s*([A-ZÀ-Ú \t\-\–—]+)[\r\n]+\s*([A-ZÀ-Ú \t]+)(?:\r?\n|$)"
+
+        # CÓDIGO INSERIDO: Print para ver se o Regex ao menos localiza os fragmentos no texto bruto
+        candidatos = re.findall(pattern, texto)
+        print(f"\n[DEBUG RECONSTRUÇÃO] Candidatos a título encontrados no texto bruto: {len(candidatos)}")
+        for c in candidatos:
+            print(f"   -> Fragmento detectado: G1={repr(c[0].strip())} | G2={repr(c[1].strip())}")
 
         def resolver_match_cg(m):
             # CÓDIGO INSERIDO: Extração segura de até 4 grupos
             grupos = m.groups()
-            raw_letras = grupos[0] or ""
-            raw_palavras = grupos[1] or ""
-            extra_letra = grupos[2] or ""
-            extra_palavra = grupos[3] or ""
 
-            print(f"\n[DEBUG MATCH CG] Grupos: L1={repr(raw_letras.strip())} | L2={repr(raw_palavras.strip())} | L3={repr(extra_letra)} | L4={repr(extra_palavra)}")
+            # CÓDIGO INSERIDO: Atribuição direta para as 4 linhas detectadas
+            raw_letras_l1 = grupos[0] or ""
+            raw_palavras_l2 = grupos[1] or ""
+            raw_letras_l3 = grupos[2] or ""
+            raw_palavras_l4 = grupos[3] or ""
 
-            # Une a banca (L3 e L4) aos buffers se existirem
-            if extra_letra and extra_palavra:
-                raw_letras = raw_letras.rstrip() + " " + extra_letra
-                raw_palavras = raw_palavras.rstrip() + " " + extra_palavra
+            # Debug para confirmar a separação física por linha
+            print(f"\n[DEBUG MATCH CG] Separação de Linhas:")
+            print(f"   L1 (Letras): {repr(raw_letras_l1.strip())}")
+            print(f"   L2 (Palavras): {repr(raw_palavras_l2.strip())}")
+            print(f"   L3 (Letras): {repr(raw_letras_l3.strip())}")
+            print(f"   L4 (Palavras): {repr(raw_palavras_l4.strip())}")
+
+            # Unifica as pilhas de peças: L1+L3 (Letras) e L2+L4 (Palavras)
+            raw_letras = (raw_letras_l1.strip() + " " + raw_letras_l3.strip()).strip()
+            raw_palavras = (raw_palavras_l2.strip() + " " + raw_palavras_l4.strip()).strip()
+
 
             # Processa a intercalação com suporte a acentos e travessões
             matches_guia = list(re.finditer(r'([A-ZÀ-Ú]|\-|–|—)', raw_letras))
             palavras_quebradas = raw_palavras.split()
-            stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "EM", "QUE", "SE"]
+            stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS",
+                "EM", "QUE", "SE", "E", "O", "A", "AO", "AOS", "NAS", "NOS"]
+
             resultado_final = ""
             idx_p2 = 0
 
+            # CÓDIGO MODIFICADO: Loop de encaixe peça por peça (letra -> palavra).
             for i, match in enumerate(matches_guia):
                 token = match.group(1)
+
+                # CÓDIGO INSERIDO: Antes de usar uma letra, verifica se as próximas palavras são stopwords.
+                # Se forem, elas são encaixadas direto, sem consumir o token atual.
+                while idx_p2 < len(palavras_quebradas):
+                    palavra_candidata = palavras_quebradas[idx_p2].upper().strip(".,:;")
+                    if palavra_candidata in stopwords:
+                        resultado_final += palavras_quebradas[idx_p2] + " "
+                        idx_p2 += 1
+                    else:
+                        break
+
                 termo_para_adicionar = token
                 if token not in ['-', '–', '—']:
-                    while idx_p2 < len(palavras_quebradas):
-                        palavra_atual = palavras_quebradas[idx_p2]
-                        if palavra_atual.upper().strip(".,:;") in stopwords:
-                            resultado_final += palavra_atual + " "
-                            idx_p2 += 1
-                        else:
-                            break
+                    # Encaixa a letra (token) no início da próxima palavra disponível.
                     if idx_p2 < len(palavras_quebradas):
                         termo_para_adicionar = token + palavras_quebradas[idx_p2]
                         idx_p2 += 1
                 else:
-                    termo_para_adicionar = "-" # Normaliza para o parser de assunto
+                    # Normaliza hífens e travessões para o padrão do parser.
+                    termo_para_adicionar = "-"
 
                 resultado_final += termo_para_adicionar
+
+                # Mantém o espaçamento original entre as peças se houver espaço no buffer de letras.
                 if i < len(matches_guia) - 1:
-                    fim_atual = match.end()
-                    inicio_prox = matches_guia[i + 1].start()
-                    if inicio_prox > fim_atual:
+                    if matches_guia[i + 1].start() > match.end():
                         resultado_final += " "
 
+            # Adiciona qualquer sobra de palavras que não foram processadas.
             if idx_p2 < len(palavras_quebradas):
                 resultado_final += " " + " ".join(palavras_quebradas[idx_p2:])
 
-            final = "\n" + re.sub(r'\s+', ' ', resultado_final).strip() + "\n"
-            print(f"   [DEBUG RECONSTRUÇÃO CG] Final: {repr(final.strip())}")
-            return final
+            return "\n" + re.sub(r'\s+', ' ', resultado_final).strip() + "\n"
 
-        # CÓDIGO MODIFICADO: Retorno imediato dentro do bloco para evitar conflito de escopo
         return re.sub(pattern, resolver_match_cg, texto)
 
     else:
-        print(f"[DEBUG HEADER] Disciplina padrão detectada.")
         pattern = r"([A-Z\s\-\–]+)\n\s*((?:UESTÕES|ISTA).*)"
 
         def resolver_match(m):
@@ -215,6 +236,12 @@ def limpar_ruido(texto, disciplina=""):
     print(f"\n--- [DEBUG LIMPEZA] Disciplina: {disciplina} ---")
 
     texto = reconstruir_header_logico(texto, disciplina)
+
+    # CÓDIGO INSERIDO: Verificar o estado do texto IMEDIATAMENTE após a reconstrução
+    titulos_pos_rec = re.findall(r'(?:QUESTÕES|LISTA).*', texto, re.IGNORECASE)
+    print(f"[DEBUG LIMPEZA] Títulos presentes ANTES de remover ruído: {titulos_pos_rec}")
+
+
     # Normaliza a palavra GABARITO que pode vir espaçada ou quebrada
     texto = re.sub(r'G\s*\n?\s*A\s*B\s*A\s*R\s*I\s*T\s*O', 'Gabarito', texto, flags=re.IGNORECASE)
 
@@ -300,6 +327,9 @@ def extrair_mapa_gabaritos_local(texto_bloco):
 def parsear_questoes(texto_bruto, disciplina=""):
     texto_limpo = limpar_ruido(texto_bruto, disciplina)
 
+    # CÓDIGO INSERIDO: Ver o início do texto limpo para entender por que a segmentação falha
+    print(f"\n[DEBUG PARSER] Amostra do texto limpo (primeiros 500 chars):\n{repr(texto_limpo[:500])}")
+
     desc_g1 = ["Português",
                "Conhecimentos Específicos",
                "Estatística",
@@ -320,14 +350,22 @@ def parsear_questoes(texto_bruto, disciplina=""):
             r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)(?:.|\n)+?)(?=(?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES)|$)',
             re.IGNORECASE)
 
-        blocos = [m.group(1) for m in regex_divisao_blocos.finditer(texto_limpo)]
+        ###############################         trava temporária            ############################################
+        #########       blocos = [m.group(1) for m in regex_divisao_blocos.finditer(texto_limpo)]      #################
+        ################################################################################################################
+
+        # CÓDIGO MODIFICADO: Captura e log de segmentação
+        matches_blocos = list(regex_divisao_blocos.finditer(texto_limpo))
+        blocos = [m.group(1) for m in matches_blocos]
 
         if not blocos:
+            print("[DEBUG PARSER] Nenhum bloco identificado pelo Regex de Divisão.")
             blocos = [texto_limpo]
-
-        # CÓDIGO INSERIDO: Debug inicial de segmentação
-        print(f"\n--- DEBUG PDF: {disciplina} ---")
-        print(f"Total de Blocos (QUESTÕES COMENTADAS/LISTA) encontrados: {len(blocos)}")
+        else:
+            print(f"--- [DEBUG SEGMENTAÇÃO] Blocos encontrados: {len(blocos)} ---")
+            for i, b in enumerate(blocos):
+                # Imprime os primeiros 150 caracteres para identificar o tipo do bloco
+                print(f"   Bloco {i + 1} inicia com: {repr(b.strip()[:150])}")
 
         assunto_atual = "Geral"
 
@@ -343,8 +381,6 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
             if match_titulo:
                 linha_completa = match_titulo.group(1).strip()
-
-                print(f"   Match Título Sucesso: {repr(linha_completa)}")
 
 
                 idx_primeiro_hifen = linha_completa.find('-')
@@ -367,9 +403,6 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
                 print(f"Bloco {idx_bloco + 1}: Assunto detectado -> {assunto_atual}")
 
-            if not match_titulo:
-                print(f"   Match Título FALHOU para este bloco.")
-
             banca = "CESGRANRIO"
             instituicao = ""
             ano = "2025"
@@ -389,26 +422,31 @@ def parsear_questoes(texto_bruto, disciplina=""):
             # O (?:(\d+)\s*[\.\-\)]\s*)? torna a captura do número opcional no início da questão.
             # O padrão ([^)]+) captura o conteúdo dos parênteses em múltiplas linhas devido ao re.S.
                 pattern_questao = re.compile(
-                r'(?:^|\n)\s*(?:(\d+)\s*[\.\-\)]\s*)?(\((?:CESGRANRIO|QUADRIX|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|CFC|CVM|BNDES|FAFIPA|NC UFPR|FEPESE|IBGP|FUNDEP|FAURGS|FUNDATEC|LEGALLE|FUMARC|AOCP|IBFC|ANS|CONSULPLAN|FAUEL|IDECAN|SELECON)[^)]+\))',
+                r'(?:^|\n)\s*(?:(\d+)\s*[\.\-\)]\s*)?(\((?:CESGRANRIO|QUADRIX|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|'
+                r'BANCO|PETROBRAS|CFC|CVM|BNDES|FAFIPA|NC UFPR|FEPESE|IBGP|FUNDEP|FAURGS|FUNDATEC|LEGALLE|FUMARC|AOCP|'
+                r'IBFC|ANS|CONSULPLAN|FAUEL|IDECAN|SELECON|CENTEC|FBC)[^)]+\))',
                 re.IGNORECASE | re.S)
 
 
             elif disciplina in desc_g2:
                 # Sem ^ (início de linha) e sem $ (fim de linha). Pega inline.
                 pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*(\(.*?\))', re.MULTILINE)
+
             matches_questoes = list(pattern_questao.finditer(bloco))
 
-            print(f"Bloco {idx_bloco + 1}: Questões detectadas pelo Regex: {[m.group(1) for m in matches_questoes]}")
+
+            print(f"[Bloco {idx_bloco + 1}] Questões encontradas: {len(matches_questoes)}")
 
             # --- Extração do Conteúdo do Texto de Apoio ---
             texto_apoio_bloco = ""
 
             for i, m in enumerate(matches_questoes):
-                q_numero = m.group(1)
+                q_numero = m.group(1) if m.group(1) else str(i + 1)
                 q_meta = m.group(2)
 
                 # CÓDIGO INSERIDO: Debug dos metadados da questão
                 if i < 3:  # Loga apenas as 3 primeiras para não poluir
+                    print(f"   [DEBUG PARSER] Vinculando questões do Bloco {idx_bloco + 1} ao assunto: {assunto_atual}")
                     print(f"  -> Q{q_numero} Meta capturada: {repr(q_meta)}")
 
                 if disciplina == "Português":
@@ -521,10 +559,6 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     elif disciplina in desc_g2:
                         content_no_comments = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', content_no_comments)
 
-                        # CÓDIGO INSERIDO PARA DEBUG: Veja o que o split está tentando processar
-                    if q_numero in ['2', '3', '4']:
-                        print(f"--- DEBUG TEXTO Q{q_numero} ANTES DO SPLIT ---")
-                        print(repr(content_no_comments[:200]))  # O repr mostra caracteres ocultos como \n e \t
 
                     if disciplina == "Contabilidade Gerencial":
                         parts_alt = re.split(r'(?i)(?:^|\n|\s)([A-E])\)', content_no_comments)
@@ -538,14 +572,9 @@ def parsear_questoes(texto_bruto, disciplina=""):
                             if k + 1 < len(parts_alt):
                                 alts[letra] = sanitizar_texto(parts_alt[k + 1].strip())
 
-                    # CÓDIGO INSERIDO: Debug de conteúdo de alternativas
-                    if not alts["A"] and not alts["B"]:
-                        print(
-                            f"Questão {q_numero}: Falha ao particionar alternativas (ME). Verifique delimitadores no texto.")
-
                 if enunciado:
                     if (tipo == "ME" and (alts["A"] or alts["B"])) or (tipo == "CE"):
-                        questoes.append({
+                        questao_final = {
                             "temp_id": str(uuid.uuid4()),
                             "banca": banca, "instituicao": instituicao, "ano": ano,
                             "assunto": assunto_atual, "enunciado": enunciado,
@@ -553,7 +582,13 @@ def parsear_questoes(texto_bruto, disciplina=""):
                             "alt_e": alts["E"],
                             "gabarito": gabarito, "dificuldade": "Médio", "tipo": tipo, "imagem": "",
                             "comentarios": comentario_extraido
-                        })
+                        }
+
+                        # CÓDIGO INSERIDO: Confirmação de que o assunto faz parte do dicionário antes do append
+                        if i < 3:
+                            print(f"      -> Q{q_numero}: Assunto no objeto = {questao_final['assunto']}")
+
+                        questoes.append(questao_final)
                     else:
                         # CÓDIGO INSERIDO: Log de descarte final
                         print(f"Questão {q_numero}: Descartada por falta de alternativas válidas após limpeza.")
