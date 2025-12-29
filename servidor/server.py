@@ -99,48 +99,122 @@ def gerar_assinatura(q):
 
 
 # --- RECONSTRUÇÃO DE TEXTO ---
-def reconstruir_header_logico(texto):
-    pattern = r"([A-Z\s\-\–]+)\n\s*((?:UESTÕES|ISTA).*)"
+def reconstruir_header_logico(texto, disciplina=""):
 
-    def resolver_match(m):
-        raw_letras = m.group(1)
-        raw_palavras = m.group(2)
-        matches_guia = list(re.finditer(r'([A-Z]|-)', raw_letras))
-        palavras_quebradas = raw_palavras.split()
-        stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "EM", "QUE", "SE"]
-        resultado_final = ""
-        idx_p2 = 0
-        for i, match in enumerate(matches_guia):
-            token = match.group(1)
-            termo_para_adicionar = token
-            if token != '-':
-                while idx_p2 < len(palavras_quebradas):
-                    palavra_atual = palavras_quebradas[idx_p2]
-                    if palavra_atual.upper().strip(".,:;") in stopwords:
-                        resultado_final += palavra_atual + " "
+    if disciplina == "Contabilidade Gerencial":
+        print(f"\n[DEBUG HEADER] Disciplina detectada: Contabilidade Gerencial")
+        pattern = r"([A-ZÀ-Ú\s\-\–—]+)[\r\n]+\s*((?:QUESTÕES|ISTA)[^\r\n]+)(?:[\r\n]+\s*([A-ZÀ-Ú])\s*[\r\n]+\s*([A-ZÀ-Ú]{2,}))?"
+
+        def resolver_match_cg(m):
+            # CÓDIGO INSERIDO: Extração segura de até 4 grupos
+            grupos = m.groups()
+            raw_letras = grupos[0] or ""
+            raw_palavras = grupos[1] or ""
+            extra_letra = grupos[2] or ""
+            extra_palavra = grupos[3] or ""
+
+            print(f"\n[DEBUG MATCH CG] Grupos: L1={repr(raw_letras.strip())} | L2={repr(raw_palavras.strip())} | L3={repr(extra_letra)} | L4={repr(extra_palavra)}")
+
+            # Une a banca (L3 e L4) aos buffers se existirem
+            if extra_letra and extra_palavra:
+                raw_letras = raw_letras.rstrip() + " " + extra_letra
+                raw_palavras = raw_palavras.rstrip() + " " + extra_palavra
+
+            # Processa a intercalação com suporte a acentos e travessões
+            matches_guia = list(re.finditer(r'([A-ZÀ-Ú]|\-|–|—)', raw_letras))
+            palavras_quebradas = raw_palavras.split()
+            stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "EM", "QUE", "SE"]
+            resultado_final = ""
+            idx_p2 = 0
+
+            for i, match in enumerate(matches_guia):
+                token = match.group(1)
+                termo_para_adicionar = token
+                if token not in ['-', '–', '—']:
+                    while idx_p2 < len(palavras_quebradas):
+                        palavra_atual = palavras_quebradas[idx_p2]
+                        if palavra_atual.upper().strip(".,:;") in stopwords:
+                            resultado_final += palavra_atual + " "
+                            idx_p2 += 1
+                        else:
+                            break
+                    if idx_p2 < len(palavras_quebradas):
+                        termo_para_adicionar = token + palavras_quebradas[idx_p2]
                         idx_p2 += 1
-                    else:
-                        break
-                if idx_p2 < len(palavras_quebradas):
-                    termo_para_adicionar = token + palavras_quebradas[idx_p2]
-                    idx_p2 += 1
-            resultado_final += termo_para_adicionar
-            if i < len(matches_guia) - 1:
-                fim_atual = match.end()
-                inicio_prox = matches_guia[i + 1].start()
-                if inicio_prox > fim_atual:
-                    resultado_final += " "
-        if idx_p2 < len(palavras_quebradas):
-            resultado_final += " " + " ".join(palavras_quebradas[idx_p2:])
-        return "\n" + re.sub(r'\s+', ' ', resultado_final).strip() + "\n"
+                else:
+                    termo_para_adicionar = "-" # Normaliza para o parser de assunto
 
-    return re.sub(pattern, resolver_match, texto)
+                resultado_final += termo_para_adicionar
+                if i < len(matches_guia) - 1:
+                    fim_atual = match.end()
+                    inicio_prox = matches_guia[i + 1].start()
+                    if inicio_prox > fim_atual:
+                        resultado_final += " "
+
+            if idx_p2 < len(palavras_quebradas):
+                resultado_final += " " + " ".join(palavras_quebradas[idx_p2:])
+
+            final = "\n" + re.sub(r'\s+', ' ', resultado_final).strip() + "\n"
+            print(f"   [DEBUG RECONSTRUÇÃO CG] Final: {repr(final.strip())}")
+            return final
+
+        # CÓDIGO MODIFICADO: Retorno imediato dentro do bloco para evitar conflito de escopo
+        return re.sub(pattern, resolver_match_cg, texto)
+
+    else:
+        print(f"[DEBUG HEADER] Disciplina padrão detectada.")
+        pattern = r"([A-Z\s\-\–]+)\n\s*((?:UESTÕES|ISTA).*)"
+
+        def resolver_match(m):
+            raw_letras = m.group(1)
+            raw_palavras = m.group(2)
+
+            # CÓDIGO INSERIDO: Debug para ver a fragmentação original
+            print(f"\n[DEBUG HEADER] Detectado fragmento de título:")
+            print(f"   Letras capturadas (G1): {repr(raw_letras)}")
+            print(f"   Palavras capturadas (G2): {repr(raw_palavras)}")
+
+            matches_guia = list(re.finditer(r'([A-Z]|-)', raw_letras))
+            palavras_quebradas = raw_palavras.split()
+            stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "EM", "QUE", "SE"]
+            resultado_final = ""
+            idx_p2 = 0
+            for i, match in enumerate(matches_guia):
+                token = match.group(1)
+                termo_para_adicionar = token
+                if token != '-':
+                    while idx_p2 < len(palavras_quebradas):
+                        palavra_atual = palavras_quebradas[idx_p2]
+                        if palavra_atual.upper().strip(".,:;") in stopwords:
+                            resultado_final += palavra_atual + " "
+                            idx_p2 += 1
+                        else:
+                            break
+                    if idx_p2 < len(palavras_quebradas):
+                        termo_para_adicionar = token + palavras_quebradas[idx_p2]
+                        idx_p2 += 1
+                resultado_final += termo_para_adicionar
+                if i < len(matches_guia) - 1:
+                    fim_atual = match.end()
+                    inicio_prox = matches_guia[i + 1].start()
+                    if inicio_prox > fim_atual:
+                        resultado_final += " "
+            if idx_p2 < len(palavras_quebradas):
+                resultado_final += " " + " ".join(palavras_quebradas[idx_p2:])
+
+            final = "\n" + re.sub(r'\s+', ' ', resultado_final).strip() + "\n"
+
+            # CÓDIGO INSERIDO: Debug do resultado da reconstrução
+            print(f"   Resultado reconstruído: {repr(final.strip())}")
+            return final
+
+        return re.sub(pattern, resolver_match, texto)
 
 
 def limpar_ruido(texto, disciplina=""):
-    print(f"\n[DEBUG LIMPEZA] Iniciando limpeza para disciplina: {disciplina}")
-    
-    texto = reconstruir_header_logico(texto)
+    print(f"\n--- [DEBUG LIMPEZA] Disciplina: {disciplina} ---")
+
+    texto = reconstruir_header_logico(texto, disciplina)
     # Normaliza a palavra GABARITO que pode vir espaçada ou quebrada
     texto = re.sub(r'G\s*\n?\s*A\s*B\s*A\s*R\s*I\s*T\s*O', 'Gabarito', texto, flags=re.IGNORECASE)
 
@@ -187,9 +261,24 @@ def limpar_ruido(texto, disciplina=""):
             r"^.*Júlio Cardozo.*$\n?"
         ])
 
-    for pattern in patterns_to_remove:
-        texto = re.sub(pattern, "", texto, flags=re.MULTILINE | re.IGNORECASE)
+        # CÓDIGO MODIFICADO: Loop de limpeza com rastreamento de capturas
+        for pattern in patterns_to_remove:
+            # Busca todas as ocorrências antes de deletar
+            matches = re.findall(pattern, texto, flags=re.MULTILINE | re.IGNORECASE)
+
+            for m in matches:
+                if "QUESTÕES" in str(m).upper() or "LISTA" in str(m).upper():
+                    print(f"   [ALERTA] Pattern de limpeza removeu título legítimo: {repr(m)}")
+
+
+            # Realiza a remoção efetiva
+            texto = re.sub(pattern, "", texto, flags=re.MULTILINE | re.IGNORECASE)
+
     texto = re.sub(r'\n{3,}', '\n\n', texto)
+
+    # CÓDIGO INSERIDO: Log de conclusão
+    print(f"{'=' * 30}\n[DEBUG LIMPEZA] Limpeza concluída.\n{'=' * 30}\n")
+
     return texto
 
 
@@ -243,12 +332,21 @@ def parsear_questoes(texto_bruto, disciplina=""):
         assunto_atual = "Geral"
 
         for idx_bloco, bloco in enumerate(blocos):
+            # CÓDIGO INSERIDO: Debug do início exato do bloco para conferir o re.match
+            bloco_clean = bloco.strip()
+            print(f"\n[DEBUG PARSER] Bloco {idx_bloco + 1} - Primeiros 100 caracteres:")
+            print(f"   {repr(bloco_clean[:100])}")
+
             # Detecta o assunto do bloco pelo título
             match_titulo = re.match(r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)', bloco,
                                 re.IGNORECASE)
 
             if match_titulo:
                 linha_completa = match_titulo.group(1).strip()
+
+                print(f"   Match Título Sucesso: {repr(linha_completa)}")
+
+
                 idx_primeiro_hifen = linha_completa.find('-')
                 idx_ultimo_hifen = linha_completa.rfind('-')
 
@@ -269,6 +367,9 @@ def parsear_questoes(texto_bruto, disciplina=""):
 
                 print(f"Bloco {idx_bloco + 1}: Assunto detectado -> {assunto_atual}")
 
+            if not match_titulo:
+                print(f"   Match Título FALHOU para este bloco.")
+
             banca = "CESGRANRIO"
             instituicao = ""
             ano = "2025"
@@ -282,6 +383,16 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     r'^\s*(\d+)\.\s*(?:\(?)\s*((?:\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|EQUIPE|[A-Z][a-zçãõâêô]+).+?)\s*(?:\)?)\s*$',
                     re.MULTILINE
                 )
+
+            # CÓDIGO INSERIDO: Pattern flexível para Contabilidade Gerencial (Metadados sem número ou com número)
+            elif disciplina == "Contabilidade Gerencial":
+            # O (?:(\d+)\s*[\.\-\)]\s*)? torna a captura do número opcional no início da questão.
+            # O padrão ([^)]+) captura o conteúdo dos parênteses em múltiplas linhas devido ao re.S.
+                pattern_questao = re.compile(
+                r'(?:^|\n)\s*(?:(\d+)\s*[\.\-\)]\s*)?(\((?:CESGRANRIO|QUADRIX|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS|CFC|CVM|BNDES|FAFIPA|NC UFPR|FEPESE|IBGP|FUNDEP|FAURGS|FUNDATEC|LEGALLE|FUMARC|AOCP|IBFC|ANS|CONSULPLAN|FAUEL|IDECAN)[^)]+\))',
+                re.IGNORECASE | re.S)
+
+
             elif disciplina in desc_g2:
                 # Sem ^ (início de linha) e sem $ (fim de linha). Pega inline.
                 pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*(\(.*?\))', re.MULTILINE)
@@ -295,6 +406,10 @@ def parsear_questoes(texto_bruto, disciplina=""):
             for i, m in enumerate(matches_questoes):
                 q_numero = m.group(1)
                 q_meta = m.group(2)
+
+                # CÓDIGO INSERIDO: Debug dos metadados da questão
+                if i < 3:  # Loga apenas as 3 primeiras para não poluir
+                    print(f"  -> Q{q_numero} Meta capturada: {repr(q_meta)}")
 
                 if disciplina == "Português":
                     # Filtro para evitar falsos positivos (como "1. Noções..." no índice)
@@ -442,6 +557,10 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     else:
                         # CÓDIGO INSERIDO: Log de descarte final
                         print(f"Questão {q_numero}: Descartada por falta de alternativas válidas após limpeza.")
+
+                else:
+                    # CÓDIGO INSERIDO: Log de falha de enunciado
+                    print(f"  [ALERTA] Q{q_numero} descartada: Enunciado vazio após limpeza.")
 
 
 
