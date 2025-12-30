@@ -7,6 +7,7 @@ window.opcoes = {};
 window.flashDb = [];
 window.flashPool = [];
 window.flashIdx = 0;
+
 let checkDupTimeout = null;
 let sessao = { pool: [], idx: 0, acertos: 0, modo: '', timer: null, tempo: 0 };
 let foco = null, ordCol = { c: null, d: 'asc' };

@@ -1,4 +1,3 @@
-// [CÓDIGO INSERIDO] - Definições globais
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 window.planoAtual = window.planoAtual || {
     grade: {},
@@ -7,8 +6,28 @@ window.planoAtual = window.planoAtual || {
         "Segunda": [], "Terça": [], "Quarta": [], "Quinta": [], "Sexta": [], "Sábado": [], "Domingo": []
     } };
 
+
+window.planConfig = window.planConfig || {};
+
+
+const PALETA_CORES = [
+    "#8e44ad", "#2980b9", "#27ae60", "#d35400", "#16a085", 
+    "#c0392b", "#f1c40f", "#2c3e50", "#7f8c8d", "#e67e22"
+];
+
 function initPlanoEstudos() {
-    // [CÓDIGO MODIFICADO] - Só renderiza se a aba estiver pronta no HTML
+    if (window.opcoes.disciplinas) {
+        window.opcoes.disciplinas.forEach((nome, index) => {
+            if (!window.planConfig[nome]) {
+                window.planConfig[nome] = {
+                    cor: PALETA_CORES[index % PALETA_CORES.length], // Atribui cor da paleta
+                    min: 2, // Default: 1h
+                    max: 6  // Default: 2h
+                };
+            }
+        });
+    }
+   
     const headerDias = el("header-dias");
     if (headerDias && headerDias.children.length === 1) {
         DIAS_SEMANA.forEach(d => {
@@ -18,10 +37,13 @@ function initPlanoEstudos() {
         });
     };
 
-    // [CÓDIGO INSERIDO] - Renderiza o painel de configuração de intervalos
+    // Renderiza a tabela de pesos para as disciplinas carregadas
+    renderizarTabelaPesos();
+
+   
     renderizarConfigIntervalos();
 
-    // 2. CORREÇÃO: Declarar a variável 'grid' antes de usá-la no 'if'
+    // Declarar a variável 'grid' antes de usá-la no 'if'
     const grid = el("corpo-grade-estudos");
 
     if (grid) {
@@ -31,7 +53,34 @@ function initPlanoEstudos() {
     }
 }
 
-// [CÓDIGO INSERIDO] - Lógica para gerenciar os inputs de horários por dia
+
+function renderizarTabelaPesos() {
+    const tbody = el("corpo-pesos-disciplinas");
+    if (!tbody || !window.opcoes.disciplinas) return;
+
+    tbody.innerHTML = "";
+    window.opcoes.disciplinas.forEach(disc => {
+        const meta = window.planConfig[disc] || { min: 2, max: 6, cor: "#ccc" };
+        const pesoPadrao = disc.includes("Específicos") ? 0.6 : 0.14; 
+        tbody.innerHTML += `
+            <tr">
+                <td style="border-left: 5px solid ${meta.cor}
+                ">${disc}</td>
+                <td><input type="number" step="0.1" value="${pesoPadrao}" class="peso-mcda" data-disc="${disc}"></td>
+                <td>
+                    <select class="tipo-mcda" data-disc="${disc}">
+                        <option value="eliminatorio" ${disc.includes("Específicos") ? 'selected' : ''}>Elim.</option>
+                        <option value="classificatorio">Class.</option>
+                    </select>
+                </td>
+                <td><input type="number" class="sessao-min" data-disc="${disc}" value="${meta.min}" title="Mínimo de blocos seguidos (ex: 2 = 1h)"></td>
+                <td><input type="number" class="sessao-max" data-disc="${disc}" value="${meta.max}" title="Máximo de blocos seguidos (ex: 4 = 2h)"></td>
+            </tr>
+        `;
+    });
+}
+
+
 function renderizarConfigIntervalos() {
     const container = el("container-config-dias");
     if (!container) return;
@@ -84,7 +133,7 @@ function removerIntervalo(dia, index) {
     renderizarConfigIntervalos();
 }
 
-// [CÓDIGO INSERIDO] - Função que realiza o cálculo matemático da carga semanal
+
 function calcularHorasTotaisDisponiveis() {
     let totalMinutos = 0;
     
@@ -110,14 +159,17 @@ function calcularHorasTotaisDisponiveis() {
     return totalHoras;
 }
 
-// [CÓDIGO INSERIDO] - Preenche a grade automaticamente com base nos intervalos
+// Preenche a grade automaticamente com base nos intervalos
 function aplicarIntervalosNaGrade() {
+    const hInicio = parseInt(el("plan-config-inicio").value) || 3;
+    const hFim = parseInt(el("plan-config-fim").value) || 17;
+
     // Reseta matérias que não são "Descanso" se o usuário desejar, ou apenas marca o disponível
     DIAS_SEMANA.forEach(dia => {
         const intervalos = window.planoAtual.intervalos[dia] || [];
         
         // Varre todos os horários da grade (04:00 às 23:30)
-        for(let h=4; h<24; h++) {
+        for(let h=hInicio; h<hFim; h++) {
             ["00", "30"].forEach(m => {
                 const horaStr = `${h.toString().padStart(2,'0')}:${m}`;
                 const minAtual = h * 60 + parseInt(m);
@@ -143,7 +195,98 @@ function aplicarIntervalosNaGrade() {
     renderizarGridPlano();
 }
 
-// [CÓDIGO INSERIDO] - Função para clicar e editar matéria na grade
+// Distribui as matérias sugeridas pelo TOPSIS nos blocos marcados como "Estudar"
+function distribuirSugestoesNaGrade() {
+    if (!window.planoAtual.horas || Object.keys(window.planoAtual.horas).length === 0) {
+        return alert("Primeiro clique em 'Calcular & Otimizar' para gerar as sugestões.");
+    }
+
+    // Captura parâmetros e prepara o Ranking TOPSIS
+    const restricoes = {};
+
+    document.querySelectorAll(".peso-mcda").forEach(input => {
+        const disc = input.getAttribute("data-disc");
+        restricoes[disc] = {
+            materia: disc,
+            peso: parseFloat(input.value),
+            min: parseInt(document.querySelector(`.sessao-min[data-disc="${disc}"]`).value) || 2,
+            max: parseInt(document.querySelector(`.sessao-max[data-disc="${disc}"]`).value) || 6,
+            blocosRestantes: Math.round((window.planoAtual.horas[disc] || 0) * 2)
+        };
+    });
+
+    // Ordena pelo peso (TOPSIS) para priorizar no início do dia
+    const ranking = Object.values(restricoes).sort((a, b) => b.peso - a.peso);
+
+    const hInicio = parseInt(el("plan-config-inicio").value) || 3;
+    const hFim = parseInt(el("plan-config-fim").value) || 18;
+
+    // Loop por Dia e Horário para aplicar as janelas de tempo
+    DIAS_SEMANA.forEach(dia => {
+        let materiaAtual = null;
+        let contagemSessao = 0;
+        let materiaUltimaSessao = null; // Para evitar repetir a mesma logo após o maxSessao
+
+        for (let h = hInicio; h < hFim; h++) {
+            ["00", "30"].forEach(m => {
+                const horaStr = `${h.toString().padStart(2, '0')}:${m}`;
+                const chave = `cell-${dia}-${horaStr}`;
+
+                // Verifica se o bloco é destinado a estudo (marcado via intervalos)
+                if (window.planoAtual.grade[chave] === "Descanso") {
+                    materiaAtual = null;
+                    contagemSessao = 0;
+                    return;
+                }
+
+                let escolha = "Descanso";
+
+                // 1. LÓGICA DE MANUTENÇÃO: Se começou uma matéria, respeita o MÍNIMO
+                if (materiaAtual && contagemSessao < restricoes[materiaAtual].min && restricoes[materiaAtual].blocosRestantes > 0) {
+                    escolha = materiaAtual;
+                } 
+                // 2. LÓGICA DE TROCA FORÇADA: Se atingiu o MÁXIMO, obriga a trocar
+                else {
+                    if (materiaAtual) materiaUltimaSessao = materiaAtual; // Salva para não repetir imediatamente
+                    materiaAtual = null;
+                    contagemSessao = 0;
+
+                    // 3. BUSCA POR RANKING: Procura a melhor matéria disponível
+                    for (let r of ranking) {
+                        // Não escolhe a mesma que acabou de atingir o máximo (espaçamento)
+                        if (r.materia === materiaUltimaSessao && ranking.length > 1) continue;
+                        
+                        if (r.blocosRestantes > 0) {
+                            escolha = r.materia;
+                            materiaAtual = r.materia;
+                            break;
+                        }
+                    }
+                    
+                    // Se não sobrou nenhuma outra, aceita a última mesmo (para não deixar buraco)
+                    if (!materiaAtual && materiaUltimaSessao && restricoes[materiaUltimaSessao].blocosRestantes > 0) {
+                        escolha = materiaUltimaSessao;
+                        materiaAtual = materiaUltimaSessao;
+                    }
+                }
+
+                // Aplica na grade e atualiza contadores
+                if (escolha !== "Estudar" && escolha !== "Descanso") {
+                    window.planoAtual.grade[chave] = escolha;
+                    restricoes[escolha].blocosRestantes--;
+                    contagemSessao++;
+                } else {
+                    window.planoAtual.grade[chave] = "Descanso";
+                }
+            });
+        }
+    });
+
+    renderizarGridPlano();
+    alert("Matérias distribuídas na grade com sucesso!");
+}
+
+// Função para clicar e editar matéria na grade
 function definirMateriaCelular(dia, hora) {
     const atual = window.planoAtual.grade[`cell-${dia}-${hora}`] || "";
     const nova = prompt(`Definir matéria para ${dia} às ${hora}:`, atual);
@@ -158,22 +301,42 @@ function renderizarGridPlano() {
     const corpo = el("corpo-grade-estudos");
     if (!corpo) return; // [CÓDIGO INSERIDO] - Correção para o erro da linha 13
 
+    // Agora usa os valores definidos no cabeçalho (Início/Fim)
+    const hInicio = parseInt(el("plan-config-inicio").value) || 3;
+    const hFim = parseInt(el("plan-config-fim").value) || 17;
+
     corpo.innerHTML = "";
-    for(let h=3; h<=17; h++) {
+    for(let h = hInicio; h < hFim; h++) {
         ["00", "30"].forEach(m => {
-            const hora = `${h.toString().padStart(2,'0')}:${m}`;
-            let row = `<tr><td class="hora-col">${hora}</td>`;
+            const horaStr = `${h.toString().padStart(2,'0')}:${m}`;
+            let row = `<tr><td class="hora-col">${horaStr}</td>`;
+            
             DIAS_SEMANA.forEach(d => {
-                const idCell = `cell-${d}-${hora}`;
-                const preenchido = planoAtual.grade[idCell] || "";
-                row += `<td id="${idCell}" onclick="setarMateria('${d}','${hora}')" class="${preenchido ? 'com-materia' : ''}">${preenchido}</td>`;
+                const idCell = `cell-${d}-${horaStr}`;
+                const materia = window.planoAtual.grade[idCell] || "";
+                
+                // [CÓDIGO INSERIDO] - Lógica de cores baseada no plano dinâmico
+                let bg = "transparent";
+                let text = "#333";
+                
+                if (materia === "Estudar") {
+                    bg = "#ecf0f1";
+                } else if (window.planConfig[materia]) {
+                    bg = window.planConfig[materia].cor;
+                    text = "#fff"; // Assume branco para melhor contraste em cores da paleta
+                }
+                
+                row += `<td id="${idCell}" onclick="definirMateriaCelular('${d}','${horaStr}')"
+                            style="background-color: ${bg}; color: ${text};">
+                            ${(materia === "Descanso" || materia === "Estudar") ? "" : materia}
+                        </td>`;
             });
             corpo.innerHTML += row + `</tr>`;
         });
     }
 }
 
-// [CÓDIGO INSERIDO] - Lógica TOPSIS para cálculo de horas
+// Lógica TOPSIS para cálculo de horas
 async function calcularCargaHorariaMCDA() {
     const horasTotais = parseFloat(el("horas-semanais-input").value);
     const pesosProva = {}; // Capturar inputs de % na prova
@@ -196,13 +359,13 @@ async function calcularCargaHorariaMCDA() {
     exibirSugestaoHoras(distribuicao);
 }
 
-// [CÓDIGO MODIFICADO] - Monitor em tempo real sincronizado com os novos IDs
+// Monitor em tempo real sincronizado com os novos IDs
 setInterval(() => {
     const monitorMateria = el("monitor-materia");
     const monitorRelogio = el("monitor-tempo-restante");
     const barra = el("monitor-barra-progresso");
     
-    if (!monitorMateria) return;
+    if (!monitorMateria || !el("secao-plano") || el("secao-plano").style.display === "none") return;
 
     const agora = new Date();
     const diaNum = agora.getDay(); // 0 = Domingo
@@ -231,21 +394,21 @@ setInterval(() => {
     }
 }, 1000);
 
-// [CÓDIGO INSERIDO] - Função para o botão Salvar
+// Função para o botão Salvar
 function salvarPlanoEstudos() {
     localStorage.setItem("plano_estudos_user", JSON.stringify(window.planoAtual));
     alert("Plano salvo localmente com sucesso!");
 }
 
-// [CÓDIGO INSERIDO] - Carregar plano ao iniciar
+// Carregar plano ao iniciar
 window.addEventListener('load', () => {
     const salvo = localStorage.getItem("plano_estudos_user");
     if (salvo) window.planoAtual = JSON.parse(salvo);
 });
 
-// [CÓDIGO INSERIDO] - Função completa para cálculo de alocação de tempo via TOPSIS
+// Função completa para cálculo de alocação de tempo via TOPSIS
 async function calcularPlanoTopsis() {
-    // [CÓDIGO MODIFICADO] - Agora utiliza o valor calculado dos intervalos
+    // Agora utiliza o valor calculado dos intervalos
     const horasSemanais = parseFloat(calcularHorasTotaisDisponiveis());
 
     if (!horasSemanais || horasSemanais <= 0) {
@@ -256,14 +419,15 @@ async function calcularPlanoTopsis() {
         return alert("Erro: Disciplinas não carregadas.");
     }
 
-    const criterios = window.opcoes.disciplinas.map(materia => {
-        const inputPeso = document.querySelector(`.peso-prova[data-disc="${materia}"]`);
-        const selectTipo = document.querySelector(`.tipo-disciplina[data-disc="${materia}"]`);
-        
+
+    // Captura os pesos e tipos da nova tabela UI
+    const criterios = Array.from(document.querySelectorAll(".peso-mcda")).map(input => {
+        const disc = input.getAttribute("data-disc");
+        const select = document.querySelector(`.tipo-mcda[data-disc="${disc}"]`);
         return {
-            disciplina: materia,
-            peso_prova: inputPeso ? parseFloat(inputPeso.value) : 0.5, 
-            tipo: selectTipo ? selectTipo.value : 'classificatorio'
+            disciplina: disc,
+            peso_prova: parseFloat(input.value) || 0.1,
+            tipo: select ? select.value : 'classificatorio'
         };
     });
 
@@ -294,7 +458,7 @@ async function calcularPlanoTopsis() {
     }
 }
 
-// [CÓDIGO INSERIDO] - Função auxiliar para exibir as horas calculadas na lateral
+// Função auxiliar para exibir as horas calculadas na lateral
 function renderizarListaSugestao(dados) {
     const container = el("lista-sugestao-horas");
     if (!container) return;

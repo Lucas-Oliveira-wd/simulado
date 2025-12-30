@@ -7,7 +7,8 @@ import pdfplumber
 import re
 import uuid
 import json
-import numpy as np # [CÓDIGO INSERIDO] - Necessário para cálculos matriciais do TOPSIS
+import numpy as np
+import pandas as pd
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///banco_estudos.db'
@@ -1088,6 +1089,71 @@ def reescrever_todos_textos(dados):
     except Exception as e:
         print(f"--- ERRO AO REESCREVER TEXTOS: {e} ---")
         return False
+
+
+def gerar_cronograma_inteligente(disciplinas_df, slots_disponiveis):
+    """
+    disciplinas_df: DataFrame com ['materia', 'score_topsis', 'carga_horaria_total']
+    slots_disponiveis: Lista de tuplas/objetos com (dia, horario)
+    """
+
+    # --- CÓDIGO INSERIDO: Ordenação por Ranking TOPSIS ---
+    # Garante que a prioridade de preenchimento siga o ranking
+    disciplinas = disciplinas_df.sort_values(by='score_topsis', ascending=False).to_dict('records')
+    # -----------------------------------------------------
+
+    cronograma = {}
+    horas_alocadas = {d['materia']: 0 for d in disciplinas}
+    ultimo_assunto_dia = {dia: None for dia in set(d for d, h in slots_disponiveis)}
+
+    # --- CÓDIGO INSERIDO: Configurações de Restrição ---
+    MIN_BLOCOS = 2  # Mínimo de 1h por matéria para evitar fragmentação
+    MAX_BLOCOS_DIA = 4  # Máximo de 2h da mesma matéria por dia para evitar fadiga
+    # ----------------------------------------------------
+
+    # --- CÓDIGO EXCLUÍDO (SIMULADO) ---
+    # for slot in slots_disponiveis:
+    #     materia = disciplinas_ordenadas_alfabeticamente[i]
+    #     cronograma[slot] = materia
+    # ----------------------------------
+
+    for dia, horario in slots_disponiveis:
+        materia_escolhida = "Descanso"
+
+        for d in disciplinas:
+            nome = d['materia']
+
+            # --- CÓDIGO INSERIDO: Lógica de Validação de Restrições ---
+
+            # 1. Verifica se a matéria ainda tem carga horária pendente
+            if horas_alocadas[nome] >= d['carga_horaria_total']:
+                continue
+
+            # 2. Verifica se a matéria já atingiu o limite diário (Espaçamento/Fadiga)
+            blocos_hoje = list(cronograma.values()).count((dia, nome))  # Simulação de busca
+            if blocos_hoje >= MAX_BLOCOS_DIA:
+                continue
+
+            # 3. Inteligência de Sequência (Blocagem)
+            # Se começamos uma matéria, devemos terminar o bloco mínimo antes de trocar
+            if ultimo_assunto_dia[dia] and ultimo_assunto_dia[dia] != nome:
+                blocos_da_ultima = 0  # Lógica para contar blocos seguidos da última matéria
+                if blocos_da_ultima < MIN_BLOCOS and horas_alocadas[ultimo_assunto_dia[dia]] < d_ultima['total']:
+                    # Força a manutenção da última matéria se não atingiu o MIN_BLOCOS
+                    materia_escolhida = ultimo_assunto_dia[dia]
+                    break
+
+            # 4. Se passou nas validações e é a top rank, seleciona
+            materia_escolhida = nome
+            break
+            # ---------------------------------------------------------
+
+        cronograma[(dia, horario)] = materia_escolhida
+        if materia_escolhida != "Descanso":
+            horas_alocadas[materia_escolhida] += 0.5
+            ultimo_assunto_dia[dia] = materia_escolhida
+
+    return cronograma
 
 
 
