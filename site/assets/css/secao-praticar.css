@@ -299,3 +299,7 @@ body.dark-mode .texto-titulo {
     margin-bottom: 5px;
     margin-top: 0;
 }
+
+.texto-conteudo{
+    font-size: 1.2rem;
+}

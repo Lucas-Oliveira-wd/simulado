@@ -101,7 +101,7 @@ def gerar_assinatura(q):
 # --- RECONSTRUÇÃO DE TEXTO ---
 def reconstruir_header_logico(texto, disciplina=""):
 
-    if disciplina == "Contabilidade Gerencial":
+    if disciplina == "Contabilidade Gerencial" or disciplina == "Contabilidade de Custos":
         # CÓDIGO MODIFICADO: O pattern agora proíbe quebras de linha dentro dos grupos através de [^\r\n]*.
         # Cada grupo de palavras (G2 e G4) é interrompido obrigatoriamente no fim da linha.
         # G1: Linha 1 (Letras) | G2: Linha 2 (Palavras) | G3: Linha 3 (Letras) | G4: Linha 4 (Palavras)
@@ -287,6 +287,13 @@ def limpar_ruido(texto, disciplina=""):
             r"^.*Luciano Rosa.*$\n?",
             r"^.*Júlio Cardozo.*$\n?"
         ])
+    elif disciplina == "Contabilidade de Custos":
+        patterns_to_remove.extend([
+            r"^.*PETROBRAS \(Engenharia de Produção\) Contabilidade de Custos\s*\d*.*$\n?",
+            r"^.*Eliseu Martins.*$\n?",
+            r"^.*Júlio Cardozo.*$\n?",
+            r"^.*Luciano Rosa.*$\n?"
+        ])
 
         # CÓDIGO MODIFICADO: Loop de limpeza com rastreamento de capturas
         for pattern in patterns_to_remove:
@@ -334,12 +341,14 @@ def parsear_questoes(texto_bruto, disciplina=""):
                "Conhecimentos Específicos",
                "Estatística",
                "Matemática Financeira",
-               "Contabilidade Gerencial"]
+               "Contabilidade Gerencial",
+               "Contabilidade de Custos"]
 
     desc_g2 = ["Conhecimentos Específicos",
                "Estatística",
                "Matemática Financeira",
-               "Contabilidade Gerencial"]
+               "Contabilidade Gerencial",
+               "Contabilidade de Custos"]
 
     questoes = []
 
@@ -549,7 +558,7 @@ def parsear_questoes(texto_bruto, disciplina=""):
                     alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
                 else:
                     # CÓDIGO MODIFICADO: Interceptação exclusiva para evitar sobreposição de lógica
-                    if disciplina == "Contabilidade Gerencial":
+                    if disciplina == "Contabilidade Gerencial" or disciplina == "Contabilidade de Custos":
                         # 1. Normaliza o padrão específico "A - texto" ou "A texto" -> "A) "
                         content_no_comments = re.sub(r'(?<!^)\n\s*([A-E])(?:\s*-\s*|\s+)', r'\n\1) ',
                                                      content_no_comments)

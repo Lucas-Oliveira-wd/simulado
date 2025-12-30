@@ -311,7 +311,7 @@ function renderizarQuestaoPratica() {
         ${txt ? `
             <div class="texto-apoio-box" style="margin-bottom:20px; border-left: 4px solid var(--purple); padding-left:15px;">
                 <h4 style="margin-top:0">${txt.titulo}</h4>
-                <div style="font-size:0.95rem; line-height:1.6">${txt.conteudo.replace(/\n/g, '<br>')}</div>
+                <div class="texto-conteudo">${txt.conteudo.replace(/\n/g, '<br>')}</div>
             </div>
         ` : ''}
         <div class="enunciado render-html" style="font-size:1.1rem; line-height:1.5; margin-bottom:20px;">
@@ -748,7 +748,7 @@ function renderizarQuestaoSessao() {
                 <button class="tab-btn" onclick="mudarTabQuestao('enunciado')">Enunciado</button>
             </div>
             <div id="conteudo-texto" class="texto-apoio-box">
-                <h4 style="margin-top:0">${q.texto_titulo}</h4>
+                <h4 class="header-texto">${q.texto_titulo}</h4>
                 ${q.texto_conteudo}
             </div>
         ` : ''}
