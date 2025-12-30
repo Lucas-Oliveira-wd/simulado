@@ -15,6 +15,59 @@ const PALETA_CORES = [
     "#c0392b", "#f1c40f", "#2c3e50", "#7f8c8d", "#e67e22"
 ];
 
+// Função Unificada para montar o plano completo
+async function fluxoGerarPlanoCompleto() {
+    try {
+        if (typeof showLoader === 'function') showLoader("Calculando e distribuindo matérias...");
+
+        // 1. Cálculo TOPSIS (Horas)
+        // [CÓDIGO MODIFICADO] - Agora a função é chamada dentro do fluxo unificado
+        await calcularPlanoTopsis(true); // Passei 'true' para indicar modo silencioso se necessário
+
+        // 2. Sincronização da Grade (Aplica "Estudar" nos slots disponíveis)
+        aplicarIntervalosNaGrade();
+
+        // 3. Distribuição Inteligente das Disciplinas
+        distribuirSugestoesNaGrade();
+
+        // 4. Alternância de Interface
+        alternarVisibilidadePlano(true);
+
+    } catch (error) {
+        console.error("Erro ao gerar plano:", error);
+        alert("Ocorreu um erro ao processar o plano de estudos.");
+    } finally {
+        if (typeof hideLoader === 'function') hideLoader();
+    }
+}
+
+// Função para alternar entre os modos Configuração e Resultado
+function alternarVisibilidadePlano(mostrarPlano) {
+    const config = el("wrapper-config-inputs");
+    const resultStats = el("wrapper-resultado-stats");
+    const resultGrade = el("wrapper-grade-resultado");
+    const btnGerar = el("btn-gerar-plano");
+    const btnVoltar = el("btn-voltar-config");
+    const btnSalvar = el("btn-salvar-final");
+
+    if (mostrarPlano) {
+        config.style.display = "none";
+        resultStats.style.display = "block";
+        resultGrade.style.display = "block";
+        btnGerar.style.display = "none";
+        btnVoltar.style.display = "inline-block";
+        btnSalvar.style.display = "inline-block";
+    } else {
+        config.style.display = "block";
+        resultStats.style.display = "none";
+        resultGrade.style.display = "none";
+        btnGerar.style.display = "inline-block";
+        btnVoltar.style.display = "none";
+        btnSalvar.style.display = "none";
+    }
+}
+
+
 function initPlanoEstudos() {
     if (window.opcoes.disciplinas) {
         window.opcoes.disciplinas.forEach((nome, index) => {
@@ -22,7 +75,7 @@ function initPlanoEstudos() {
                 window.planConfig[nome] = {
                     cor: PALETA_CORES[index % PALETA_CORES.length], // Atribui cor da paleta
                     min: 2, // Default: 1h
-                    max: 6  // Default: 2h
+                    max: 6  // Default: 3h
                 };
             }
         });
@@ -64,8 +117,7 @@ function renderizarTabelaPesos() {
         const pesoPadrao = disc.includes("Específicos") ? 0.6 : 0.14; 
         tbody.innerHTML += `
             <tr">
-                <td style="border-left: 5px solid ${meta.cor}
-                ">${disc}</td>
+                <td style="border-left: 5px solid ${meta.cor}">${disc}</td>
                 <td><input type="number" step="0.1" value="${pesoPadrao}" class="peso-mcda" data-disc="${disc}"></td>
                 <td>
                     <select class="tipo-mcda" data-disc="${disc}">
@@ -107,7 +159,7 @@ function renderizarConfigIntervalos() {
 
 function adicionarInputIntervalo(dia) {
     if (!window.planoAtual.intervalos[dia]) window.planoAtual.intervalos[dia] = [];
-    window.planoAtual.intervalos[dia].push({ inicio: "08:00", fim: "10:00" });
+    window.planoAtual.intervalos[dia].push({ inicio: "10:00", fim: "17:00" });
     renderizarConfigIntervalos();
 }
 
@@ -151,10 +203,6 @@ function calcularHorasTotaisDisponiveis() {
     const totalHoras = (totalMinutos / 60).toFixed(1);
     const display = el("carga-calculada-total");
     if (display) display.innerText = totalHoras;
-    
-    // Atualiza o input de horas totais para o TOPSIS usar
-    const inputTopsis = el("plan-horas-totais");
-    if (inputTopsis) inputTopsis.value = totalHoras;
 
     return totalHoras;
 }
@@ -196,44 +244,57 @@ function aplicarIntervalosNaGrade() {
 }
 
 // Distribui as matérias sugeridas pelo TOPSIS nos blocos marcados como "Estudar"
+// [CÓDIGO MODIFICADO] - Adicionada trava de sessão mínima para evitar blocos de 30min
 function distribuirSugestoesNaGrade() {
-    if (!window.planoAtual.horas || Object.keys(window.planoAtual.horas).length === 0) {
-        return alert("Primeiro clique em 'Calcular & Otimizar' para gerar as sugestões.");
-    }
+    if (!window.planoAtual.horas) return;
 
-    // Captura parâmetros e prepara o Ranking TOPSIS
     const restricoes = {};
+    const totalDias = DIAS_SEMANA.length;
 
     document.querySelectorAll(".peso-mcda").forEach(input => {
         const disc = input.getAttribute("data-disc");
+        const totalBlocos = Math.round((window.planoAtual.horas[disc] || 0) * 2);
+        const sessaoMax = parseInt(document.querySelector(`.sessao-max[data-disc="${disc}"]`).value) || 6;
+        
         restricoes[disc] = {
             materia: disc,
             peso: parseFloat(input.value),
             min: parseInt(document.querySelector(`.sessao-min[data-disc="${disc}"]`).value) || 2,
-            max: parseInt(document.querySelector(`.sessao-max[data-disc="${disc}"]`).value) || 6,
-            blocosRestantes: Math.round((window.planoAtual.horas[disc] || 0) * 2)
+            max: sessaoMax,
+            blocosRestantes: totalBlocos
         };
     });
 
-    // Ordena pelo peso (TOPSIS) para priorizar no início do dia
-    const ranking = Object.values(restricoes).sort((a, b) => b.peso - a.peso);
+    let filaMaterias = Object.values(restricoes)
+        .filter(r => r.blocosRestantes > 0)
+        .sort((a, b) => b.peso - a.peso);
 
     const hInicio = parseInt(el("plan-config-inicio").value) || 3;
     const hFim = parseInt(el("plan-config-fim").value) || 18;
 
-    // Loop por Dia e Horário para aplicar as janelas de tempo
-    DIAS_SEMANA.forEach(dia => {
+    DIAS_SEMANA.forEach((dia, indexDia) => {
         let materiaAtual = null;
         let contagemSessao = 0;
-        let materiaUltimaSessao = null; // Para evitar repetir a mesma logo após o maxSessao
+        
+        const diasQueFaltam = totalDias - indexDia;
+        const cotasHoje = {};
+        const consumoHoje = {};
+
+        Object.keys(restricoes).forEach(m => {
+            cotasHoje[m] = Math.ceil(restricoes[m].blocosRestantes / diasQueFaltam);
+            consumoHoje[m] = 0;
+        });
 
         for (let h = hInicio; h < hFim; h++) {
             ["00", "30"].forEach(m => {
                 const horaStr = `${h.toString().padStart(2, '0')}:${m}`;
                 const chave = `cell-${dia}-${horaStr}`;
 
-                // Verifica se o bloco é destinado a estudo (marcado via intervalos)
-                if (window.planoAtual.grade[chave] === "Descanso") {
+                if (window.planoAtual.grade[chave] !== "Estudar") {
+                    if (materiaAtual) {
+                        filaMaterias = filaMaterias.filter(f => f.materia !== materiaAtual);
+                        if (restricoes[materiaAtual].blocosRestantes > 0) filaMaterias.push(restricoes[materiaAtual]);
+                    }
                     materiaAtual = null;
                     contagemSessao = 0;
                     return;
@@ -241,39 +302,50 @@ function distribuirSugestoesNaGrade() {
 
                 let escolha = "Descanso";
 
-                // 1. LÓGICA DE MANUTENÇÃO: Se começou uma matéria, respeita o MÍNIMO
-                if (materiaAtual && contagemSessao < restricoes[materiaAtual].min && restricoes[materiaAtual].blocosRestantes > 0) {
-                    escolha = materiaAtual;
-                } 
-                // 2. LÓGICA DE TROCA FORÇADA: Se atingiu o MÁXIMO, obriga a trocar
-                else {
-                    if (materiaAtual) materiaUltimaSessao = materiaAtual; // Salva para não repetir imediatamente
-                    materiaAtual = null;
-                    contagemSessao = 0;
+                // [CÓDIGO INSERIDO] - Lógica de verificação de sessão mínima
+                if (materiaAtual && restricoes[materiaAtual].blocosRestantes > 0) {
+                    const atingiuMin = contagemSessao >= restricoes[materiaAtual].min;
+                    const atingiuMax = contagemSessao >= restricoes[materiaAtual].max;
+                    const estourouCota = consumoHoje[materiaAtual] >= cotasHoje[materiaAtual];
 
-                    // 3. BUSCA POR RANKING: Procura a melhor matéria disponível
-                    for (let r of ranking) {
-                        // Não escolhe a mesma que acabou de atingir o máximo (espaçamento)
-                        if (r.materia === materiaUltimaSessao && ranking.length > 1) continue;
-                        
-                        if (r.blocosRestantes > 0) {
-                            escolha = r.materia;
-                            materiaAtual = r.materia;
-                            break;
-                        }
-                    }
-                    
-                    // Se não sobrou nenhuma outra, aceita a última mesmo (para não deixar buraco)
-                    if (!materiaAtual && materiaUltimaSessao && restricoes[materiaUltimaSessao].blocosRestantes > 0) {
-                        escolha = materiaUltimaSessao;
-                        materiaAtual = materiaUltimaSessao;
+                    // Se ainda não atingiu o mínimo, ignora a cota e continua
+                    // Se já atingiu o mínimo, verifica se pode continuar até o máximo ou cota
+                    if (!atingiuMin || (!atingiuMax && !estourouCota)) {
+                        escolha = materiaAtual;
                     }
                 }
 
-                // Aplica na grade e atualiza contadores
-                if (escolha !== "Estudar" && escolha !== "Descanso") {
+                if (escolha === "Descanso") {
+                    if (materiaAtual) {
+                        filaMaterias = filaMaterias.filter(f => f.materia !== materiaAtual);
+                        if (restricoes[materiaAtual].blocosRestantes > 0) filaMaterias.push(restricoes[materiaAtual]);
+                    }
+
+                    materiaAtual = null;
+                    contagemSessao = 0;
+
+                    for (let i = 0; i < filaMaterias.length; i++) {
+                        let candidata = filaMaterias[i];
+                        if (candidata.blocosRestantes > 0 && consumoHoje[candidata.materia] < cotasHoje[candidata.materia]) {
+                            escolha = candidata.materia;
+                            materiaAtual = candidata.materia;
+                            break;
+                        }
+                    }
+
+                    if (escolha === "Descanso") {
+                        const reserva = filaMaterias.find(f => f.blocosRestantes > 0);
+                        if (reserva) {
+                            escolha = reserva.materia;
+                            materiaAtual = reserva.materia;
+                        }
+                    }
+                }
+
+                if (escolha !== "Descanso") {
                     window.planoAtual.grade[chave] = escolha;
                     restricoes[escolha].blocosRestantes--;
+                    consumoHoje[escolha]++;
                     contagemSessao++;
                 } else {
                     window.planoAtual.grade[chave] = "Descanso";
@@ -283,7 +355,6 @@ function distribuirSugestoesNaGrade() {
     });
 
     renderizarGridPlano();
-    alert("Matérias distribuídas na grade com sucesso!");
 }
 
 // Função para clicar e editar matéria na grade
@@ -338,31 +409,41 @@ function renderizarGridPlano() {
 
 // Lógica TOPSIS para cálculo de horas
 async function calcularCargaHorariaMCDA() {
-    const horasTotais = parseFloat(el("horas-semanais-input").value);
-    const pesosProva = {}; // Capturar inputs de % na prova
+
+    if (!silencioso && typeof showLoader === 'function') showLoader("Calculando otimização MCDA...");
+
+    const horasSemanais = parseFloat(calcularHorasTotaisDisponiveis());
+    if (!horasSemanais || horasSemanais <= 0) return;
     
-    // Obter desempenho do sistema
-    const res = await fetch(`${API}/plan/calculate`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            horas_semanais: horasTotais,
-            criterios: opcoes.disciplinas.map(d => ({
-                disciplina: d,
-                peso_prova: el(`peso-prova-${d}`).value || 0.1,
-                tipo: el(`tipo-${d}`).value // eliminatorio/classificatorio
-            }))
-        })
+    const criterios = Array.from(document.querySelectorAll(".peso-mcda")).map(input => {
+        const disc = input.getAttribute("data-disc");
+        const select = document.querySelector(`.tipo-mcda[data-disc="${disc}"]`);
+        return {
+            disciplina: disc,
+            peso_prova: parseFloat(input.value) || 0.1,
+            tipo: select ? select.value : 'classificatorio'
+        };
     });
-    
-    const distribuicao = await res.json();
-    exibirSugestaoHoras(distribuicao);
+
+    try {
+        const response = await fetch(`${API}/plan/calculate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ horas_semanais: horasSemanais, criterios: criterios })
+        });
+        const distribuicaoHoras = await response.json();
+        window.planoAtual.horas = distribuicaoHoras;
+        renderizarListaSugestao(distribuicaoHoras);
+    } catch (e) {
+        console.error("Erro no TOPSIS:", e);
+    }
 }
 
 // Monitor em tempo real sincronizado com os novos IDs
 setInterval(() => {
     const monitorMateria = el("monitor-materia");
     const monitorRelogio = el("monitor-tempo-restante");
+    if (!monitorMateria || !el("secao-plano") || el("secao-plano").style.display === "none") return;
     const barra = el("monitor-barra-progresso");
     
     if (!monitorMateria || !el("secao-plano") || el("secao-plano").style.display === "none") return;
@@ -407,7 +488,7 @@ window.addEventListener('load', () => {
 });
 
 // Função completa para cálculo de alocação de tempo via TOPSIS
-async function calcularPlanoTopsis() {
+async function calcularPlanoTopsis(silencioso = false) {
     // Agora utiliza o valor calculado dos intervalos
     const horasSemanais = parseFloat(calcularHorasTotaisDisponiveis());
 
@@ -426,7 +507,7 @@ async function calcularPlanoTopsis() {
         const select = document.querySelector(`.tipo-mcda[data-disc="${disc}"]`);
         return {
             disciplina: disc,
-            peso_prova: parseFloat(input.value) || 0.1,
+            peso_prova: parseFloat(input.value) || 0.14,
             tipo: select ? select.value : 'classificatorio'
         };
     });
@@ -448,7 +529,6 @@ async function calcularPlanoTopsis() {
 
         window.planoAtual.horas = distribuicaoHoras;
         renderizarListaSugestao(distribuicaoHoras);
-        alert("Carga horária otimizada!");
 
     } catch (error) {
         console.error(error);
@@ -485,3 +565,17 @@ function renderizarListaSugestao(dados) {
 
     container.innerHTML = html;
 };
+
+// Função de retorno ao modo de configuração
+function voltarParaConfiguracao() {
+    alternarVisibilidadePlano(false);
+}
+
+function salvarPlanoEstudos() {
+    localStorage.setItem("plano_estudos_user", JSON.stringify(window.planoAtual));
+}
+
+window.addEventListener('load', () => {
+    const salvo = localStorage.getItem("plano_estudos_user");
+    if (salvo) window.planoAtual = JSON.parse(salvo);
+});

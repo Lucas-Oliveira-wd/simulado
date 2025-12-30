@@ -425,74 +425,80 @@
     </section>
 
     <section id="secao-plano" class="secao" style="display:none;">
-        <div class="header-plano" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2>📊 Plano de Estudos Otimizado (MCDA)</h2>
-            <div style="display:flex; gap:10px;">
-                <div style="background:var(--bg-card); padding:5px 10px; border-radius:4px; border:1px solid #ddd; display:flex; align-items:center; gap:5px;">
-                    <label style="font-size:0.8em;">Início:</label>
-                    <input type="number" id="plan-config-inicio" value="3" min="0" max="12" style="width:45px; border:none; background:transparent;">
-                    <label style="font-size:0.8em;">Fim:</label>
-                    <input type="number" id="plan-config-fim" value="24" min="13" max="24" style="width:45px; border:none; background:transparent;">
+        <div class="container">
+            <div class="header-plano" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>📊 Plano de Estudos Otimizado (MCDA)</h2>
+                <div style="display:flex; gap:10px;">
+                    <button id="btn-gerar-plano" class="btn-save" onclick="fluxoGerarPlanoCompleto()">🚀 Montar Plano</button>
+                    <button id="btn-voltar-config" class="btn-save" style="display:none; background:var(--orange);" onclick="voltarParaConfiguracao()">⚙️ Remontar Plano</button>
+                    <button id="btn-salvar-final" class="btn-save" style="display:none; background:var(--purple);" onclick="salvarPlanoEstudos()">💾 Salvar Plano</button>
                 </div>
-                <button class="btn-save" onclick="calcularPlanoTopsis()">Calcular & Otimizar</button>
-                <button class="btn-save" style="background:var(--purple)" onclick="salvarPlanoEstudos()">Salvar Plano</button>
             </div>
-        </div>
 
-        <div style="display:grid; grid-template-columns: 400px 1fr; gap:20px;">
-            <div class="painel-lateral-plano">
-                <div id="painel-agora" style="background:#2c3e50; padding:15px; border-radius:8px; margin-bottom:15px; text-align:center;">
-                    <h3 style="color:#ecf0f1; margin-top:0;">📖 Estudando Agora</h3>
-                    <div id="monitor-materia" style="font-size:1.4em; font-weight:bold; color:var(--purple);">Descanso</div>
-                    <div class="progress-bg" style="background:#34495e; height:12px; border-radius:6px; margin:10px 0;">
-                        <div id="monitor-barra-progresso" style="background:var(--purple); width:0%; height:100%; border-radius:6px; transition: width 1s linear;"></div>
+            <div id="layout-plano-container" style="display:grid; grid-template-columns: 1fr; gap:20px;">
+                
+                <div id="wrapper-config-inputs" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; align-items: start;">
+                    <div class="card" style="padding:15px;">
+                        <h4 style="margin-top:0;">⚖️ Pesos e Critérios</h4>
+                        <div style="overflow-x: auto;">
+                            <table style="width:100%; font-size:0.9em; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="border-bottom:1px solid #ddd; text-align: left;">
+                                        <th class="th-disciplina">Disciplina</th>
+                                        <th class="th-peso">Peso (0-1)</th>
+                                        <th class="th-tipo">Tipo</th>
+                                        <th class="th-min">Sessão Min</th>
+                                        <th class="th-max">Sessão Max</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpo-pesos-disciplinas"></tbody>
+                            </table>
+                        </div>
                     </div>
-                    <div id="monitor-tempo-restante" style="font-size:0.9em; color:#bdc3c7;">--:-- restante</div>
-                </div>
 
-                <div class="card" style="margin-bottom:15px; padding:10px;">
-                    <h4 style="margin-top:0;">⚖️ Pesos e Critérios</h4>
-                    <div style="max-height: 250px; overflow-y: auto;">
-                        <table style="width:100%; font-size:0.8em; border-collapse: collapse;" id="tabela-pesos-mcda">
-                            <thead>
-                                <tr style="border-bottom:1px solid #ddd;">
-                                    <th class="th-disciplina" style="text-align:left;">Disciplina</th>
-                                    <th class="th-peso" >Peso (0-1)</th>
-                                    <th class="th-tipo" >Tipo</th>
-                                    <th class="th-min-blocos" >Min Blocos</th>
-                                    <th class="th-max-blocos" >Max Blocos</th>
-                                </tr>
-                            </thead>
-                            <tbody id="corpo-pesos-disciplinas">
-                                </tbody>
-                        </table>
-                    </div>
-                </div>
+                    <div class="card" style="padding:15px;">
+                        <h4 style="margin-top:0;">🕒 Disponibilidade</h4>
+                        
+                        <div style="display:flex; gap:10px; margin-bottom:15px; background:#f4f4f4; padding:10px; border-radius:4px;">
+                            <div>
+                                <label style="font-size:0.8em; display:block;">Início Grade:</label>
+                                <input type="number" id="plan-config-inicio" value="3" min="0" max="12" style="width:50px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.8em; display:block;">Fim Grade:</label>
+                                <input type="number" id="plan-config-fim" value="17" min="13" max="24" style="width:50px;">
+                            </div>
+                        </div>
 
-                <div class="card" style="padding:10px;">
-                    <h4 style="margin-top:0;">🕒 Disponibilidade</h4>
-                    <div id="container-config-dias" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 10px;"></div>
-                    <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; font-size:0.85em;">
-                        <strong>Carga Semanal:</strong> <span id="carga-calculada-total" style="color:var(--purple)">0.0</span>h
-                        <div style="display:flex; gap:5px; margin-top:10px;">
-                            <button onclick="aplicarIntervalosNaGrade()" style="flex:1; cursor:pointer;">1. Sincronizar Grade</button>
-                            <button onclick="distribuirSugestoesNaGrade()" style="flex:1; cursor:pointer; background:var(--purple); color:white; border:none; border-radius:2px;">2. Aplicar Matérias</button>
+                        <div id="container-config-dias" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"></div>
+                        <div style="margin-top:15px; padding:10px; background:#f8f9fa; border-radius:4px; text-align:center;">
+                            <strong>Carga Semanal Estimada:</strong> <span id="carga-calculada-total" style="color:var(--purple); font-size:1.1em;">0.0</span>h
                         </div>
                     </div>
                 </div>
-                
-                <div id="lista-sugestao-horas" class="card" style="margin-top:15px; padding:10px;"></div>
-            </div>
 
-            <div class="grid-plano-scroll" style="overflow-x:auto; max-height:85vh; border:1px solid #ddd; border-radius:8px;">
-                <table id="tabela-grade-estudos" class="planilha-estudos" style="width:100%; border-collapse: collapse;">
-                    <thead style="position: sticky; top: 0; background: white; z-index: 10;">
-                        <tr id="header-dias"><th>Horário</th></tr>
-                    </thead>
-                    <tbody id="corpo-grade-estudos"></tbody>
-                </table>
+                <div id="wrapper-resultado-stats" style="display:none;">
+                    <div id="painel-agora" style="background:#2c3e50; padding:15px; border-radius:8px; margin-bottom:15px; text-align:center;">
+                        <h3 style="color:#ecf0f1; margin-top:0;">📖 Estudando Agora</h3>
+                        <div id="monitor-materia" style="font-size:1.4em; font-weight:bold; color:var(--purple);">Descanso</div>
+                        <div id="monitor-tempo-restante" style="font-size:0.9em; color:#bdc3c7;">--:-- restante</div>
+                    </div>
+                    <div id="lista-sugestao-horas" class="card" style="padding:15px;"></div>
+                </div>
+
+                <div id="wrapper-grade-resultado" style="display:none;">
+                    <div class="grid-plano-scroll" style="overflow-x:auto; max-height:80vh; border:1px solid #ddd; border-radius:8px;">
+                        <table id="tabela-grade-estudos" class="planilha-estudos" style="width:100%; border-collapse: collapse;">
+                            <thead style="position: sticky; top: 0; background: white; z-index: 10;">
+                                <tr id="header-dias"><th>Horário</th></tr>
+                            </thead>
+                            <tbody id="corpo-grade-estudos"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
+        
     </section>
 
     <div id="modal-edicao" class="modal">
