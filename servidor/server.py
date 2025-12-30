@@ -6,6 +6,8 @@ import os
 import pdfplumber
 import re
 import uuid
+import json
+import numpy as np # [CÓDIGO INSERIDO] - Necessário para cálculos matriciais do TOPSIS
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///banco_estudos.db'
@@ -20,9 +22,64 @@ ARQ_QUESTOES = os.path.join(DB_DIR, "questoes_concurso.xlsx")
 ARQ_FLASHCARDS = os.path.join(DB_DIR, "flashcards.xlsx")
 ARQ_ANOTACOES = os.path.join(DB_DIR, "caderno_anotacoes.xlsx")
 ARQ_HISTORICO = os.path.join(DB_DIR, "historico_respostas.xlsx")
+ARQ_CONFIG = os.path.join(DB_DIR, "config_sistema.json")
+# [CÓDIGO INSERIDO] - Arquivo para salvar o plano de estudos montado
+ARQ_PLANO = os.path.join(DB_DIR, "plano_estudos.json")
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+# --- FUNÇÕES DE CONFIGURAÇÃO E PLANO ---
+def carregar_config():
+    if os.path.exists(ARQ_CONFIG):
+        with open(ARQ_CONFIG, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {"disciplinas_bloqueadas": [], "pesos_prova": {}}
+
+
+def salvar_config(config):
+    with open(ARQ_CONFIG, 'w', encoding='utf-8') as f:
+        json.dump(config, f, ensure_ascii=False, indent=4)
+
+
+# [CÓDIGO INSERIDO] - Salvar e carregar o plano de estudos
+def carregar_plano():
+    if os.path.exists(ARQ_PLANO):
+        with open(ARQ_PLANO, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return {"grade": {}, "horas_por_disciplina": {}}
+
+
+def salvar_plano(plano):
+    with open(ARQ_PLANO, 'w', encoding='utf-8') as f:
+        json.dump(plano, f, ensure_ascii=False, indent=4)
+
+
+# [CÓDIGO INSERIDO] - Lógica Matemática MCDA: TOPSIS
+def calcular_topsis(matriz_decisao, pesos_criterios):
+    """
+    matriz_decisao: np.array onde linhas são disciplinas e colunas são critérios
+    pesos_criterios: lista de pesos para os critérios (importância de cada critério)
+    """
+    # 1. Normalização da matriz
+    norm_matrix = matriz_decisao / np.sqrt((matriz_decisao ** 2).sum(axis=0))
+
+    # 2. Matriz ponderada
+    weighted_matrix = norm_matrix * pesos_criterios
+
+    # 3. Soluções ideais (Ideal Positiva e Ideal Negativa)
+    # Assumimos que todos os critérios são de benefício (maior é melhor para prioridade)
+    v_ideal_pos = np.max(weighted_matrix, axis=0)
+    v_ideal_neg = np.min(weighted_matrix, axis=0)
+
+    # 4. Cálculo das distâncias
+    dist_pos = np.sqrt(((weighted_matrix - v_ideal_pos) ** 2).sum(axis=1))
+    dist_neg = np.sqrt(((weighted_matrix - v_ideal_neg) ** 2).sum(axis=1))
+
+    # 5. Proximidade relativa (Score final)
+    scores = dist_neg / (dist_pos + dist_neg)
+    return scores
 
 
 # --- FUNÇÕES UTILITÁRIAS ---
@@ -1035,6 +1092,69 @@ def reescrever_todos_textos(dados):
 
 
 # --- ROTAS ---
+
+# [CÓDIGO INSERIDO] - Rota para cálculo de horas via TOPSIS
+@app.route("/plan/calculate", methods=["POST"])
+def calculate_plan_hours():
+    data = request.json
+    horas_totais = float(data.get("horas_semanais", 0))
+    criterios_user = data.get("criterios", [])  # List of dicts: {disciplina, peso_prova, tipo}
+
+    # Busca desempenho real do banco
+    verificar_historico()
+    wb = load_workbook(ARQ_HISTORICO, data_only=True);
+    ws = wb.active
+    hist = []
+    for r in ws.iter_rows(min_row=2, values_only=True):
+        if r[0]: hist.append({"disc": r[3], "res": int(r[5])})
+
+    disciplinas = [c['disciplina'] for c in criterios_user]
+    matriz = []
+
+    for c in criterios_user:
+        d = c['disciplina']
+        # 1. Peso na Prova (Normalizado 0-1)
+        peso_prova = float(c.get('peso_prova', 0.1))
+
+        # 2. Desempenho (Dificuldade = 1 - Taxa de Acerto)
+        tentativas = [h['res'] for h in hist if h['disc'] == d]
+        taxa_acerto = sum(tentativas) / len(tentativas) if tentativas else 0.5
+        dificuldade = 1.01 - taxa_acerto  # Evita zero
+
+        # 3. Tipo (Eliminatório=1.0, Classificatório=0.7)
+        peso_tipo = 1.0 if c.get('tipo') == 'eliminatorio' else 0.7
+
+        matriz.append([peso_prova, dificuldade, peso_tipo])
+
+    # Pesos dos critérios (Peso Prova: 0.5, Dificuldade: 0.3, Tipo: 0.2)
+    pesos_mcda = [0.5, 0.3, 0.2]
+    scores = calcular_topsis(np.array(matriz), pesos_mcda)
+
+    # Distribuição proporcional das horas
+    total_score = sum(scores)
+    resultado = {}
+    for i, d in enumerate(disciplinas):
+        porcentagem = (scores[i] / total_score)
+        resultado[d] = round(porcentagem * horas_totais, 2)
+
+    return jsonify(resultado)
+
+
+# [CÓDIGO INSERIDO] - Salvar e Carregar Plano
+@app.route("/plan", methods=["GET", "POST"])
+def manage_plan():
+    if request.method == "POST":
+        salvar_plano(request.json)
+        return jsonify({"status": "Plano salvo"})
+    return jsonify(carregar_plano())
+
+
+@app.route("/config", methods=["GET", "POST"])
+def handle_config():
+    if request.method == "POST": salvar_config(request.json); return jsonify({"status": "OK"})
+    return jsonify(carregar_config())
+
+
 @app.route("/historico", methods=["POST"])
 def registrar_resposta():
     verificar_historico()

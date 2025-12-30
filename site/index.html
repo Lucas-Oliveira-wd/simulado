@@ -41,6 +41,7 @@
                 <button id="nav-flashcards" onclick="nav('flashcards')">Flashcards</button>
                 <button id="nav-caderno" onclick="nav('caderno')">Caderno</button>
                 <button id="nav-estatisticas" onclick="nav('estatisticas')">Estatísticas</button>
+                <button id="nav-plano" onclick="nav('plano')">Plano de Estudos</button>
                 <button id="nav-importar" onclick="nav('importar')">Importar PDF</button>
                 <button id="btn-tema" onclick="toggleTema()" title="Alternar Tema (Claro/Escuro)"></button>
             </nav>
@@ -422,6 +423,54 @@
         </div>
     </section>
 
+    <section id="secao-plano" class="secao" style="display:none;">
+        <div class="header-plano" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2>📊 Plano de Estudos Otimizado (MCDA)</h2>
+            <div>
+                <input type="number" id="plan-horas-totais" placeholder="Horas/Semana" style="width:120px; padding:8px;">
+                <button class="btn-save" onclick="calcularPlanoTopsis()">Calcular Carga</button>
+                <button class="btn-save" style="background:var(--purple)" onclick="salvarPlanoEstudos()">Salvar Plano</button>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 20px; padding: 15px;">
+            <h3>🕒 Configurar Disponibilidade Diária</h3>
+            <div id="container-config-dias" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                </div>
+            <div style="background: var(--dark-light); padding: 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: bold;">Carga Horária Semanal Calculada: <span id="carga-calculada-total" style="color: var(--purple);">0.0</span> horas</span>
+                <button class="btn-save" onclick="aplicarIntervalosNaGrade()" style="font-size: 0.8em;">Sincronizar Grade</button>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 350px 1fr; gap:20px;">
+            <div class="painel-config-plano">
+                <div id="painel-agora" style="background:#2c3e50; padding:15px; border-radius:8px; margin-bottom:15px; text-align:center;">
+                    <h3 style="color:#ecf0f1;">📖 Estudando Agora</h3>
+                    <div id="monitor-materia" style="font-size:1.4em; font-weight:bold; color:var(--purple);">Descanso</div>
+                    
+                    <div class="progress-bg" style="background:#34495e; height:12px; border-radius:6px; margin:10px 0;">
+                        <div id="monitor-barra-progresso" style="background:var(--purple); width:0%; height:100%; border-radius:6px; transition: width 1s linear;"></div>
+                    </div>
+                    <div id="monitor-tempo-restante" style="font-size:0.9em; color:#bdc3c7;">--:-- restante</div>
+                </div>
+                
+                <div id="lista-sugestao-horas" class="card">
+                    </div>
+            </div>
+
+            <div class="grid-plano-scroll" style="overflow-x:auto; max-height:700px;">
+                <table id="tabela-grade-estudos" class="planilha-estudos">
+                    <thead>
+                        <tr id="header-dias"><th>Horário</th></tr>
+                    </thead>
+                    <tbody id="corpo-grade-estudos">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
     <div id="modal-edicao" class="modal">
         <div class="modal-content"><span class="close-modal"
                 onclick="el('modal-edicao').style.display='none'">&times;</span>
@@ -496,24 +545,6 @@
         </div>
     </div>
 
-    <!------------      modal descontinuado   =============================================
-    <div id="modal-fc-pratica" class="modal-overlay" style="display:none; z-index: 9999;">
-        <div class="modal-content" style="max-width: 500px;">
-            <h3>📝 Transformar em Flashcard</h3>
-            <label>Frente (Pergunta):</label>
-            <textarea id="fc-p-frente" class="imp-textarea" rows="4"></textarea>
-            
-            <label style="margin-top:10px; display:block;">Verso (Resposta/Explicação):</label>
-            <textarea id="fc-p-verso" class="imp-textarea" rows="4"></textarea>
-            
-            <div style="margin-top:15px; display:flex; gap:10px; justify-content:flex-end;">
-                <button onclick="el('modal-fc-pratica').style.display='none'" class="btn-sec">Cancelar</button>
-                <button onclick="salvarFlashcardRapido()" class="btn-prim">Salvar Card</button>
-            </div>
-        </div>
-    </div>
-    ======================================================================================---->
-
     <div id="modal-anotacao" class="modal-overlay" style="display:none; z-index: 9999;">
         <div class="modal-content" style="max-width: 500px; border-left: 5px solid var(--purple);">
             <h3>📓 Caderno de Anotações</h3>
@@ -567,10 +598,16 @@
             </div>
         </div>
     </div>
-
+    
+    
     <script src="assets/js/core.js"></script>
-    <script src="assets/js/questoes.js"></script>
-    <script src="assets/js/estudo.js"></script>
+    <script src="assets/js/cadastro.js"></script>
+    <script src="assets/js/banco.js"></script>
+    <script src="assets/js/praticar.js"></script>
+    <script src="assets/js/flashcards.js"></script>
+    <script src="assets/js/caderno.js"></script>
+    <script src="assets/js/estatisticas.js"></script>
+    <script src="assets/js/plano_estudos.js"></script>
 </body>
 
 </html>
