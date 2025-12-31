@@ -1,4 +1,8 @@
 // --- ESTATÍSTICAS ---
+
+// Variável global para armazenar os parâmetros do gradiente e evitar cálculos redundantes
+window.statsGradiente = { lim_inf: 0, med: 50, lim_sup: 100 };
+
 function graf() {
   renderGraficoNivel("disciplina");
 }
@@ -17,7 +21,8 @@ function calcularQuartisGlobais() {
     if (!statsPorAssunto[chave]) statsPorAssunto[chave] = { r: 0, a: 0 };
     statsPorAssunto[chave].r += q.respondidas;
     statsPorAssunto[chave].a += q.acertos;
-});
+  });
+  
 
   // 2. Calcula as taxas brutas
   let taxasBrutas = Object.values(statsPorAssunto).map(s => (s.a / s.r) * 100);
@@ -29,37 +34,43 @@ function calcularQuartisGlobais() {
   // Ordena
   dataset.sort((a, b) => a - b);
 
-  // 4. Lógica de Fallback Simplificada
-  // Se não sobrar nada (significa que todos os assuntos eram 0% ou 100%),
-  // retornamos a escala padrão visualmente agradável.
-  if (dataset.length === 0) {
-    return { q1: 25, med: 50, q3: 75 };
-  }
+  // Fallback agora retorna apenas os pontos de controle do gráfico
+    if (dataset.length === 0) {
+        window.statsGradiente = { lim_inf: 0, med: 50, lim_sup: 100 };
+        return window.statsGradiente;
+    }
 
   // 5. Calcula Quartis nos dados filtrados
   const q1 = dataset[Math.floor(dataset.length * 0.25)];
   const med = dataset[Math.floor(dataset.length * 0.50)];
   const q3 = dataset[Math.floor(dataset.length * 0.75)];
+  const iqr = q3 - q1;
 
-  return { q1, med, q3 };
+  window.statsGradiente = {
+    lim_inf: Math.max(0, q1 - (0.5 * iqr)),
+    med: med,
+    lim_sup: Math.min(100, q3 + (0.5 * iqr))
+  };
+
+  // Retorno simplificado contendo apenas a tríade do gradiente
+  return window.statsGradiente;
 }
 
 // Função para gerar cor dinâmica (Gradiente: Vermelho -> Amarelo -> Verde)
-function getCorGradiente(porcentagem, stats) {
+function getCorGradiente(porcentagem) {
   // Se não passar stats, usa padrão fixo (segurança)
-  const q1 = stats ? stats.q1 : 25;
-  const med = stats ? stats.med : 50;
-  const q3 = stats ? stats.q3 : 75;
+  const { lim_inf, med, lim_sup } = window.statsGradiente;
 
   const vermelho = { r: 255, g: 0, b: 0 }; 
   const amarelo = { r: 255, g: 255, b: 0 };  
-  const verde = { r: 0, g: 255, b: 0 };    
+  const verde = { r: 0, g: 255, b: 0 };
+
 
   // 1. Abaixo do 1º Quartil: Vermelho Sólido (Zona Crítica)
-  if (porcentagem <= q1) return `rgb(${vermelho.r}, ${vermelho.g}, ${vermelho.b})`;
+  if (porcentagem <= lim_inf) return `rgb(${vermelho.r}, ${vermelho.g}, ${vermelho.b})`;
 
   // 2. Acima do 3º Quartil: Verde Sólido (Zona de Excelência)
-  if (porcentagem >= q3) return `rgb(${verde.r}, ${verde.g}, ${verde.b})`;
+  if (porcentagem >= lim_sup) return `rgb(${verde.r}, ${verde.g}, ${verde.b})`;
 
   let inicio, fim, fator;
 
@@ -68,17 +79,18 @@ function getCorGradiente(porcentagem, stats) {
       inicio = vermelho;
       fim = amarelo;
       // Normaliza onde a porcentagem está entre Q1 e Med
-      fator = (porcentagem - q1) / (med - q1);
+      fator = (porcentagem - lim_inf) / (med - lim_inf);
   } 
   // 4. Gradiente Amarelo -> Verde (Entre Mediana e Q3)
   else {
       inicio = amarelo;
       fim = verde;
       // Normaliza onde a porcentagem está entre Med e Q3
-      fator = (porcentagem - med) / (q3 - med);
+      fator = (porcentagem - med) / (lim_sup - med);
   }
 
   // Interpolação Linear
+
   const r = Math.round(inicio.r + (fim.r - inicio.r) * fator);
   const g = Math.round(inicio.g + (fim.g - inicio.g) * fator);
   const b = Math.round(inicio.b + (fim.b - inicio.b) * fator);
@@ -130,14 +142,15 @@ function renderGraficoNivel(nivel, filtroDisciplina = null) {
     return pB - pA; // Decrescente
   });
 
-  let statsGlobais = calcularQuartisGlobais();
+  // Chama a função para atualizar a variável global window.statsGradiente antes do loop
+  calcularQuartisGlobais();
 
   // Atualiza a legenda na tela
   el("legenda-quartis").innerHTML = `
-    <strong>Parâmetros Calculados do Banco:</strong><br>
-    <span style="color:#c0392b">🔴 Zona Crítica (Q1): Abaixo de ${statsGlobais.q1.toFixed(1)}%</span> &nbsp;|&nbsp; 
-    <span style="color:#f39c12">🟡 Mediana: ${statsGlobais.med.toFixed(1)}%</span> &nbsp;|&nbsp; 
-    <span style="color:#27ae60">🟢 Excelência (Q3): Acima de ${statsGlobais.q3.toFixed(1)}%</span>
+    <strong>Parâmetros Calculados do Banco (0.5x IQR):</strong><br>
+    <span style="color:#c0392b">🔴 Crítico: < ${window.statsGradiente.lim_inf.toFixed(1)}%</span> &nbsp;|&nbsp; 
+    <span style="color:#f39c12">🟡 Mediana: ${window.statsGradiente.med.toFixed(1)}%</span> &nbsp;|&nbsp; 
+    <span style="color:#27ae60">🟢 Excelência: > ${window.statsGradiente.lim_sup.toFixed(1)}%</span>
 `;
 
   for (let k of sortedKeys) {
@@ -147,7 +160,7 @@ function renderGraficoNivel(nivel, filtroDisciplina = null) {
       data.push(p.toFixed(1));
       
       // Passa os stats para a função de cor
-      colors.push(getCorGradiente(p, statsGlobais));
+      colors.push(getCorGradiente(p));
     }
   }
 
