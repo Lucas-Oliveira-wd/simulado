@@ -435,11 +435,31 @@
                 </div>
             </div>
 
+            <div class="card" style="padding:15px; grid-column: 1 / -1; margin-bottom: 10px;">
+                <h4 style="margin-top:0;">🎯 Pesos Globais do Modelo</h4>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="font-size:0.85em; display:block;">Peso na Prova (W1):</label>
+                        <input type="number" id="input-w-prova" step="0.1" value="0.5" min="0" max="1" style="width:100%; padding:5px;">
+                    </div>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="font-size:0.85em; display:block;">Desempenho Atual (W2):</label>
+                        <input type="number" id="input-w-desempenho" step="0.1" value="0.3" min="0" max="1" style="width:100%; padding:5px;">
+                    </div>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="font-size:0.85em; display:block;">Tipo de Disciplina (W3):</label>
+                        <input type="number" id="input-w-tipo" step="0.1" value="0.2" min="0" max="1" style="width:100%; padding:5px;">
+                    </div>
+                </div>
+            </div>
+
+            <th class="th-desempenho">Desempenho (%)</th>
+
             <div id="layout-plano-container" style="display:grid; grid-template-columns: 1fr; gap:20px;">
                 
                 <div id="wrapper-config-inputs" style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 20px; align-items: start;">
                     <div class="card" style="padding:15px;">
-                        <h4 style="margin-top:0;">⚖️ Pesos e Critérios</h4>
+                        <h4 style="margin-top:0;">Critérios</h4>
                         <div style="overflow-x: auto;">
                             <table style="width:100%; font-size:0.9em; border-collapse: collapse;">
                                 <thead>

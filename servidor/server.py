@@ -58,10 +58,11 @@ def salvar_plano(plano):
 
 
 # [CÓDIGO INSERIDO] - Lógica Matemática MCDA: TOPSIS
-def calcular_topsis(matriz_decisao, pesos_criterios):
+def calcular_topsis(matriz_decisao, pesos_criterios, objetivos_criterios):
     """
     matriz_decisao: np.array onde linhas são disciplinas e colunas são critérios
     pesos_criterios: lista de pesos para os critérios (importância de cada critério)
+    objetivos_criterios: lista de strings ('maximizacao' ou 'minimizacao')
     """
     # 1. Normalização da matriz
     norm_matrix = matriz_decisao / np.sqrt((matriz_decisao ** 2).sum(axis=0))
@@ -70,9 +71,22 @@ def calcular_topsis(matriz_decisao, pesos_criterios):
     weighted_matrix = norm_matrix * pesos_criterios
 
     # 3. Soluções ideais (Ideal Positiva e Ideal Negativa)
-    # Assumimos que todos os critérios são de benefício (maior é melhor para prioridade)
-    v_ideal_pos = np.max(weighted_matrix, axis=0)
-    v_ideal_neg = np.min(weighted_matrix, axis=0)
+    # Lógica baseada em maximização/minimização
+    v_ideal_pos = []
+    v_ideal_neg = []
+
+    for i, obj in enumerate(objetivos_criterios):
+        if obj == 'maximizacao':
+            # Para maximização (ex: Peso na Prova), o ideal positivo é o MÁXIMO
+            v_ideal_pos.append(np.max(weighted_matrix[:, i]))
+            v_ideal_neg.append(np.min(weighted_matrix[:, i]))
+        else:
+            # Para minimização (ex: Desempenho), o ideal positivo é o MÍNIMO (prioriza o que está pior)
+            v_ideal_pos.append(np.min(weighted_matrix[:, i]))
+            v_ideal_neg.append(np.max(weighted_matrix[:, i]))
+
+    v_ideal_pos = np.array(v_ideal_pos)
+    v_ideal_neg = np.array(v_ideal_neg)
 
     # 4. Cálculo das distâncias
     dist_pos = np.sqrt(((weighted_matrix - v_ideal_pos) ** 2).sum(axis=1))
@@ -80,6 +94,54 @@ def calcular_topsis(matriz_decisao, pesos_criterios):
 
     # 5. Proximidade relativa (Score final)
     scores = dist_neg / (dist_pos + dist_neg)
+    return scores
+
+
+# [CÓDIGO MODIFICADO] - Substituído TOPSIS por SAW para tratar variáveis binárias corretamente
+def calcular_saw(matriz_decisao, pesos_brutos, objetivos_criterios):
+    """
+    matriz_decisao: np.array (disciplinas x critérios)
+    pesos_criterios: lista de pesos (soma deve ser 1.0)
+    objetivos_criterios: ['maximizacao', 'minimizacao', ...]
+    """
+
+    # [CÓDIGO INSERIDO] - Normalização interna dos pesos (Soma = 1.0)
+    # Isso torna irrelevante se o usuário digitou valores proporcionais ou normalizados
+    soma_pesos = np.sum(pesos_brutos)
+    pesos_criterios = np.array(pesos_brutos) / soma_pesos if soma_pesos != 0 else pesos_brutos
+
+
+    # 1. Normalização Linear (Escalar)
+    # r_ij = x_ij / max(x_j) para maximização
+    # r_ij = min(x_j) / x_ij para minimização
+    norm_matrix = np.zeros_like(matriz_decisao, dtype=float)
+
+    for j in range(matriz_decisao.shape[1]):
+        coluna = matriz_decisao[:, j]
+        max_v = np.max(coluna)
+        min_v = np.min(coluna)
+        delta = max_v - min_v
+
+        if delta == 0:
+            norm_matrix[:, j] = 1.0 if max_v != 0 else 0.0
+            continue
+
+        if objetivos_criterios[j] == 'maximizacao':
+            # Benefício: r = 1
+            norm_matrix[:, j] = (coluna - min_v) / delta
+        else:
+            # [CÓDIGO MODIFICADO] - Custo (Inversão Linear): r = -1
+            # Mantém a distância proporcional entre os pontos original e transformado
+            norm_matrix[:, j] = (max_v - coluna) / delta
+
+    # [CÓDIGO EXCLUÍDO (Lógica TOPSIS baseada em distância euclidiana)]:
+    # norm_matrix = matriz_decisao / np.sqrt((matriz_decisao ** 2).sum(axis=0))
+    # dist_pos = np.sqrt(((weighted_matrix - v_ideal_pos) ** 2).sum(axis=1))
+
+    # 2. Soma Ponderada (Score Final)
+    # S_i = Σ (w_j * r_ij)
+    scores = np.dot(norm_matrix, pesos_criterios)
+
     return scores
 
 
@@ -1106,9 +1168,6 @@ def gerar_cronograma_inteligente(disciplinas_df, slots_disponiveis):
     horas_alocadas = {d['materia']: 0 for d in disciplinas}
     ultimo_assunto_dia = {dia: None for dia in set(d for d, h in slots_disponiveis)}
 
-    # --- CÓDIGO INSERIDO: Configurações de Restrição ---
-    MIN_BLOCOS = 2  # Mínimo de 1h por matéria para evitar fragmentação
-    MAX_BLOCOS_DIA = 4  # Máximo de 2h da mesma matéria por dia para evitar fadiga
     # ----------------------------------------------------
 
     # --- CÓDIGO EXCLUÍDO (SIMULADO) ---
@@ -1131,17 +1190,9 @@ def gerar_cronograma_inteligente(disciplinas_df, slots_disponiveis):
 
             # 2. Verifica se a matéria já atingiu o limite diário (Espaçamento/Fadiga)
             blocos_hoje = list(cronograma.values()).count((dia, nome))  # Simulação de busca
-            if blocos_hoje >= MAX_BLOCOS_DIA:
-                continue
 
             # 3. Inteligência de Sequência (Blocagem)
             # Se começamos uma matéria, devemos terminar o bloco mínimo antes de trocar
-            if ultimo_assunto_dia[dia] and ultimo_assunto_dia[dia] != nome:
-                blocos_da_ultima = 0  # Lógica para contar blocos seguidos da última matéria
-                if blocos_da_ultima < MIN_BLOCOS and horas_alocadas[ultimo_assunto_dia[dia]] < d_ultima['total']:
-                    # Força a manutenção da última matéria se não atingiu o MIN_BLOCOS
-                    materia_escolhida = ultimo_assunto_dia[dia]
-                    break
 
             # 4. Se passou nas validações e é a top rank, seleciona
             materia_escolhida = nome
@@ -1162,48 +1213,56 @@ def gerar_cronograma_inteligente(disciplinas_df, slots_disponiveis):
 # [CÓDIGO INSERIDO] - Rota para cálculo de horas via TOPSIS
 @app.route("/plan/calculate", methods=["POST"])
 def calculate_plan_hours():
-    data = request.json
-    horas_totais = float(data.get("horas_semanais", 0))
-    criterios_user = data.get("criterios", [])  # List of dicts: {disciplina, peso_prova, tipo}
+    try:
+        data = request.json
+        horas_totais = float(data["horas_semanais"])
+        criterios_user = data["criterios"]  # List of dicts: {disciplina, peso_prova, tipo}
+        # Captura os pesos globais das preferências do modelo vindos do JS
+        pesos_globais = data["pesos_globais"]
 
-    # Busca desempenho real do banco
-    verificar_historico()
-    wb = load_workbook(ARQ_HISTORICO, data_only=True);
-    ws = wb.active
-    hist = []
-    for r in ws.iter_rows(min_row=2, values_only=True):
-        if r[0]: hist.append({"disc": r[3], "res": int(r[5])})
+        # Busca desempenho real do banco
+        verificar_historico()
+        wb = load_workbook(ARQ_HISTORICO, data_only=True);
+        ws = wb.active
+        hist = []
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            if r[0]: hist.append({"disc": r[3], "res": int(r[5])})
 
-    disciplinas = [c['disciplina'] for c in criterios_user]
-    matriz = []
+        disciplinas, matriz = [], []
 
-    for c in criterios_user:
-        d = c['disciplina']
-        # 1. Peso na Prova (Normalizado 0-1)
-        peso_prova = float(c.get('peso_prova', 0.1))
+        for c in criterios_user:
+            d = c['disciplina']
+            disciplinas.append(d)
+            # 1. Peso na Prova (Normalizado 0-1)
+            peso_prova = float(c['valor_prova'])
 
-        # 2. Desempenho (Dificuldade = 1 - Taxa de Acerto)
-        tentativas = [h['res'] for h in hist if h['disc'] == d]
-        taxa_acerto = sum(tentativas) / len(tentativas) if tentativas else 0.5
-        dificuldade = 1.01 - taxa_acerto  # Evita zero
+            # 2. Desempenho (Dificuldade = 1 - Taxa de Acerto)
+            tentativas = [h['res'] for h in hist if h['disc'] == d]
+            taxa_acerto = sum(tentativas) / len(tentativas) if tentativas else 0.5
 
-        # 3. Tipo (Eliminatório=1.0, Classificatório=0.7)
-        peso_tipo = 1.0 if c.get('tipo') == 'eliminatorio' else 0.7
+            # 3. Tipo (Eliminatório=0.0, Classificatório=1.0)
+            valor_tipo = float(c['valor_tipo'])
 
-        matriz.append([peso_prova, dificuldade, peso_tipo])
+            matriz.append([peso_prova, taxa_acerto, valor_tipo])
 
-    # Pesos dos critérios (Peso Prova: 0.5, Dificuldade: 0.3, Tipo: 0.2)
-    pesos_mcda = [0.5, 0.3, 0.2]
-    scores = calcular_topsis(np.array(matriz), pesos_mcda)
+        # Definição dos objetivos para o SAW
+        objetivos = ["maximizacao", "minimizacao", "maximizacao"]
 
-    # Distribuição proporcional das horas
-    total_score = sum(scores)
-    resultado = {}
-    for i, d in enumerate(disciplinas):
-        porcentagem = (scores[i] / total_score)
-        resultado[d] = round(porcentagem * horas_totais, 2)
+        # Chamada do motor SAW com todos os argumentos necessários
+        scores = calcular_saw(np.array(matriz), pesos_globais, objetivos)
 
-    return jsonify(resultado)
+        # Distribuição proporcional das horas
+        total_score = sum(scores)
+        resultado = {}
+        for i, d in enumerate(disciplinas):
+            porcentagem = (scores[i] / total_score) if total_score > 0 else 0
+            resultado[d] = round((porcentagem * horas_totais) * 2) / 2
+
+        return jsonify(resultado)
+    except KeyError as ek:
+        return jsonify({"erro": f"Chave ausente: {str(ek)}"}), 400
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 
 # [CÓDIGO INSERIDO] - Salvar e Carregar Plano
