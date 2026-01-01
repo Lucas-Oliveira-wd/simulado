@@ -12,3 +12,47 @@
     font-size: 2em !important;
     color: var(--acc);
 }
+
+/* [CÓDIGO MODIFICADO] */
+.hora-col {
+    position: relative;
+    /* Força a visibilidade para o span não ser cortado pelo overflow:hidden genérico */
+    overflow: visible !important; 
+   
+}
+
+.hora-col span {
+    position: absolute;
+    top: -12px;
+    left: 5px;
+    padding: 0 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+    background: white; 
+    
+    /* z-index agora funcionará pois o overflow está visible */
+    z-index: var(--z-pin); 
+}
+
+#tabela-grade-estudos thead{
+    /* Adiciona um respiro no topo para o primeiro horário não bater no header */
+    border-collapse: separate; 
+    border-spacing: 0;
+    z-index: var(--z-header);
+    border-bottom: solid 20px transparent;
+}
+
+/* Remove a borda da primeira linha para não ficar uma linha dupla no topo */
+#corpo-grade-estudos tr:first-child .hora-col {
+    border-top: none;
+    overflow: visible !important;
+}
+
+#tabela-grade-estudos thead th {
+    /* Aumenta a altura do header para dar distância visual */
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}

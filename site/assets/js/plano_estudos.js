@@ -254,7 +254,7 @@ function aplicarIntervalosNaGrade() {
     DIAS_SEMANA.forEach(dia => {
         const intervalos = window.planoAtual.intervalos[dia] || [];
         
-        for (let minAtual = startMin; minAtual <= endMin; minAtual += 30) {
+        for (let minAtual = startMin; minAtual < endMin; minAtual += 30) {
             const h = Math.floor(minAtual / 60);
             const m = minAtual % 60;
             const horaStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
@@ -265,7 +265,7 @@ function aplicarIntervalosNaGrade() {
                 const minI = converterParaMinutos(int.inicio);
                 const minF = converterParaMinutos(int.fim);
                 // [CÓDIGO MODIFICADO] - Uso do <= para validar o bloco que inicia no horário de término
-                if (minAtual >= minI && minAtual <= minF) estaNoIntervalo = true;
+                if (minAtual >= minI && minAtual < minF) estaNoIntervalo = true;
             });
 
             if (estaNoIntervalo) {
@@ -426,12 +426,12 @@ function renderizarGridPlano() {
 
     corpo.innerHTML = "";
 
-    for (let totalMin = startMin; totalMin <= endMin; totalMin += 30) {
+    for (let totalMin = startMin; totalMin < endMin; totalMin += 30) {
         const h = Math.floor(totalMin / 60);
         const m = totalMin % 60;
         const horaStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
         
-        let row = `<tr><td class="hora-col">${horaStr}</td>`;
+        let row = `<tr><td class="hora-col"><span>${horaStr}</span></td>`;;
         DIAS_SEMANA.forEach(d => {
             const idCell = `cell-${d}-${horaStr}`;
             const materia = window.planoAtual.grade[idCell] || "";
@@ -454,6 +454,12 @@ function renderizarGridPlano() {
         });
         corpo.innerHTML += row + `</tr>`;
     }
+
+    // Linha final apenas para mostrar o horário de fechamento na divisória
+    const hF = Math.floor(endMin / 60);
+    const mF = endMin % 60;
+    const fimStr = `${hF.toString().padStart(2, '0')}:${mF.toString().padStart(2, '0')}`;
+    corpo.innerHTML += `<tr style="height:0;"><td class="hora-col"><span>${fimStr}</span></td><td colspan="7" style="border:none;"></td></tr>`;
 }
 
 // Lógica TOPSIS para cálculo de horas
@@ -593,6 +599,11 @@ function alternarModoFoco() {
 
 // Função para o botão Salvar
 async function salvarPlanoEstudos() {
+    window.planoAtual.config = {
+        inicio: el("plan-config-inicio").value,
+        fim: el("plan-config-fim").value
+    };
+
     localStorage.setItem("plano_estudos_user", JSON.stringify(window.planoAtual));
     
     try {
@@ -616,9 +627,9 @@ async function salvarPlanoEstudos() {
     }
 }
 
-// [CÓDIGO MODIFICADO] - Listener de carga unificado e assíncrono para priorizar o servidor Python
+// Listener de carga unificado e assíncrono para priorizar o servidor Python
 window.addEventListener('load', async () => {
-    // [CÓDIGO INSERIDO] - Tenta carregar o plano_estudos.json diretamente do servidor
+    // Tenta carregar o plano_estudos.json diretamente do servidor
     try {
         const response = await fetch(`${API}/plan`);
         if (response.ok) {
@@ -628,8 +639,14 @@ window.addEventListener('load', async () => {
             if (planoSalvo.grade && Object.keys(planoSalvo.grade).length > 0) {
                 window.planoAtual = planoSalvo;
                 console.log("✅ Plano carregado do servidor físico.");
+
+                // Restaura os inputs da interface com o que foi salvo
+                if (planoSalvo.config) {
+                    el("plan-config-inicio").value = planoSalvo.config.inicio;
+                    el("plan-config-fim").value = planoSalvo.config.fim;
+                }
                 
-                // [CÓDIGO INSERIDO] - Força a atualização da grade e dos inputs com os dados do arquivo
+                // Força a atualização da grade e dos inputs com os dados do arquivo
                 if (typeof renderizarGridPlano === 'function') renderizarGridPlano();
                 if (typeof renderizarTabelaPesos === 'function') renderizarTabelaPesos();
                 if (typeof renderizarConfigIntervalos === 'function') renderizarConfigIntervalos();
@@ -644,13 +661,7 @@ window.addEventListener('load', async () => {
         console.warn("⚠️ Servidor inacessível. Tentando LocalStorage...", error);
     }
 
-    // [CÓDIGO MODIFICADO] - Fallback: Se o servidor falhar, utiliza o LocalStorage
-    /* [CÓDIGO EXCLUÍDO (Definição antiga e limitada)]:
-    window.addEventListener('load', () => {
-        const salvo = localStorage.getItem("plano_estudos_user");
-        if (salvo) window.planoAtual = JSON.parse(salvo);
-    });
-    */
+    
     const salvoLocal = localStorage.getItem("plano_estudos_user");
     if (salvoLocal) {
         window.planoAtual = JSON.parse(salvoLocal);
