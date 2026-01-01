@@ -427,7 +427,7 @@
     <section id="secao-plano" class="secao" style="display:none;">
         <div class="container">
             <div class="header-plano" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2>📊 Plano de Estudos Otimizado (MCDA)</h2>
+                <h2>📊 Plano de Estudos</h2>
                 <div style="display:flex; gap:10px;">
                     <button id="btn-gerar-plano" class="btn-save" onclick="fluxoGerarPlanoCompleto()">🚀 Montar Plano</button>
                     <button id="btn-voltar-config" class="btn-save" style="display:none; background:var(--orange);" onclick="voltarParaConfiguracao()">⚙️ Remontar Plano</button>
@@ -435,7 +435,7 @@
                 </div>
             </div>
 
-            <div class="card" style="padding:15px; grid-column: 1 / -1; margin-bottom: 10px;">
+            <div id="wrapper-pesos-globais" class="card" style="padding:15px; grid-column: 1 / -1; margin-bottom: 10px;">
                 <h4 style="margin-top:0;">🎯 Pesos Globais do Modelo</h4>
                 <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
                     <div style="flex: 1; min-width: 150px;">
@@ -452,8 +452,6 @@
                     </div>
                 </div>
             </div>
-
-            <th class="th-desempenho">Desempenho (%)</th>
 
             <div id="layout-plano-container" style="display:grid; grid-template-columns: 1fr; gap:20px;">
                 

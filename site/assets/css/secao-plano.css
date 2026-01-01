@@ -1,3 +1,14 @@
 .th-disciplina{
     min-width: 350px;
 }
+
+/* Estilo para destaque do monitor no Modo Foco */
+.modo-foco-ativo #monitor-materia {
+    font-size: 3em !important;
+    transition: all 0.5s ease;
+}
+
+.modo-foco-ativo #monitor-tempo-restante {
+    font-size: 2em !important;
+    color: var(--acc);
+}

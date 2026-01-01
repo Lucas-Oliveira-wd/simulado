@@ -15,6 +15,29 @@ const PALETA_CORES = [
     "#c0392b", "#f1c40f", "#2c3e50", "#7f8c8d", "#e67e22"
 ];
 
+// [CÓDIGO INSERIDO] - Função para buscar o plano persistido no servidor Python
+async function carregarPlanoServidor() {
+    try {
+        const response = await fetch(`${API}/plan`);
+        if (response.ok) {
+            const planoSalvo = await response.json();
+            
+            // Verifica se o plano retornado possui dados válidos antes de sobrescrever a memória
+            if (planoSalvo.grade && Object.keys(planoSalvo.grade).length > 0) {
+                window.planoAtual = planoSalvo;
+                
+                // [CÓDIGO INSERIDO] - Atualiza a interface visual com os dados carregados
+                renderizarGridPlano();
+                if (window.planoAtual.horas) {
+                    renderizarListaSugestao(window.planoAtual.horas);
+                }
+            }
+        }
+    } catch (error) {
+        console.error("Erro ao carregar plano do servidor:", error);
+    }
+}
+
 // Função Unificada para montar o plano completo
 async function fluxoGerarPlanoCompleto() {
     try {
@@ -49,6 +72,8 @@ async function fluxoGerarPlanoCompleto() {
 // Função para alternar entre os modos Configuração e Resultado
 function alternarVisibilidadePlano(mostrarPlano) {
     const config = el("wrapper-config-inputs");
+    const sugestoes = el("lista-sugestao-horas");
+    const pesosGlobais = el("wrapper-pesos-globais");
     const resultStats = el("wrapper-resultado-stats");
     const resultGrade = el("wrapper-grade-resultado");
     const btnGerar = el("btn-gerar-plano");
@@ -57,6 +82,8 @@ function alternarVisibilidadePlano(mostrarPlano) {
 
     if (mostrarPlano) {
         config.style.display = "none";
+        sugestoes.style.display = "none";
+        pesosGlobais.style.display = "none";
         resultStats.style.display = "block";
         resultGrade.style.display = "block";
         btnGerar.style.display = "none";
@@ -64,6 +91,8 @@ function alternarVisibilidadePlano(mostrarPlano) {
         btnSalvar.style.display = "inline-block";
     } else {
         config.style.display = "block";
+        sugestoes.style.display = "block";
+        pesosGlobais.style.display = "block";
         resultStats.style.display = "none";
         resultGrade.style.display = "none";
         btnGerar.style.display = "inline-block";
@@ -460,41 +489,108 @@ async function calcularCargaHorariaMCDA() {
     }
 }
 
-// Monitor em tempo real sincronizado com os novos IDs
+// [CÓDIGO MODIFICADO] - Monitor em tempo real com detecção de sessões contínuas e contagem regressiva inteligente
 setInterval(() => {
     const monitorMateria = el("monitor-materia");
     const monitorRelogio = el("monitor-tempo-restante");
-    if (!monitorMateria || !el("secao-plano") || el("secao-plano").style.display === "none") return;
     const barra = el("monitor-barra-progresso");
     
     if (!monitorMateria || !el("secao-plano") || el("secao-plano").style.display === "none") return;
 
     const agora = new Date();
-    const diaNum = agora.getDay(); // 0 = Domingo
+    const diaNum = agora.getDay(); 
     const diaNome = DIAS_SEMANA[diaNum === 0 ? 6 : diaNum - 1];
     
     const h = agora.getHours().toString().padStart(2, '0');
     const m = agora.getMinutes() < 30 ? "00" : "30";
-    const chave = `cell-${diaNome}-${h}:${m}`;
+    const chaveAtual = `cell-${diaNome}-${h}:${m}`;
     
-    const materiaAgora = window.planoAtual.grade[chave] || "Descanso";
-    monitorMateria.innerText = materiaAgora;
+    const materiaAtual = window.planoAtual.grade[chaveAtual] || "Descanso";
+    
+    // Cálculo base: segundos restantes no bloco de 30min atual
+    const segundosPassadosNoBloco = (agora.getMinutes() % 30) * 60 + agora.getSeconds();
+    let segundosTotaisSessao = 1800 - segundosPassadosNoBloco;
 
-    // Cálculo de tempo restante para o próximo bloco de 30min
-    const segundosPassados = (agora.getMinutes() % 30) * 60 + agora.getSeconds();
-    const segundosRestantes = 1800 - segundosPassados;
-    
+    // [CÓDIGO INSERIDO] - Lógica de varredura para detectar blocos contínuos (Sessão Única)
+    let offsetMinutos = 30;
+    let proximaMateriaNome = "";
+    const minutosRestantesNoBlocoAtual = 30 - (agora.getMinutes() % 30);
+
+    while (true) {
+        // Calcula o tempo exato do início do próximo bloco a ser verificado
+        const dataCheck = new Date(agora.getTime() + (minutosRestantesNoBlocoAtual + (offsetMinutos - 30)) * 60000);
+        const hC = dataCheck.getHours().toString().padStart(2, '0');
+        const mC = dataCheck.getMinutes() < 30 ? "00" : "30";
+        const diaC = DIAS_SEMANA[dataCheck.getDay() === 0 ? 6 : dataCheck.getDay() - 1];
+        const chaveCheck = `cell-${diaC}-${hC}:${mC}`;
+        const materiaCheck = window.planoAtual.grade[chaveCheck] || "Descanso";
+
+        // Se estamos em uma matéria real, soma enquanto a matéria for a mesma
+        if (materiaAtual !== "Descanso" && materiaAtual !== "Estudar") {
+            if (materiaCheck === materiaAtual) {
+                segundosTotaisSessao += 1800;
+                offsetMinutos += 30;
+            } else {
+                break; // Fim da sessão da disciplina
+            }
+        } 
+        // Se estamos em Descanso/Vazio, soma enquanto não houver matéria real
+        else {
+            if (materiaCheck === "Descanso" || materiaCheck === "Estudar") {
+                segundosTotaisSessao += 1800;
+                offsetMinutos += 30;
+            } else {
+                proximaMateriaNome = materiaCheck; // Identifica o que virá depois do descanso
+                break;
+            }
+        }
+        
+        // Trava de segurança para não processar mais de 24h
+        if (offsetMinutos > 10080) break;
+    }
+
+    // [CÓDIGO MODIFICADO] - Atualização da interface baseada no estado (Estudo vs Descanso)
+    if (materiaAtual !== "Descanso" && materiaAtual !== "Estudar") {
+        monitorMateria.innerText = materiaAtual;
+        // Aplica a cor da disciplina se houver configuração
+        if (window.planConfig[materiaAtual]) monitorMateria.style.color = window.planConfig[materiaAtual].cor;
+    } else {
+        // [CÓDIGO INSERIDO] - Exibe a próxima disciplina no lugar do "Descanso" genérico
+        monitorMateria.innerText = proximaMateriaNome ? `Próxima: ${proximaMateriaNome}` : "Descanso";
+        monitorMateria.style.color = "#bdc3c7";
+    }
+
     if (monitorRelogio) {
-        const minR = Math.floor(segundosRestantes / 60);
-        const segR = segundosRestantes % 60;
-        monitorRelogio.innerText = `${minR}:${segR.toString().padStart(2, '0')} restante`;
+        monitorRelogio.innerText = formatarTempoRestante(segundosTotaisSessao);
     }
 
     if (barra) {
-        const pct = (segundosRestantes / 1800) * 100;
-        barra.style.width = `${pct}%`;
+        // [CÓDIGO MODIFICADO] - A barra agora reflete os 30 minutos do bloco técnico para manter fluidez visual
+        const pct = ((1800 - (segundosTotaisSessao % 1800)) / 1800) * 100;
+        barra.style.width = `${pct || 100}%`;
     }
 }, 1000);
+
+// [CÓDIGO INSERIDO] - Função para alternar o Modo Foco e centralizar o monitor
+function alternarModoFoco() {
+    const monitor = el("monitor-sessao-container"); // Certifique-se de que o container do monitor tem este ID
+    const configuracoes = el("wrapper-config-inputs");
+    const sugestoes = el("lista-sugestao-horas");
+    
+    const estaAtivo = document.body.classList.toggle("modo-foco-ativo");
+
+    if (estaAtivo) {
+        if (configuracoes) configuracoes.style.display = "none";
+        if (sugestoes) sugestoes.style.display = "none";
+        // [CÓDIGO MODIFICADO] - Ajusta o container para ocupar a tela de forma limpa
+        if (monitor) monitor.style.padding = "100px 20px";
+    } else {
+        // [CÓDIGO MODIFICADO] - Restaura a visibilidade original
+        if (configuracoes) configuracoes.style.display = "block";
+        if (sugestoes) sugestoes.style.display = "block";
+        if (monitor) monitor.style.padding = "20px";
+    }
+}
 
 // Função para o botão Salvar
 async function salvarPlanoEstudos() {
@@ -521,10 +617,47 @@ async function salvarPlanoEstudos() {
     }
 }
 
-// Carregar plano ao iniciar
-window.addEventListener('load', () => {
-    const salvo = localStorage.getItem("plano_estudos_user");
-    if (salvo) window.planoAtual = JSON.parse(salvo);
+// [CÓDIGO MODIFICADO] - Listener de carga unificado e assíncrono para priorizar o servidor Python
+window.addEventListener('load', async () => {
+    // [CÓDIGO INSERIDO] - Tenta carregar o plano_estudos.json diretamente do servidor
+    try {
+        const response = await fetch(`${API}/plan`);
+        if (response.ok) {
+            const planoSalvo = await response.json();
+            
+            // Verifica se o objeto retornado possui dados válidos
+            if (planoSalvo.grade && Object.keys(planoSalvo.grade).length > 0) {
+                window.planoAtual = planoSalvo;
+                console.log("✅ Plano carregado do servidor físico.");
+                
+                // [CÓDIGO INSERIDO] - Força a atualização da grade e dos inputs com os dados do arquivo
+                if (typeof renderizarGridPlano === 'function') renderizarGridPlano();
+                if (typeof renderizarTabelaPesos === 'function') renderizarTabelaPesos();
+                if (typeof renderizarConfigIntervalos === 'function') renderizarConfigIntervalos();
+                if (window.planoAtual.horas) renderizarListaSugestao(window.planoAtual.horas);
+
+                alternarVisibilidadePlano(true);
+                
+                return; // Carregamento do servidor concluído com sucesso
+            }
+        }
+    } catch (error) {
+        console.warn("⚠️ Servidor inacessível. Tentando LocalStorage...", error);
+    }
+
+    // [CÓDIGO MODIFICADO] - Fallback: Se o servidor falhar, utiliza o LocalStorage
+    /* [CÓDIGO EXCLUÍDO (Definição antiga e limitada)]:
+    window.addEventListener('load', () => {
+        const salvo = localStorage.getItem("plano_estudos_user");
+        if (salvo) window.planoAtual = JSON.parse(salvo);
+    });
+    */
+    const salvoLocal = localStorage.getItem("plano_estudos_user");
+    if (salvoLocal) {
+        window.planoAtual = JSON.parse(salvoLocal);
+        renderizarGridPlano();
+        renderizarTabelaPesos();
+    }
 });
 
 // Função completa para cálculo de alocação de tempo via TOPSIS
@@ -662,7 +795,21 @@ function voltarParaConfiguracao() {
     alternarVisibilidadePlano(false);
 }
 
-window.addEventListener('load', () => {
-    const salvo = localStorage.getItem("plano_estudos_user");
-    if (salvo) window.planoAtual = JSON.parse(salvo);
-});
+// [CÓDIGO INSERIDO] - Função para formatar segundos em D, H, M, S
+function formatarTempoRestante(segundos) {
+    const d = Math.floor(segundos / 86400);
+    const h = Math.floor((segundos % 86400) / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    const s = segundos % 60;
+
+    let partes = [];
+    if (d > 0) partes.push(`${d}d`);
+    
+    // Formata HH:MM:SS com padStart para manter o padrão visual
+    const hh = h.toString().padStart(2, '0');
+    const mm = m.toString().padStart(2, '0');
+    const ss = s.toString().padStart(2, '0');
+    
+    partes.push(`${hh}:${mm}:${ss}`);
+    return partes.join(' ') + " restante";
+}
