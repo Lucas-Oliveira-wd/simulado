@@ -225,6 +225,10 @@ textarea {
     padding: 12px;
 }
 
+input[type="time"]{
+    width: 90px;
+}
+
 .questao-img {
     max-width: 100%;
     max-height: 300px;

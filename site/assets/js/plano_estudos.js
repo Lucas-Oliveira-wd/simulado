@@ -15,6 +15,11 @@ const PALETA_CORES = [
     "#c0392b", "#f1c40f", "#2c3e50", "#7f8c8d", "#e67e22"
 ];
 
+const converterParaMinutos = (timeStr) => {
+    const [h, m] = (timeStr || "00:00").split(':').map(Number);
+    return h * 60 + m;
+};
+
 // [CÓDIGO INSERIDO] - Função para buscar o plano persistido no servidor Python
 async function carregarPlanoServidor() {
     try {
@@ -109,7 +114,7 @@ function initPlanoEstudos() {
                 window.planConfig[nome] = {
                     cor: PALETA_CORES[index % PALETA_CORES.length], // Atribui cor da paleta
                     min: 2, // Default: 1h
-                    max: 6  // Default: 3h
+                    max: 4  // Default: 2h
                 };
             }
         });
@@ -230,7 +235,7 @@ function calcularHorasTotaisDisponiveis() {
             const [h2, m2] = int.fim.split(':').map(Number);
             const minInicio = h1 * 60 + m1;
             const minFim = h2 * 60 + m2;
-            if (minFim > minInicio) totalMinutos += (minFim - minInicio);
+            if (minFim > minInicio) totalMinutos += (minFim - minInicio) + 30;
         });
     });
 
@@ -243,33 +248,31 @@ function calcularHorasTotaisDisponiveis() {
 
 // [CÓDIGO MODIFICADO] - Força o reset completo da grade para "Estudar" antes da distribuição
 function aplicarIntervalosNaGrade() {
-    const hInicio = parseInt(el("plan-config-inicio").value) || 3;
-    const hFim = parseInt(el("plan-config-fim").value) || 17;
+    const startMin = converterParaMinutos(el("plan-config-inicio").value);
+    const endMin = converterParaMinutos(el("plan-config-fim").value);
 
     DIAS_SEMANA.forEach(dia => {
         const intervalos = window.planoAtual.intervalos[dia] || [];
         
-        for(let h=hInicio; h<hFim; h++) {
-            ["00", "30"].forEach(m => {
-                const horaStr = `${h.toString().padStart(2,'0')}:${m}`;
-                const minAtual = h * 60 + parseInt(m);
-                const chave = `cell-${dia}-${horaStr}`;
-                
-                let estaNoIntervalo = false;
-                intervalos.forEach(int => {
-                    const [hI, mI] = int.inicio.split(':').map(Number);
-                    const [hF, mF] = int.fim.split(':').map(Number);
-                    if (minAtual >= (hI * 60 + mI) && minAtual < (hF * 60 + mF)) estaNoIntervalo = true;
-                });
-
-                if (estaNoIntervalo) {
-                    // [CÓDIGO MODIFICADO] - Força o estado "Estudar" removendo matérias de gerações anteriores
-                    // [CÓDIGO EXCLUÍDO]: if (!window.planoAtual.grade[chave] || window.planoAtual.grade[chave] === "Descanso")
-                    window.planoAtual.grade[chave] = "Estudar";
-                } else {
-                    window.planoAtual.grade[chave] = "Descanso";
-                }
+        for (let minAtual = startMin; minAtual <= endMin; minAtual += 30) {
+            const h = Math.floor(minAtual / 60);
+            const m = minAtual % 60;
+            const horaStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+            const chave = `cell-${dia}-${horaStr}`;
+            
+            let estaNoIntervalo = false;
+            intervalos.forEach(int => {
+                const minI = converterParaMinutos(int.inicio);
+                const minF = converterParaMinutos(int.fim);
+                // [CÓDIGO MODIFICADO] - Uso do <= para validar o bloco que inicia no horário de término
+                if (minAtual >= minI && minAtual <= minF) estaNoIntervalo = true;
             });
+
+            if (estaNoIntervalo) {
+                window.planoAtual.grade[chave] = "Estudar";
+            } else {
+                window.planoAtual.grade[chave] = "Descanso";
+            }
         }
     });
     renderizarGridPlano();
@@ -295,8 +298,8 @@ function distribuirSugestoesNaGrade() {
         };
     });
 
-    const hInicio = parseInt(el("plan-config-inicio").value) || 3;
-    const hFim = parseInt(el("plan-config-fim").value) || 18;
+    const startMin = converterParaMinutos(el("plan-config-inicio").value);
+    const endMin = converterParaMinutos(el("plan-config-fim").value);
 
     DIAS_SEMANA.forEach((dia) => {
         // Controle de matérias já vistas hoje para forçar a rotatividade (Fila)
@@ -305,98 +308,93 @@ function distribuirSugestoesNaGrade() {
         let materiaAtual = null;
         let contagemSessao = 0;
 
-        for (let h = hInicio; h < hFim; h++) {
-            ["00", "30"].forEach(m => {
-                const horaStr = `${h.toString().padStart(2, '0')}:${m}`;
-                const chave = `cell-${dia}-${horaStr}`;
+        for (let minAtual = startMin; minAtual <= endMin; minAtual += 30) {
+            const h = Math.floor(minAtual / 60);
+            const m = minAtual % 60;
+            const horaStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            const chave = `cell-${dia}-${horaStr}`;
 
-                if (window.planoAtual.grade[chave] !== "Estudar") {
-                    // Se houver um intervalo (espaço branco), a sessão é resetada
-                    if (materiaAtual) materiasVistasHoje.add(materiaAtual);
-                    materiaAtual = null;
-                    contagemSessao = 0;
-                    return; 
-                }
+            if (window.planoAtual.grade[chave] !== "Estudar") {
+                if (materiaAtual) materiasVistasHoje.add(materiaAtual);
+                materiaAtual = null;
+                contagemSessao = 0;
+                // [CÓDIGO INSERIDO] - Continue garante que o loop não aborte se houver um buraco na grade
+                continue; 
+            }
 
-                let escolha = "Descanso";
-                if (materiaAtual && restricoes[materiaAtual].blocosRestantes > 0) {
-                    const r = restricoes[materiaAtual];
-                    if (contagemSessao < r.min) {
-                        escolha = materiaAtual; 
-                    } else if (contagemSessao < r.max) {
-                        const candidatos = Object.values(restricoes)
-                            .filter(c => c.materia !== materiaAtual && c.blocosRestantes >= c.min)
-                            .sort((a, b) => {
-                                // [CÓDIGO INSERIDO] - Prioriza quem ainda não foi visto hoje
-                                const vistoA = materiasVistasHoje.has(a.materia) ? 1 : 0;
-                                const vistoB = materiasVistasHoje.has(b.materia) ? 1 : 0;
-                                if (vistoA !== vistoB) return vistoA - vistoB;
-                                return b.blocosRestantes - a.blocosRestantes;    
-                            }); 
+            let escolha = "Descanso";
+            // Lógica de seleção (SAW/Restrições)
+            if (materiaAtual && restricoes[materiaAtual].blocosRestantes > 0) {
+                const r = restricoes[materiaAtual];
+                if (contagemSessao < r.min) {
+                    escolha = materiaAtual; 
+                } else if (contagemSessao < r.max) {
+                    const candidatos = Object.values(restricoes)
+                        .filter(c => c.materia !== materiaAtual && c.blocosRestantes >= c.min)
+                        .sort((a, b) => {
+                            const vistoA = materiasVistasHoje.has(a.materia) ? 1 : 0;
+                            const vistoB = materiasVistasHoje.has(b.materia) ? 1 : 0;
+                            if (vistoA !== vistoB) return vistoA - vistoB;
+                            return b.blocosRestantes - a.blocosRestantes;    
+                        }); 
 
-                        if (candidatos.length > 0) {
-                            const proxima = candidatos[0];
-                            if (proxima.blocosRestantes > r.blocosRestantes * 1.5) {
-                                escolha = "Descanso"; 
-                            } else {
-                                escolha = materiaAtual;
-                            }
+                    if (candidatos.length > 0) {
+                        const proxima = candidatos[0];
+                        if (proxima.blocosRestantes > r.blocosRestantes * 1.5) {
+                            escolha = "Descanso"; 
                         } else {
                             escolha = materiaAtual;
                         }
                     } else {
-                        // [CÓDIGO INSERIDO] - Atingiu o MAX: Força interrupção
-                        materiaAnterior = materiaAtual;
-                        escolha = "Descanso";
+                        escolha = materiaAtual;
                     }
-                }
-
-                if (escolha === "Descanso") {
-                    if (materiaAtual) materiasVistasHoje.add(materiaAtual);
-                    materiaAtual = null;
-                    contagemSessao = 0;
-
-                    const disponiveis = Object.values(restricoes)
-                        .filter(r => r.blocosRestantes > 0 && r.materia !== materiaAnterior) // Exclui a matéria que acabou de bater o teto
-                        .sort((a, b) => {
-                            // Regra de Ouro: Matérias não estudadas hoje vão para o início da fila
-                            const vistoA = materiasVistasHoje.has(a.materia) ? 1 : 0;
-                            const vistoB = materiasVistasHoje.has(b.materia) ? 1 : 0;
-                            if (vistoA !== vistoB) return vistoA - vistoB;
-                            return b.blocosRestantes - a.blocosRestantes;  
-                        } );
-
-                    // Se todas as matérias já foram vistas hoje, reseta a fila para o período restante do dia
-                    if (disponiveis.length > 0 && materiasVistasHoje.has(disponiveis[0].materia)) {
-                        materiasVistasHoje.clear();
-                    }
-
-                    // Caso a única disponível seja a anterior, permite se não houver opção
-                    const candidatosFinais = disponiveis.length > 0 ? disponiveis : Object.values(restricoes).filter(r => r.blocosRestantes > 0);
-
-                    // Verificação de reset de ciclo baseada nos candidatos finais
-                    if (candidatosFinais.length > 0 && materiasVistasHoje.has(candidatosFinais[0].materia)) {
-                        materiasVistasHoje.clear();
-                    }
-
-                    if (candidatosFinais.length > 0) {
-                        const top = candidatosFinais[0];
-                        if (top.blocosRestantes >= top.min || candidatosFinais.length === 1) {
-                            escolha = top.materia;
-                            materiaAtual = top.materia;
-                            materiaAnterior = null; // Reseta o bloqueio
-                        }
-                    }
-                }
-
-                if (escolha !== "Descanso") {
-                    window.planoAtual.grade[chave] = escolha;
-                    restricoes[escolha].blocosRestantes--;
-                    contagemSessao++;
                 } else {
-                    window.planoAtual.grade[chave] = "Descanso";
+                    materiaAnterior = materiaAtual;
+                    escolha = "Descanso";
                 }
-            });
+            }
+
+            if (escolha === "Descanso") {
+                if (materiaAtual) materiasVistasHoje.add(materiaAtual);
+                materiaAtual = null;
+                contagemSessao = 0;
+
+                const disponiveis = Object.values(restricoes)
+                    .filter(r => r.blocosRestantes > 0 && r.materia !== materiaAnterior)
+                    .sort((a, b) => {
+                        const vistoA = materiasVistasHoje.has(a.materia) ? 1 : 0;
+                        const vistoB = materiasVistasHoje.has(b.materia) ? 1 : 0;
+                        if (vistoA !== vistoB) return vistoA - vistoB;
+                        return b.blocosRestantes - a.blocosRestantes;  
+                    });
+
+                if (disponiveis.length > 0 && materiasVistasHoje.has(disponiveis[0].materia)) {
+                    materiasVistasHoje.clear();
+                }
+
+                const candidatosFinais = disponiveis.length > 0 ? disponiveis : Object.values(restricoes).filter(r => r.blocosRestantes > 0);
+
+                if (candidatosFinais.length > 0 && materiasVistasHoje.has(candidatosFinais[0].materia)) {
+                    materiasVistasHoje.clear();
+                }
+
+                if (candidatosFinais.length > 0) {
+                    const top = candidatosFinais[0];
+                    if (top.blocosRestantes >= top.min || candidatosFinais.length === 1) {
+                        escolha = top.materia;
+                        materiaAtual = top.materia;
+                        materiaAnterior = null;
+                    }
+                }
+            }
+
+            if (escolha !== "Descanso") {
+                window.planoAtual.grade[chave] = escolha;
+                restricoes[escolha].blocosRestantes--;
+                contagemSessao++;
+            } else {
+                window.planoAtual.grade[chave] = "Descanso";
+            }
         }
     });
     renderizarGridPlano();
@@ -420,40 +418,41 @@ function definirMateriaCelular(dia, hora) {
 // Gera a grade de horários (30 em 30 min, 04:00 às 23:30)
 function renderizarGridPlano() {
     const corpo = el("corpo-grade-estudos");
-    if (!corpo) return; // [CÓDIGO INSERIDO] - Correção para o erro da linha 13
+    if (!corpo) return;
 
     // Agora usa os valores definidos no cabeçalho (Início/Fim)
-    const hInicio = parseInt(el("plan-config-inicio").value) || 3;
-    const hFim = parseInt(el("plan-config-fim").value) || 17;
+    const startMin = converterParaMinutos(el("plan-config-inicio").value);
+    const endMin = converterParaMinutos(el("plan-config-fim").value);
 
     corpo.innerHTML = "";
-    for(let h = hInicio; h < hFim; h++) {
-        ["00", "30"].forEach(m => {
-            const horaStr = `${h.toString().padStart(2,'0')}:${m}`;
-            let row = `<tr><td class="hora-col">${horaStr}</td>`;
+
+    for (let totalMin = startMin; totalMin <= endMin; totalMin += 30) {
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        const horaStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        
+        let row = `<tr><td class="hora-col">${horaStr}</td>`;
+        DIAS_SEMANA.forEach(d => {
+            const idCell = `cell-${d}-${horaStr}`;
+            const materia = window.planoAtual.grade[idCell] || "";
             
-            DIAS_SEMANA.forEach(d => {
-                const idCell = `cell-${d}-${horaStr}`;
-                const materia = window.planoAtual.grade[idCell] || "";
-                
-                // [CÓDIGO INSERIDO] - Lógica de cores baseada no plano dinâmico
-                let bg = "transparent";
-                let text = "#333";
-                
-                if (materia === "Estudar") {
-                    bg = "#ecf0f1";
-                } else if (window.planConfig[materia]) {
-                    bg = window.planConfig[materia].cor;
-                    text = "#fff"; // Assume branco para melhor contraste em cores da paleta
-                }
-                
-                row += `<td id="${idCell}" onclick="definirMateriaCelular('${d}','${horaStr}')"
-                            style="background-color: ${bg}; color: ${text};">
-                            ${(materia === "Descanso" || materia === "Estudar") ? "" : materia}
-                        </td>`;
-            });
-            corpo.innerHTML += row + `</tr>`;
+            // [CÓDIGO INSERIDO] - Definição de bg e text para corrigir o erro 'ReferenceError: bg is not defined'
+            let bg = "transparent";
+            let text = "#333";
+            
+            if (materia === "Estudar") {
+                bg = "#ecf0f1";
+            } else if (window.planConfig[materia]) {
+                bg = window.planConfig[materia].cor;
+                text = "#fff";
+            }
+            
+            row += `<td id="${idCell}" onclick="definirMateriaCelular('${d}','${horaStr}')" 
+                        style="background-color: ${bg}; color: ${text};">
+                        ${(materia === "Descanso" || materia === "Estudar") ? "" : materia}
+                    </td>`;
         });
+        corpo.innerHTML += row + `</tr>`;
     }
 }
 
