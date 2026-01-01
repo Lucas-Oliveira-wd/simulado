@@ -2,6 +2,35 @@
     min-width: 350px;
 }
 
+#painel-agora{
+    background:var(--marine-blue);
+    padding:15px;
+    border-radius:8px;
+    margin-bottom:15px;
+    text-align:center;
+}
+
+body.dark-mode #painel-agora{
+    background:var(--dark-marine-blue);
+    padding:15px;
+    border-radius:8px;
+    margin-bottom:15px;
+    text-align:center;
+}
+
+#painel-agora h3{
+    color: var(--text); margin-top:0;
+}
+
+body.dark-mode #painel-agora h3{
+    color: var(--dark-text);
+}
+
+#monitor-materia{
+    font-size:1.4em;
+    font-weight:bold
+}
+
 /* Estilo para destaque do monitor no Modo Foco */
 .modo-foco-ativo #monitor-materia {
     font-size: 3em !important;
@@ -23,15 +52,19 @@
 
 .hora-col span {
     position: absolute;
-    top: -12px;
+    top: -9px;
     left: 5px;
     padding: 0 4px;
     font-size: 0.85em;
-    font-weight: bold;
-    background: white; 
+    font-weight: bold; 
+    background-color: var(--bg);
     
     /* z-index agora funcionará pois o overflow está visible */
     z-index: var(--z-pin); 
+}
+
+body.dark-mode .hora-col span {
+    background-color: var(--dark-bg);
 }
 
 #tabela-grade-estudos thead{

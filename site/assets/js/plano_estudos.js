@@ -10,10 +10,20 @@ window.planoAtual = window.planoAtual || {
 window.planConfig = window.planConfig || {};
 
 
-const PALETA_CORES = [
-    "#8e44ad", "#2980b9", "#27ae60", "#d35400", "#16a085", 
-    "#c0392b", "#f1c40f", "#2c3e50", "#7f8c8d", "#e67e22"
+const PALETA_LIGHT = [
+    "var(--purple)", 
+    "var(--disc-blue)", 
+    "var(--succ)", 
+    "var(--orange)", 
+    "var(--acc)", 
+    "var(--sec)",
+    "var(--disc-pink)",
+    "var(--disc-teal)",
+    "var(--disc-indigo)",
+    "var(--disc-lime)"
 ];
+
+const PALETA_DARK = PALETA_LIGHT;
 
 const converterParaMinutos = (timeStr) => {
     const [h, m] = (timeStr || "00:00").split(':').map(Number);
@@ -112,7 +122,7 @@ function initPlanoEstudos() {
         window.opcoes.disciplinas.forEach((nome, index) => {
             if (!window.planConfig[nome]) {
                 window.planConfig[nome] = {
-                    cor: PALETA_CORES[index % PALETA_CORES.length], // Atribui cor da paleta
+                    corIndex: index % PALETA_LIGHT.length, // Atribui cor da paleta
                     min: 2, // Default: 1h
                     max: 4  // Default: 2h
                 };
@@ -150,13 +160,17 @@ function renderizarTabelaPesos() {
     const tbody = el("corpo-pesos-disciplinas");
     if (!tbody || !window.opcoes.disciplinas) return;
 
+    const isDark = document.body.classList.contains('dark-mode');
+
     tbody.innerHTML = "";
     window.opcoes.disciplinas.forEach(disc => {
-        const meta = window.planConfig[disc] || { min: 2, max: 6, cor: "#ccc" };
-        const pesoPadrao = disc.includes("Específicos") ? 0.6 : 0.14; 
+        const meta = window.planConfig[disc] || { min: 2, max: 4, corIndex: 0};
+        const idx = meta.corIndex || 0;
+        const corLinha = isDark ? PALETA_DARK[idx] : PALETA_LIGHT[idx];
+        const pesoPadrao = disc.includes("Específicos") ? 65 : 14; 
         tbody.innerHTML += `
             <tr">
-                <td style="border-left: 5px solid ${meta.cor}">${disc}</td>
+                <td style="border-left: 5px solid ${corLinha}">${disc}</td>
                 <td><input type="number" step="0.1" value="${pesoPadrao}" class="peso-mcda" data-disc="${disc}"></td>
                 <td>
                     <select class="tipo-mcda" data-disc="${disc}">
@@ -246,7 +260,7 @@ function calcularHorasTotaisDisponiveis() {
     return totalHoras;
 }
 
-// [CÓDIGO MODIFICADO] - Força o reset completo da grade para "Estudar" antes da distribuição
+// Força o reset completo da grade para "Estudar" antes da distribuição
 function aplicarIntervalosNaGrade() {
     const startMin = converterParaMinutos(el("plan-config-inicio").value);
     const endMin = converterParaMinutos(el("plan-config-fim").value);
@@ -308,7 +322,7 @@ function distribuirSugestoesNaGrade() {
         let materiaAtual = null;
         let contagemSessao = 0;
 
-        for (let minAtual = startMin; minAtual <= endMin; minAtual += 30) {
+        for (let minAtual = startMin; minAtual < endMin; minAtual += 30) {
             const h = Math.floor(minAtual / 60);
             const m = minAtual % 60;
             const horaStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
@@ -409,6 +423,7 @@ function distribuirSugestoesNaGrade() {
 function definirMateriaCelular(dia, hora) {
     const atual = window.planoAtual.grade[`cell-${dia}-${hora}`] || "";
     const nova = prompt(`Definir matéria para ${dia} às ${hora}:`, atual);
+
     if (nova !== null) {
         window.planoAtual.grade[`cell-${dia}-${hora}`] = nova;
         renderizarGridPlano();
@@ -424,6 +439,9 @@ function renderizarGridPlano() {
     const startMin = converterParaMinutos(el("plan-config-inicio").value);
     const endMin = converterParaMinutos(el("plan-config-fim").value);
 
+    // Verificação dinâmica do tema
+    const isDarkNow = document.body.classList.contains('dark-mode');
+
     corpo.innerHTML = "";
 
     for (let totalMin = startMin; totalMin < endMin; totalMin += 30) {
@@ -436,15 +454,19 @@ function renderizarGridPlano() {
             const idCell = `cell-${d}-${horaStr}`;
             const materia = window.planoAtual.grade[idCell] || "";
             
-            // [CÓDIGO INSERIDO] - Definição de bg e text para corrigir o erro 'ReferenceError: bg is not defined'
-            let bg = "transparent";
-            let text = "#333";
+            // Cores padrão para células vazias
+            let bg = isDarkNow ? "var(--dark-bg)" : "transparent";
+            let text = isDarkNow ? "var(--dark-text)" : "var(--text)";
             
             if (materia === "Estudar") {
-                bg = "#ecf0f1";
+                bg = isDarkNow ? "var(--dark-surface-lighter)" : "var(--light)";
+                if (!isDarkNow) text = "var(--text)";
             } else if (window.planConfig[materia]) {
-                bg = window.planConfig[materia].cor;
-                text = "#fff";
+                const idx = window.planConfig[materia].corIndex;
+                
+                bg = PALETA_LIGHT[idx];
+        
+                text = "var(--disc-text)";
             }
             
             row += `<td id="${idCell}" onclick="definirMateriaCelular('${d}','${horaStr}')" 
@@ -499,6 +521,8 @@ setInterval(() => {
     const monitorMateria = el("monitor-materia");
     const monitorRelogio = el("monitor-tempo-restante");
     const barra = el("monitor-barra-progresso");
+
+    const isDarkNow = document.body.classList.contains('dark-mode');
     
     if (!monitorMateria || !el("secao-plano") || el("secao-plano").style.display === "none") return;
 
@@ -558,11 +582,15 @@ setInterval(() => {
     if (materiaAtual !== "Descanso" && materiaAtual !== "Estudar") {
         monitorMateria.innerText = materiaAtual;
         // Aplica a cor da disciplina se houver configuração
-        if (window.planConfig[materiaAtual]) monitorMateria.style.color = window.planConfig[materiaAtual].cor;
+        if (window.planConfig[materiaAtual]) {
+            // Acessa a paleta dinâmica via corIndex
+            const idx = window.planConfig[materiaAtual].corIndex;
+            monitorMateria.style.color = isDarkNow ? PALETA_DARK[idx] : PALETA_LIGHT[idx];
+        }
     } else {
         // [CÓDIGO INSERIDO] - Exibe a próxima disciplina no lugar do "Descanso" genérico
         monitorMateria.innerText = proximaMateriaNome ? `Próxima: ${proximaMateriaNome}` : "Descanso";
-        monitorMateria.style.color = "#bdc3c7";
+        monitorMateria.style.color = isDarkNow ? "var(--dark-text)" : "var(--text-muted)";
     }
 
     if (monitorRelogio) {
@@ -661,7 +689,6 @@ window.addEventListener('load', async () => {
         console.warn("⚠️ Servidor inacessível. Tentando LocalStorage...", error);
     }
 
-    
     const salvoLocal = localStorage.getItem("plano_estudos_user");
     if (salvoLocal) {
         window.planoAtual = JSON.parse(salvoLocal);

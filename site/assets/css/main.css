@@ -8,8 +8,15 @@
     --text-muted: #95a5a6;
     --purple: #8e44ad;
     --orange: #f39c12;
-    --overload-color:rgba(255,255,255,.9);
+    --disc-blue: #3498db;
+    --disc-pink: #e91e63;
+    --disc-teal: #009688;
+    --disc-indigo: #3f51b5;
+    --disc-lime: #8bc34a;
+    --overload-color: rgba(255, 255, 255, .9);
     --text: #1b1b1b;
+    --marine-blue: #2c3e50;
+    --disc-text: #ffffff;
 
     /* Novas variáveis para o Modo Escuro */
     --dark-primary: #001f11;
@@ -21,7 +28,7 @@
     --dark-text: #e0e0e0ef;      /* Texto principal */
     --dark-hover: #555555;     /* Hover de elementos */
     --dark-overload-color:rgba(55,55,55,.9);
-    --dark-sec-color: #7e6515;
+    --dark-sec-color: #7e6515;/* Cores específicas para as disciplinas no modo escuro */
 
     /* --- Camadas (Z-Index) --- */
     --z-base: 1;
@@ -31,6 +38,20 @@
     --z-modal: 20;       /* Janela do modal */
     --z-toolbar: 25;     /* Toolbar DEVE ser maior que o Modal */
     --z-loader: 30;      /* Loader de carregamento (sempre no topo) */
+}
+
+body.dark-mode{
+    --purple: #bb86fc;
+    --disc-blue: #81ecec;
+    --succ: #265021;
+    --orange: #ffb74d;
+    --acc: #ff7675;
+    --sec: #f1c40f;
+    --disc-pink: #f48fb1;
+    --disc-teal: #80cbc4;
+    --disc-indigo: #9fa8da;
+    --disc-lime: #c5e1a5;
+    --disc-text: #1a1a1a;
 }
 
 /* Botão Toggle de Tema (Círculo Bicolor) */
