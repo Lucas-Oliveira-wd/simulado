@@ -138,9 +138,18 @@
                     <button class="btn-acao" onclick="lerPDF()"
                         style="margin:5px 0; width:150px; background:#27ae60">Ler PDF</button>
                 </div>
-                <input type="text" id="imp-disciplina" list="lista-disciplinas" placeholder="Disciplina Padrão"
-                    onchange="carregarAssuntos('imp')">
-                <input type="text" id="imp-assunto" oninput="aplicarAssuntoGlobal()" list="lista-assuntos" placeholder="Assunto Global...">
+                <div>
+                    <input type="text" id="imp-disciplina" list="lista-disciplinas" placeholder="Disciplina Padrão"
+                        onchange="carregarAssuntos('imp')">    
+                </div>
+                <div>
+                    <input type="text" id="imp-assunto" oninput="aplicarAssuntoGlobal()" list="lista-assuntos" placeholder="Assunto Global...">    
+                </div>
+                
+                <div>
+                    <input type="checkbox" id="imp-modo-prova" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="imp-modo-prova" style="font-weight: bold; color: var(--primary); cursor: pointer;">Prova</label>
+                </div>
             </div>
             <div id="imp-preview-container" style="display:none">
                 <h3 id="imp-titulo-preview">Prévia</h3>
