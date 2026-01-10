@@ -10,9 +10,13 @@ async function lerPDF() {
   let fd = new FormData();
   fd.append("file", inp.files[0]);
 
+  /*Envia a flag do modo prova para o backend */
+  let isProva = el("imp-modo-prova").checked;
+
   let disciplinaAlvo = el("imp-disciplina").value;
-  if (!disciplinaAlvo) return alert("Selecione a disciplina!");
+  if (!isProva && !disciplinaAlvo) return alert("Selecione a disciplina!");
   fd.append("disciplina", disciplinaAlvo);
+  fd.append("is_prova", isProva);
 
   el("imp-preview-container").style.display = "none";
   el("imp-lista-questoes").innerHTML = "";
@@ -72,6 +76,8 @@ function renderPreview(lista) {
 
     // Se tiver assunto global digitado, usa ele. Se não, usa o que veio do Python. Se não tiver nada, "Geral".
     let assuntoFinal = globalAssunto ? globalAssunto : (q.assunto || "Geral");
+    /* [CÓDIGO INSERIDO] - Define a disciplina que veio do processamento */
+    let disciplinaLinha = q.disciplina || el("imp-disciplina").value;
 
     div.innerHTML += `
 <div class="${classeRow}" id="imp-row-${i}">
@@ -267,7 +273,8 @@ function preencherPadraoFigura(index, format) {
 
 async function salvarIndividual(index) {
   let r = el(`imp-row-${index}`);
-  let disc = el("imp-disciplina").value;
+  let disc = r.querySelector(".imp-disciplina-ind").value || el("imp-disciplina").value;
+
   if (!disc) return alert("Digite/Selecione a Disciplina base.");
   let assuntoFinal =
     r.querySelector(".imp-assunto-ind").value ||
@@ -275,6 +282,7 @@ async function salvarIndividual(index) {
     "Geral";
 
   const formData = new FormData();
+  formData.append("disciplina", disc);
   formData.append("banca", r.querySelector(".imp-banca").value);
   formData.append("instituicao", r.querySelector(".imp-inst").value);
   formData.append("ano", r.querySelector(".imp-ano").value);
