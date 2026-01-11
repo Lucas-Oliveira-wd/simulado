@@ -108,10 +108,14 @@ function popSelGeral() {
     });
 }
 
-function carregarAssuntos(prefixo) {
+function carregarAssuntos(prefixo, disciplinaManual = null) {
     let idDisc = (prefixo === 'fc-estudo') ? 'fc-estudo-disc' : `${prefixo}-disciplina`;
     let elDisc = el(idDisc);
-    let disc = elDisc.value;
+
+    // [MODIFICADO] Se houver disciplinaManual (vinda da linha), usa ela. 
+    // Caso contrário, busca o valor do elemento de disciplina padrão do topo.
+    let disc = disciplinaManual || (elDisc ? elDisc.value : "");
+
     if (['cad', 'imp', 'edit', 'fc'].includes(prefixo)) {
         let listaAss = el("lista-assuntos");
         let html = "";

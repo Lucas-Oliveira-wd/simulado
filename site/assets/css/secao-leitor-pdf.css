@@ -10,3 +10,7 @@
 body.dark-mode .imp-row.sucesso-salvo{
     background-color: var(--dark-primary) !important;
 }
+
+.imp-prova{
+    display: none;
+}

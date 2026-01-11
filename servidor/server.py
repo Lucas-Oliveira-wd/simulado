@@ -354,7 +354,11 @@ def reconstruir_header_logico(texto, disciplina=""):
 
 def limpar_ruido(texto, disciplina="", modo_prova=False):
 
-    texto = reconstruir_header_logico(texto, disciplina)
+    if not modo_prova:
+        texto = reconstruir_header_logico(texto, disciplina)
+
+    if not texto:
+        print("[ERRO] Extração de texto resultou em string vazia.")
 
     # CÓDIGO INSERIDO: Verificar o estado do texto IMEDIATAMENTE após a reconstrução
     titulos_pos_rec = re.findall(r'(?:QUESTÕES|LISTA).*', texto, re.IGNORECASE)
@@ -908,86 +912,33 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False):
         segmentos = re.split(r'\n\s*(\d{1,3})\.\s+', texto_limpo)
 
         questoes = []
+        for i in range(1, len(segmentos), 2):
+            q_num = segmentos[i]
+            corpo = segmentos[i + 1]
 
-        # Mapa de gabaritos (caso exista uma tabela de respostas no final do arquivo)
-        mapa_gabaritos_global = extrair_mapa_gabaritos_local(texto_limpo)
+            if not (re.search(r'A\)', corpo) and re.search(r'B\)', corpo)): continue
 
-        # Regex Universal: Busca por Início de Linha + Número + Ponto/Parêntese
-        # Captura o número e o início do texto/metadado
-        pattern_universal = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*([A-ZÀ-Ú0-9].+)', re.MULTILINE)
-        matches = list(pattern_universal.finditer(texto_limpo))
+            # Remove números de linha do texto de apoio de dentro do corpo
+            corpo = re.sub(r'(?:^|\n)\s*\d{1,2}\.\s', ' ', corpo)
 
-        print(f"[DEBUG MODO PROVA] Possíveis inícios de questão encontrados: {len(matches)}")
-
-        for i, m in enumerate(matches):
-            q_numero = m.group(1)
-            # O texto inicial pode conter metadados como (CESGRANRIO - 2024)
-            prefixo_meta = m.group(2)
-
-            start_index = m.end()
-            end_index = matches[i + 1].start() if i + 1 < len(matches) else len(texto_limpo)
-
-            # Conteúdo bruto entre esta questão e a próxima
-            bloco_quest = texto_limpo[start_index:end_index]
-
-            # 1. Identificação do Tipo (Certo/Errado vs Múltipla Escolha)
-            # Se encontrar as marcações ( ) C ou ( ) E, ou palavras chave de julgamento
-            is_ce = bool(
-                re.search(r'\(\s*\)\s*(?:Certo|Errado)|julgue\s+o\s+item', prefixo_meta + bloco_quest, re.IGNORECASE))
-            tipo = "CE" if is_ce else "ME"
-
-            # 2. Separação de Alternativas (A-E)
-            # Normalizamos o formato para garantir que o split funcione (Ex: (A) vira A))
-            corpo_formatado = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', bloco_quest)
-            partes_alt = re.split(r'\n\s*([A-E])\)', corpo_formatado, flags=re.IGNORECASE)
-
-            enunciado_raw = prefixo_meta + " " + partes_alt[0]
-            enunciado = sanitizar_texto(enunciado_raw.strip())
+            partes_alt = re.split(r'\n\s*([A-E])\)', corpo, flags=re.IGNORECASE)
+            enunciado = sanitizar_texto(partes_alt[0].strip())
 
             alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
-            if tipo == "ME" and len(partes_alt) > 1:
+            if len(partes_alt) > 1:
                 for k in range(1, len(partes_alt), 2):
                     letra = partes_alt[k].upper()
-                    if k + 1 < len(partes_alt):
-                        alts[letra] = sanitizar_texto(partes_alt[k + 1].strip())
+                    if k + 1 < len(partes_alt): alts[letra] = sanitizar_texto(partes_alt[k + 1].strip())
 
-            # 3. Busca de Gabarito
-            gabarito = ""
-            # Tenta achar no texto da própria questão (padrão Gabarito: X)
-            match_gab = re.search(r'(?i)Gabarito[:\s\.]+\s*([A-Ea-eCcEe])(?![a-z])', bloco_quest)
-            if match_gab:
-                gab_val = match_gab.group(1).upper()
-                gabarito = "C" if gab_val == "CERTO" else ("E" if gab_val == "ERRADO" else gab_val)
-            # Se não achou no texto, tenta no mapa global extraído da tabela
-            elif q_numero in mapa_gabaritos_global:
-                gabarito = mapa_gabaritos_global[q_numero]
-
-            # 4. Metadados Básicos (Banca/Ano)
-            # Tenta extrair do prefixo_meta
-            banca = "CESGRANRIO"  # Default
-            ano = "2025"
-            match_ano = re.search(r'\b(20\d{2})\b', prefixo_meta)
-            if match_ano: ano = match_ano.group(1)
-
-            # 5. Adiciona à lista se houver conteúdo mínimo
-            if len(enunciado) > 20:
-                questoes.append({
-                    "temp_id": str(uuid.uuid4()),
-                    "banca": banca,
-                    "instituicao": "",
-                    "ano": ano,
-                    "disciplina": disciplina,  # Fallback do frontend
-                    "assunto": "Geral",
-                    "enunciado": enunciado,
-                    "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"],
-                    "alt_d": alts["D"], "alt_e": alts["E"],
-                    "gabarito": gabarito,
-                    "tipo": tipo,
-                    "dificuldade": "Médio",
-                    "comentarios": ""
-                })
-
-        print(f"--- [DEBUG MODO PROVA] FIM DO PROCESSAMENTO: {len(questoes)} questões extraídas ---")
+            # [CÓDIGO MODIFICADO] - Retorna apenas a estrutura; o frontend preenche os metadados globais
+            questoes.append({
+                "temp_id": str(uuid.uuid4()),
+                "enunciado": enunciado,
+                "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"],
+                "alt_d": alts["D"], "alt_e": alts["E"],
+                "gabarito": extrair_mapa_gabaritos_local(texto_limpo).get(q_num, ""),
+                "tipo": "ME"
+            })
 
     return questoes
 
@@ -1799,6 +1750,7 @@ def upload_pdf():
         return jsonify(novas)
     except Exception as e:
         import traceback
+        print("--- ERRO NO PROCESSAMENTO DO PDF ---")
         traceback.print_exc()
         return jsonify({"erro": str(e)}), 500
     finally:

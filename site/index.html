@@ -145,9 +145,14 @@
                 <div>
                     <input type="text" id="imp-assunto" oninput="aplicarAssuntoGlobal()" list="lista-assuntos" placeholder="Assunto Global...">    
                 </div>
+                <div class="imp-prova">
+                    <input type="text" id="imp-global-banca" oninput="aplicarMetaGlobal('banca')" list="lista-bancas" placeholder="Banca Global...">
+                    <input type="text" id="imp-global-inst" oninput="aplicarMetaGlobal('inst')" list="lista-instituicoes" placeholder="Instituição Global...">
+                    <input type="number" id="imp-global-ano" oninput="aplicarMetaGlobal('ano')" placeholder="Ano Global...">
+                </div>
                 
                 <div>
-                    <input type="checkbox" id="imp-modo-prova" style="width: 18px; height: 18px; cursor: pointer;">
+                    <input type="checkbox" onchange="toggleCamposProva()" id="imp-modo-prova" style="width: 18px; height: 18px; cursor: pointer;">
                     <label for="imp-modo-prova" style="font-weight: bold; color: var(--primary); cursor: pointer;">Prova</label>
                 </div>
             </div>

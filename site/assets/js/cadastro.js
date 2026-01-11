@@ -24,7 +24,11 @@ async function lerPDF() {
 
   try {
     let r = await fetch(`${API}/upload-pdf`, { method: "POST", body: fd });
-    if (!r.ok) throw new Error("Erro na resposta do servidor");
+    // [CÓDIGO MODIFICADO] Captura a mensagem de erro vinda do Python se o status não for OK
+      if (!r.ok) {
+        const errData = await r.json();
+        throw new Error(errData.erro || "Erro desconhecido no servidor");
+      }
 
     let questoes = await r.json();
 
@@ -33,7 +37,9 @@ async function lerPDF() {
     atualizarTodosSelectsTexto();
 
   } catch (e) {
-    alert("Erro ao ler PDF.");
+    // [MODIFICADO] Agora loga o erro real no console e mostra no alerta
+      console.error("Falha no processamento:", e);
+      alert("Erro ao ler PDF: " + e.message);
   } finally {
     hideLoader();
   }
@@ -45,7 +51,13 @@ function renderPreview(lista) {
   el("imp-titulo-preview").innerText = `Prévia (${lista.length})`;
   el("imp-preview-container").style.display = "block";
 
-  let globalAssunto = el("imp-assunto").value;
+  // Captura valores globais atuais para inicializar os campos
+  const gBanca = el("imp-global-banca").value || "CESGRANRIO";
+  const gInst = el("imp-global-inst").value || "";
+  const gAno = el("imp-global-ano").value || "2025";
+  const gAssunto = el("imp-assunto").value || "Geral";
+  const gDisc = el("imp-disciplina").value;
+  const modoProvaAtivo = el("imp-modo-prova").checked;
 
   lista.forEach((q, i) => {
     let statusHtml = q.ja_cadastrada
@@ -74,20 +86,28 @@ function renderPreview(lista) {
         </div>`;
     };
 
-    // Se tiver assunto global digitado, usa ele. Se não, usa o que veio do Python. Se não tiver nada, "Geral".
-    let assuntoFinal = globalAssunto ? globalAssunto : (q.assunto || "Geral");
-    /* [CÓDIGO INSERIDO] - Define a disciplina que veio do processamento */
+    // [MODIFICADO] Lógica para aplicar valores globais se o modo prova estiver ativo
+    let bancaFinal = modoProvaAtivo ? gBanca : (q.banca || "");
+    let instFinal = modoProvaAtivo ? gInst : (q.instituicao || "");
+    let anoFinal = modoProvaAtivo ? gAno : (q.ano || "");
+
+    let assuntoFinal = gAssunto ? gAssunto : (q.assunto || "Geral");
     let disciplinaLinha = q.disciplina || el("imp-disciplina").value;
 
     div.innerHTML += `
 <div class="${classeRow}" id="imp-row-${i}">
     <div style="width:40px; font-weight:bold; text-align:center">${i + 1}<div id="status-${i}">${statusHtml}</div></div>
     <div class="imp-meta">
-        <input type="text" class="imp-banca" placeholder="Banca" value="${q.banca}" list="lista-bancas">
-        <input type="text" class="imp-inst" placeholder="Instituição" value="${q.instituicao}" list="lista-instituicoes" style="font-size:0.85em">
-        <input type="number" class="imp-ano" placeholder="Ano" value="${q.ano}">
+        <input type="text" class="imp-banca" placeholder="Banca" value="${bancaFinal}" list="lista-bancas">
+        <input type="text" class="imp-inst" placeholder="Instituição" value="${instFinal}" list="lista-instituicoes" style="font-size:0.85em">
+        <input type="number" class="imp-ano" placeholder="Ano" value="${anoFinal}">
 
-        <input type="text" class="imp-assunto-ind" placeholder="Assunto" value="${assuntoFinal}" list="lista-assuntos" style="font-size:0.85em; color:var(--purple)">
+        <input type="text" class="imp-disciplina-ind" placeholder="Disciplina" value="${disciplinaLinha}" list="lista-disciplinas" style="font-size:0.85em; color:var(--primary)">
+
+        <input type="text" class="imp-assunto-ind" 
+               onfocus="atualizarSugestoesLinha(${i})" 
+               placeholder="Assunto" value="${assuntoFinal}" 
+               list="lista-assuntos" style="font-size:0.85em; color:var(--purple)">
 
         <select class="imp-dif"><option value="Médio">Médio</option><option value="Fácil">Fácil</option><option value="Difícil">Difícil</option></select>
 
@@ -395,4 +415,50 @@ function aplicarAssuntoGlobal() {
       inp.value = valorGlobal;
     }
   });
+}
+
+// [INSERIDO] Função para alternar a visibilidade dos campos de prova baseada no checkbox
+function toggleCamposProva() {
+    const checkbox = document.getElementById('imp-modo-prova'); // [INSERIDO]
+    const container = document.querySelector('.imp-prova'); // [INSERIDO]
+    
+    // [INSERIDO] Se marcado, exibe como block (ou o display original do seu grid), caso contrário, oculta
+    if (checkbox.checked) {
+        container.style.display = 'block'; // [INSERIDO]
+    } else {
+        container.style.display = 'none'; // [INSERIDO]
+    }
+}
+
+/**
+ * [CÓDIGO INSERIDO]
+ * Aplica valores dos inputs globais para todas as questões na lista de prévia
+ */
+function aplicarMetaGlobal(tipo) {
+    const valorGlobal = el(`imp-global-${tipo === 'assunto' ? 'assunto' : tipo}`).value;
+    const classeAlvo = {
+        'assunto': '.imp-assunto-ind',
+        'banca': '.imp-banca',
+        'inst': '.imp-inst',
+        'ano': '.imp-ano'
+    }[tipo];
+
+    document.querySelectorAll(classeAlvo).forEach(inp => {
+        if (valorGlobal.trim() !== "") inp.value = valorGlobal;
+    });
+}
+
+// [INSERIDO] Função global para atualizar o datalist de assuntos baseada na disciplina da linha focada
+function atualizarSugestoesLinha(index) {
+    const row = document.getElementById('imp-row-' + index);
+    if (!row) return;
+
+    // [INSERIDO] Localiza o input de disciplina dentro da linha específica
+    const inputDisciplina = row.querySelector('.imp-disciplina-ind');
+    const disciplinaLinha = inputDisciplina ? inputDisciplina.value : "";
+    
+    // [INSERIDO] Atualiza o datalist 'lista-assuntos' com a disciplina desta linha
+    if (disciplinaLinha) {
+        carregarAssuntos('imp', disciplinaLinha); 
+    }
 }
