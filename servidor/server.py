@@ -908,12 +908,12 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
         # Normaliza alternativas para garantir o split: (A) ou A. viram A)
         texto_limpo = re.sub(r'(?i)(?:^|\s)\(?([A-E])\)(?=\s|\n)', r'\n\1)', texto_limpo)
 
-        # Split por Número + Ponto no início da linha (Ex: "01. ", "1. ")
-        segmentos = re.split(r'\n\s*(\d{1,3})\.\s+', texto_limpo)
+        # [MODIFICADO] Regex de split mais estável para capturar a numeração exata
+        segmentos = re.split(r'(?:^|\n)\s*(\d{1,3})[\.\)]\s+', texto_limpo)
 
         questoes = []
         for i in range(1, len(segmentos), 2):
-            q_num = segmentos[i]
+            q_num_raw = segmentos[i]
             corpo = segmentos[i + 1]
 
             if not (re.search(r'A\)', corpo) and re.search(r'B\)', corpo)): continue
@@ -930,15 +930,16 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                     letra = partes_alt[k].upper()
                     if k + 1 < len(partes_alt): alts[letra] = sanitizar_texto(partes_alt[k + 1].strip())
 
-            # [MODIFICADO] Lógica de cruzamento do gabarito
-            # Primeiro tenta o mapa externo normalizado, depois o mapa local (extrair_mapa_gabaritos_local)
-            q_num_norm = str(int(q_num))
+            # [MODIFICADO] Busca o gabarito usando a mesma normalização (int -> str)
+            # Isso resolve o problema de o PDF de prova dizer "01" e o gabarito dizer "1"
+            q_idx_norm = str(int(q_num_raw))
+
             gabarito_final = ""
 
-            if mapa_externo and q_num_norm in mapa_externo:
-                gabarito_final = mapa_externo[q_num_norm]
+            if mapa_externo and q_idx_norm in mapa_externo:
+                gabarito_final = mapa_externo[q_idx_norm]
             else:
-                gabarito_final = extrair_mapa_gabaritos_local(texto_limpo).get(q_num, "")
+                gabarito_final = extrair_mapa_gabaritos_local(texto_limpo).get(q_num_raw, "")
 
 
             # [CÓDIGO MODIFICADO] - Retorna apenas a estrutura; o frontend preenche os metadados globais
@@ -957,11 +958,27 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
 # [INSERIDO] Nova função para processar o PDF de respostas
 def extrair_gabarito_externo(texto):
     if not texto: return {}
-    # Busca por: Numero + Separador + Letra. Ex: "1. A" ou "01-B"
-    padrao = re.compile(r'(?i)\b(\d{1,3})\s*[\.\-\s]?\s*([A-E])(?!\w)')
+    # [MODIFICADO] Regex ajustada para evitar capturar números de páginas ou anos isolados
+    padrao = re.compile(r'(?i)(?:^|\s)(\d{1,3})[\s\.\-]+\s*([A-E])(?!\w)')
     matches = padrao.findall(texto)
-    # Normaliza a chave: "01" vira "1" para o cruzamento ser infalível
-    return {str(int(q)): g.upper() for q, g in matches}
+
+    # Normalização: garante que "01" vire "1" e remove duplicatas de captura
+    mapa = {}
+    for q_num, letra in matches:
+        chave = str(int(q_num))
+        # Se o número for muito alto (ex: > 200), provavelmente é um ruído (ano ou lei) e deve ser ignorado
+        if int(chave) < 200:
+            mapa[chave] = letra.upper()
+
+    # [INSERIDO] Bloco de Debug para conferência manual no terminal
+    print("\n" + "=" * 50)
+    print("DEBUG: CONTEÚDO DO DICIONÁRIO DE GABARITO (EXTERNO)")
+    print(json.dumps(mapa, sort_keys=True, indent=2))
+    print(f"Total de itens mapeados: {len(mapa)}")
+    print("=" * 50 + "\n")
+
+    print(f"[DEBUG GABARITO] Mapa final extraído: {len(mapa)} itens encontrados.")
+    return mapa
 
 def extrair_texto_pdf(caminho_arquivo, modo_prova=False):
     texto = ""
