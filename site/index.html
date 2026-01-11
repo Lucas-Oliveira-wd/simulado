@@ -128,15 +128,26 @@
     <section id="secao-importar" class="secao">
         <div class="container">
             <h2>Importar de PDF</h2>
-            <div id="area-drop" class="filtro-grid"
+            <div id="inputs-importar" class="filtro-grid"
                 style="background:#f9f9f9; padding:25px; border-radius:6px; margin-bottom:20px; position:relative;">
                 <div id="msg-drop"
                     style="position:absolute; top:-15px; left:50%; transform:translateX(-50%); background:#27ae60; color:white; padding:2px 10px; border-radius:4px; font-size:0.8rem;">
                     Solte o arquivo aqui!</div>
                 <div style="grid-column: span 2; display: flex; gap: 10px; align-items: center;">
-                    <input type="file" id="imp-file" accept="application/pdf" style="background:#fff; width:100%">
-                    <button class="btn-acao" onclick="lerPDF()"
-                        style="margin:5px 0; width:150px; background:#27ae60">Ler PDF</button>
+                    
+                    <div id="drop-area-questoes" style="flex-grow: 1; border: 2px dashed #ccc; padding: 10px; border-radius: 6px; transition: background 0.3s;">
+                        <label style="font-size: 0.8rem; font-weight: bold; color: var(--primary);">PDF de Questões:</label>
+                        <input type="file" id="imp-file" accept="application/pdf" style="background:#fff; width:100%">
+                    </div>
+
+                    <div id="container-imp-gabarito" style="display: none; flex-grow: 1;">
+                        <div id="drop-area-gabarito" style="border: 2px dashed #ccc; padding: 10px; border-radius: 6px; transition: background 0.3s;">
+                            <label style="font-size: 0.8rem; font-weight: bold; color: var(--acc);">PDF de Gabarito:</label>
+                            <input type="file" id="imp-gabarito-file" accept="application/pdf" style="background:#fff; width:100%; border: 1px solid var(--acc);">
+                        </div>
+                    </div>
+
+                    <button class="btn-acao" onclick="lerPDF()" style="margin:5px 0; width:150px; background:#27ae60; align-self: flex-end;">Ler PDF</button>
                 </div>
                 <div>
                     <input type="text" id="imp-disciplina" list="lista-disciplinas" placeholder="Disciplina Padrão"

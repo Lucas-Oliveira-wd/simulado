@@ -470,7 +470,7 @@ def extrair_mapa_gabaritos_local(texto_bloco):
     return mapa
 
 
-def parsear_questoes(texto_bruto, disciplina="", modo_prova=False):
+def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=None):
     if modo_prova == False:
         texto_limpo = limpar_ruido(texto_bruto, disciplina)
 
@@ -930,18 +930,38 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False):
                     letra = partes_alt[k].upper()
                     if k + 1 < len(partes_alt): alts[letra] = sanitizar_texto(partes_alt[k + 1].strip())
 
+            # [MODIFICADO] Lógica de cruzamento do gabarito
+            # Primeiro tenta o mapa externo normalizado, depois o mapa local (extrair_mapa_gabaritos_local)
+            q_num_norm = str(int(q_num))
+            gabarito_final = ""
+
+            if mapa_externo and q_num_norm in mapa_externo:
+                gabarito_final = mapa_externo[q_num_norm]
+            else:
+                gabarito_final = extrair_mapa_gabaritos_local(texto_limpo).get(q_num, "")
+
+
             # [CÓDIGO MODIFICADO] - Retorna apenas a estrutura; o frontend preenche os metadados globais
             questoes.append({
                 "temp_id": str(uuid.uuid4()),
                 "enunciado": enunciado,
                 "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"],
                 "alt_d": alts["D"], "alt_e": alts["E"],
-                "gabarito": extrair_mapa_gabaritos_local(texto_limpo).get(q_num, ""),
+                "gabarito": gabarito_final,
                 "tipo": "ME"
             })
 
     return questoes
 
+
+# [INSERIDO] Nova função para processar o PDF de respostas
+def extrair_gabarito_externo(texto):
+    if not texto: return {}
+    # Busca por: Numero + Separador + Letra. Ex: "1. A" ou "01-B"
+    padrao = re.compile(r'(?i)\b(\d{1,3})\s*[\.\-\s]?\s*([A-E])(?!\w)')
+    matches = padrao.findall(texto)
+    # Normaliza a chave: "01" vira "1" para o cruzamento ser infalível
+    return {str(int(q)): g.upper() for q, g in matches}
 
 def extrair_texto_pdf(caminho_arquivo, modo_prova=False):
     texto = ""
@@ -1731,6 +1751,8 @@ def del_fc(id): dados = [f for f in carregar_flashcards() if str(f["id"]) != str
 @app.route("/upload-pdf", methods=["POST"])
 def upload_pdf():
     f = request.files.get('file');
+    f_gab = request.files.get('gabarito')  # [INSERIDO]
+
     disciplina = request.form.get('disciplina', '')
     is_prova = request.form.get('is_prova') == 'true'
 
@@ -1739,10 +1761,20 @@ def upload_pdf():
         return jsonify({"erro": "⚠️ Erro: Nenhuma disciplina selecionada."}), 400
 
     p = os.path.join(BASE_DIR, "temp.pdf");
+    p_gab = os.path.join(BASE_DIR, "temp_gab.pdf")  # [INSERIDO]
+
     f.save(p)
     try:
+        mapa_externo = {}
+        # [INSERIDO] Processamento do arquivo de gabarito se enviado
+        if f_gab:
+            f_gab.save(p_gab)
+            texto_gab = extrair_texto_pdf(p_gab, False)
+            mapa_externo = extrair_gabarito_externo(texto_gab)
+            if os.path.exists(p_gab): os.remove(p_gab)
+
         texto_pdf = extrair_texto_pdf(p, is_prova)
-        novas = parsear_questoes(texto_pdf, disciplina, is_prova);
+        novas = parsear_questoes(texto_pdf, disciplina, is_prova, mapa_externo);
         banco = carregar_questoes();
         sigs = {gerar_assinatura(q) for q in banco}
         for n in novas: n['ja_cadastrada'] = gerar_assinatura(n) in sigs

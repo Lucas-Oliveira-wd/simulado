@@ -150,12 +150,17 @@ window.onscroll = function () {
 
 
 
-// --- CORREÇÃO AQUI: Forçamos a navegação para 'cadastro' SÓ ao abrir a página ---
+// MODIFICADO: Atualização do onload para inicializar as áreas específicas
 window.onload = async () => {
     await init();
     nav('cadastro');
     headerOffset = el('secao-cadastro').offsetTop;
-    setupDragDrop();
+    
+    // INSERIDO: Inicialização individual das áreas de importação
+    initDragDropUniversal("drop-area-questoes", "imp-file");
+    initDragDropUniversal("drop-area-gabarito", "imp-gabarito-file");
+
+    // EXCLUÍDO: setupDragDrop(); 
 };
 
 const fmtList = (elem, type) => {
@@ -204,40 +209,44 @@ function atualizarTodosSelectsTexto() {
   });
 }
 
-function setupDragDrop() {
-  const dropZone = el("area-drop");
-  const fileInput = el("imp-file");
-  ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
-    dropZone.addEventListener(eventName, preventDefaults, false);
-  });
-  function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-  ["dragenter", "dragover"].forEach((eventName) => {
-    dropZone.addEventListener(
-      eventName,
-      () => dropZone.classList.add("drag-over"),
-      false
-    );
-  });
-  ["dragleave", "drop"].forEach((eventName) => {
-    dropZone.addEventListener(
-      eventName,
-      () => dropZone.classList.remove("drag-over"),
-      false
-    );
-  });
-  dropZone.addEventListener("drop", handleDrop, false);
-  function handleDrop(e) {
-    let dt = e.dataTransfer;
-    let files = dt.files;
-    if (files.length > 0) {
-      fileInput.files = files;
-    }
-  }
-}
+// INSERIDO: Função universal para aplicar Drag and Drop em qualquer container e redirecionar para um input específico
+function initDragDropUniversal(containerId, inputId) {
+    const area = el(containerId);
+    const input = el(inputId);
+    if (!area || !input) return;
 
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        area.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    // Modifica a área visualmente quando o arquivo está sobre ela
+    ['dragenter', 'dragover'].forEach(eventName => {
+        area.addEventListener(eventName, () => {
+            area.style.background = "#e1f5fe"; // Cor de destaque suave
+            area.style.borderColor = "var(--primary)";
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        area.addEventListener(eventName, () => {
+            area.style.background = "transparent";
+            area.style.borderColor = "#ccc";
+        }, false);
+    });
+
+    // Redireciona o arquivo solto para o input específico
+    area.addEventListener('drop', e => {
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            input.files = files;
+            // Dispara o evento change caso haja lógica vinculada à seleção manual
+            input.dispatchEvent(new Event('change'));
+        }
+    }, false);
+}
 
 
 // --- LÓGICA DE FORMULÁRIOS E TABELA ---

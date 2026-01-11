@@ -5,6 +5,8 @@ async function lerPDF() {
     if (!confirm("Substituir lista atual?")) return;
   
   let inp = el("imp-file");
+  let gabInp = el("imp-gabarito-file"); // [INSERIDO]
+
   if (inp.files.length === 0) return alert("Selecione PDF");
 
   let fd = new FormData();
@@ -12,6 +14,11 @@ async function lerPDF() {
 
   /*Envia a flag do modo prova para o backend */
   let isProva = el("imp-modo-prova").checked;
+
+  // [INSERIDO] Se for modo prova e houver gabarito selecionado, anexa ao envio
+  if (isProva && gabInp && gabInp.files.length > 0) {
+    fd.append("gabarito", gabInp.files[0]);
+  }
 
   let disciplinaAlvo = el("imp-disciplina").value;
   if (!isProva && !disciplinaAlvo) return alert("Selecione a disciplina!");
@@ -417,16 +424,22 @@ function aplicarAssuntoGlobal() {
   });
 }
 
-// [INSERIDO] Função para alternar a visibilidade dos campos de prova baseada no checkbox
+// Função para alternar a visibilidade dos campos de prova baseada no checkbox
 function toggleCamposProva() {
-    const checkbox = document.getElementById('imp-modo-prova'); // [INSERIDO]
-    const container = document.querySelector('.imp-prova'); // [INSERIDO]
+    const checkbox = el('imp-modo-prova');
+    const container = document.querySelector('.imp-prova'); 
+    const containerGab = el('container-imp-gabarito'); 
     
-    // [INSERIDO] Se marcado, exibe como block (ou o display original do seu grid), caso contrário, oculta
-    if (checkbox.checked) {
-        container.style.display = 'block'; // [INSERIDO]
-    } else {
-        container.style.display = 'none'; // [INSERIDO]
+    const displayStyle = checkbox.checked ? 'block' : 'none';
+
+    // Aplica a visibilidade ao container de metadados (Banca, Instituição, Ano)
+    if (container) {
+        container.style.display = displayStyle;
+    }
+
+    // Aplica a visibilidade ao container do input de PDF de Gabarito
+    if (containerGab) {
+        containerGab.style.display = displayStyle;
     }
 }
 
