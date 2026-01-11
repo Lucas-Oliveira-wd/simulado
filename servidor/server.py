@@ -360,7 +360,7 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
     if not texto:
         print("[ERRO] Extração de texto resultou em string vazia.")
 
-    # CÓDIGO INSERIDO: Verificar o estado do texto IMEDIATAMENTE após a reconstrução
+    # Verificar o estado do texto IMEDIATAMENTE após a reconstrução
     titulos_pos_rec = re.findall(r'(?:QUESTÕES|LISTA).*', texto, re.IGNORECASE)
     print(f"[DEBUG LIMPEZA] Títulos presentes ANTES de remover ruído: {titulos_pos_rec}")
 
@@ -373,13 +373,17 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
         r"TRANSPETRO \(Profissional Nível Superior - Ênfase 19: Engenharia de Produção\)",
         r"www\.estrategiaconcursos\.com\.br\s*\d*",
         r".*Ricardo Aciole.*",
-        r"^\s*\d+\s*$", # REMOVE LINHAS QUE SÃO APENAS NÚMEROS
         r"Equipe Português Estratégia Concursos, Felipe Luccas",
         r"Aula \d+",
         r"==\w+==",
         r"^\.\d+\.\.\)\.",
         r"10763321451",
     ]
+    # [INSERIDO] Adiciona a limpeza de números puros APENAS se NÃO for Modo Prova
+    # Isso protege os números das questões no layout da Eletronuclear/Cesgranrio
+    if not modo_prova:
+        patterns_to_remove.append(r"^\s*\d+\s*$")
+
     if modo_prova == True:
         patterns_to_remove.extend([
             r"pcimarkpci\s[A-Za-z0-9:/=]+",  # Marcador de segurança PCI Concursos
@@ -388,7 +392,20 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             r"Pág\.\s*\d+",  # Numeração de página
             r"FAURGS\s*–\s*Edital.*",  # Cabeçalho repetitivo do edital
             r"SECRETARIA DA SAÚDE DO ESTADO DO RS.*",
-            r"25\s*–\s*Engenheiro de Produção"
+            r"25\s*–\s*Engenheiro de Produção",
+            r"EDITAL\sNo\s\d+/\d+",
+            r"ELETROBRAS\s+TERMONUCLEAR\s+S\.A\.\s+-.*",
+            r"ELETRONUCLEAR",
+            r"(?s)LEIA\s+ATENTAMENTE\s+AS\s+INSTRUÇÕES\s+ABAIXO.*?www\.pciconcursos\.com\.br",
+            r"CONHECIMENTOS\sBÁSICOS",
+            r"CONHECIMENTOS\sESPECÍFICOS",
+            r"LÍNGUA\sPORTUGUESA\sII",
+            r"LÍNGUA\sINGLESA\sII",
+            r"PROFISSIONAL\sDE\sNÍVEL\sSUPERIOR.*",
+            r"FORMAÇÃO:\sENGENHEIRO\sDE\sPRODUÇÃO",
+            r"LEIA\sATENTAMENTE\sAS\sINSTRUÇÕES\sABAIXO\.",
+            r"zo2NzY2:UCLEAR",
+            r"ELETRON"
         ])
 
     if disciplina == "Conhecimentos Específicos":
@@ -434,10 +451,10 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             r"^.*Luciano Rosa.*$\n?"
         ])
 
-    # CÓDIGO MODIFICADO: Loop de limpeza com rastreamento de capturas
+    # Loop de limpeza com rastreamento de capturas
     for pattern in patterns_to_remove:
         # Busca todas as ocorrências antes de deletar
-        matches = re.findall(pattern, texto, flags=re.MULTILINE | re.IGNORECASE)
+        matches = re.findall(pattern, texto, flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
 
         for m in matches:
             if "QUESTÕES" in str(m).upper() or "LISTA" in str(m).upper():
@@ -449,7 +466,7 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
 
     texto = re.sub(r'\n{3,}', '\n\n', texto)
 
-    # CÓDIGO INSERIDO: Log de conclusão
+    # Log de conclusão
     print(f"{'=' * 30}\n[DEBUG LIMPEZA] Limpeza concluída.\n{'=' * 30}\n")
 
     return texto
@@ -900,7 +917,7 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
 
         print(f"--- [DEBUG] FIM DO PROCESSAMENTO ---\n")
     else:
-        # [CÓDIGO INSERIDO] - MODO PROVA: Parser Universal e Estrutural
+        # MODO PROVA: Parser Universal e Estrutural
         print(f"\n--- [DEBUG] INICIANDO MODO PROVA (PARSER UNIVERSAL) ---")
 
         texto_limpo = limpar_ruido(texto_bruto, disciplina, modo_prova)
@@ -908,15 +925,25 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
         # Normaliza alternativas para garantir o split: (A) ou A. viram A)
         texto_limpo = re.sub(r'(?i)(?:^|\s)\(?([A-E])\)(?=\s|\n)', r'\n\1)', texto_limpo)
 
-        # [MODIFICADO] Regex de split mais estável para capturar a numeração exata
-        segmentos = re.split(r'(?:^|\n)\s*(\d{1,3})[\.\)]\s+', texto_limpo)
+        # [MODIFICADO] Regex atualizada: agora o fatiador aceita que após o número
+        # venha uma letra MAIÚSCULA, Aspas (“ ou "), ou Parênteses (.
+        # Isso evita que a questão 18 seja ignorada por começar com aspas.
+        segmentos = re.split(r'(?:^|\n)\s*(\d{1,3})[\.\)]?\s*(?:\n+)(?=[A-ZÀ-Ú“"\(])', texto_limpo)
+        # [CÓDIGO EXCLUÍDO]: segmentos = re.split(r'\n\s*(\d{1,3})\.\s+', texto_limpo)
 
         questoes = []
+        # O mapa_local busca o gabarito no final do PDF da própria prova
+        mapa_local = extrair_mapa_gabaritos_local(texto_limpo)
+
         for i in range(1, len(segmentos), 2):
             q_num_raw = segmentos[i]
             corpo = segmentos[i + 1]
 
-            if not (re.search(r'A\)', corpo) and re.search(r'B\)', corpo)): continue
+            # [INSERIDO] VALIDAÇÃO DE SEGURANÇA:
+            # Se o bloco não contiver as alternativas A e B, o número capturado era uma
+            # instrução ou margem de texto. Ignorar para não deslocar as questões reais.
+            if not (re.search(r'A\)', corpo) and re.search(r'B\)', corpo)):
+                continue
 
             # Remove números de linha do texto de apoio de dentro do corpo
             corpo = re.sub(r'(?:^|\n)\s*\d{1,2}\.\s', ' ', corpo)
@@ -930,19 +957,22 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                     letra = partes_alt[k].upper()
                     if k + 1 < len(partes_alt): alts[letra] = sanitizar_texto(partes_alt[k + 1].strip())
 
-            # [MODIFICADO] Busca o gabarito usando a mesma normalização (int -> str)
+            # Busca o gabarito usando a mesma normalização (int -> str)
             # Isso resolve o problema de o PDF de prova dizer "01" e o gabarito dizer "1"
             q_idx_norm = str(int(q_num_raw))
 
             gabarito_final = ""
 
+            # [MODIFICADO] Lógica de decisão do gabarito:
+            # 1. Tenta o arquivo externo (Gabarito separado)
             if mapa_externo and q_idx_norm in mapa_externo:
                 gabarito_final = mapa_externo[q_idx_norm]
-            else:
-                gabarito_final = extrair_mapa_gabaritos_local(texto_limpo).get(q_num_raw, "")
+            # 2. Tenta a tabela no final da própria prova (Fallback)
+            elif q_num_raw in mapa_local:
+                gabarito_final = mapa_local[q_num_raw]
 
 
-            # [CÓDIGO MODIFICADO] - Retorna apenas a estrutura; o frontend preenche os metadados globais
+            # Retorna apenas a estrutura; o frontend preenche os metadados globais
             questoes.append({
                 "temp_id": str(uuid.uuid4()),
                 "enunciado": enunciado,
@@ -955,10 +985,10 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
     return questoes
 
 
-# [INSERIDO] Nova função para processar o PDF de respostas
+# Nova função para processar o PDF de respostas
 def extrair_gabarito_externo(texto):
     if not texto: return {}
-    # [MODIFICADO] Regex ajustada para evitar capturar números de páginas ou anos isolados
+    # Regex ajustada para evitar capturar números de páginas ou anos isolados
     padrao = re.compile(r'(?i)(?:^|\s)(\d{1,3})[\s\.\-]+\s*([A-E])(?!\w)')
     matches = padrao.findall(texto)
 
@@ -970,7 +1000,7 @@ def extrair_gabarito_externo(texto):
         if int(chave) < 200:
             mapa[chave] = letra.upper()
 
-    # [INSERIDO] Bloco de Debug para conferência manual no terminal
+    # Bloco de Debug para conferência manual no terminal
     print("\n" + "=" * 50)
     print("DEBUG: CONTEÚDO DO DICIONÁRIO DE GABARITO (EXTERNO)")
     print(json.dumps(mapa, sort_keys=True, indent=2))
@@ -990,8 +1020,8 @@ def extrair_texto_pdf(caminho_arquivo, modo_prova=False):
                 meio = largura / 2
 
                 # Define as áreas de recorte (esquerda e direita) com margem de segurança
-                caixa_esq = (0, altura*0.05, meio - 5, altura*0.95)
-                caixa_dir = (meio + 5, altura*0.05, largura, altura*0.95)
+                caixa_esq = (0, 0, meio - 5, altura)
+                caixa_dir = (meio + 5, 0, largura, altura)
 
                 texto_esq = page.crop(caixa_esq).extract_text() or ""
                 texto_dir = page.crop(caixa_dir).extract_text() or ""
