@@ -378,6 +378,7 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
         r"==\w+==",
         r"^\.\d+\.\.\)\.",
         r"10763321451",
+        r"70925316407\s*-\s*Lucas\s*de\s*Oliveira",  # Limpa sua marca d'água/ID de usuário
     ]
     # [INSERIDO] Adiciona a limpeza de números puros APENAS se NÃO for Modo Prova
     # Isso protege os números das questões no layout da Eletronuclear/Cesgranrio
@@ -450,6 +451,14 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             r"^.*Júlio Cardozo.*$\n?",
             r"^.*Luciano Rosa.*$\n?"
         ])
+    elif disciplina == "Raciocínio Lógico":
+        patterns_to_remove.extend([
+            r"ANSA\s*-\s*Raciocínio\s*Lógico\s*-\s*2026\s*\(Pós-Edital\)\s*\d*",
+            # Limpa o cabeçalho/rodapé com número de página
+            r"Equipe\s*Exatas\s*Estratégia\s*Concursos",  # Limpa a identificação da equipe
+            r"70925316407",  # Garante a remoção do CPF caso apareça isolado
+            r"08\s+de\s+Março\s+de\s+2026"
+        ])
 
     # Loop de limpeza com rastreamento de capturas
     for pattern in patterns_to_remove:
@@ -499,13 +508,15 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                    "Estatística",
                    "Matemática Financeira",
                    "Contabilidade Gerencial",
-                   "Contabilidade de Custos"]
+                   "Contabilidade de Custos",
+                   "Raciocínio Lógico"]
 
         desc_g2 = ["Conhecimentos Específicos",
                    "Estatística",
                    "Matemática Financeira",
                    "Contabilidade Gerencial",
-                   "Contabilidade de Custos"]
+                   "Contabilidade de Custos",
+                   "Raciocínio Lógico"]
 
         questoes = []
 
@@ -584,7 +595,7 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                     )
 
                 # CÓDIGO INSERIDO: Pattern flexível para Contabilidade Gerencial (Metadados sem número ou com número)
-                elif disciplina == "Contabilidade Gerencial":
+                elif disciplina == "Contabilidade Gerencial" or disciplina == "Raciocínio Lógico":
                 # O (?:(\d+)\s*[\.\-\)]\s*)? torna a captura do número opcional no início da questão.
                 # O padrão ([^)]+) captura o conteúdo dos parênteses em múltiplas linhas devido ao re.S.
                     pattern_questao = re.compile(

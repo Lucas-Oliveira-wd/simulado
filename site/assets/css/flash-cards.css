@@ -101,6 +101,12 @@
     overflow: hidden;
 }
 
+.flip-card-front ol,
+.flip-card-back ol{
+    line-height: 1rem;
+}
+
+
 .flip-card-front {
     background-color: var(--bg);
     color: #333;
