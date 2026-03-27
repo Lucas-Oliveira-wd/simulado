@@ -456,8 +456,16 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             r"ANSA\s*-\s*Raciocínio\s*Lógico\s*-\s*2026\s*\(Pós-Edital\)\s*\d*",
             # Limpa o cabeçalho/rodapé com número de página
             r"Equipe\s*Exatas\s*Estratégia\s*Concursos",  # Limpa a identificação da equipe
-            r"70925316407",  # Garante a remoção do CPF caso apareça isolado
             r"08\s+de\s+Março\s+de\s+2026"
+        ])
+    elif disciplina == "Informática":
+        patterns_to_remove.extend([
+            r"ANSA - Noções de Informática - 2026 \(Pós-Edital\) \d*",
+            r"Diego Carvalho, Equipe Informática e TI, Fernando Pedrosa Lopes , Paolla Ramos, Renato da Costa, Antonio Daud",
+            # [MODIFICADO] \d+ torna o número da aula flexível
+            r"Aula \d+ - Prof\. Diego Carvalho e Renato da Costa",
+            # [INSERIDO] Remove a assinatura quando ela vier colada no fim do enunciado
+            r" - Prof\. Diego Carvalho e Renato da Costa"
         ])
 
     # Loop de limpeza com rastreamento de capturas
@@ -509,14 +517,16 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                    "Matemática Financeira",
                    "Contabilidade Gerencial",
                    "Contabilidade de Custos",
-                   "Raciocínio Lógico"]
+                   "Raciocínio Lógico",
+                   "Informática"]
 
         desc_g2 = ["Conhecimentos Específicos",
                    "Estatística",
                    "Matemática Financeira",
                    "Contabilidade Gerencial",
                    "Contabilidade de Custos",
-                   "Raciocínio Lógico"]
+                   "Raciocínio Lógico",
+                   "Informática"]
 
         questoes = []
 
@@ -749,6 +759,9 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                                 if k + 1 < len(parts_alt):
                                     alts[letra] = sanitizar_texto(parts_alt[k + 1].strip())
 
+                        if disciplina == "Informática" and not alts["A"] and not alts["B"]:
+                            tipo = "CE"
+
                     if enunciado:
                         if (tipo == "ME" and (alts["A"] or alts["B"])) or (tipo == "CE"):
                             questao_final = {
@@ -773,8 +786,6 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                     else:
                         # CÓDIGO INSERIDO: Log de falha de enunciado
                         print(f"  [ALERTA] Q{q_numero} descartada: Enunciado vazio após limpeza.")
-
-
 
         elif disciplina == "Inglês":
 
