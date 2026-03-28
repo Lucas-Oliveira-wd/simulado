@@ -465,7 +465,8 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             # [MODIFICADO] \d+ torna o número da aula flexível
             r"Aula \d+ - Prof\. Diego Carvalho e Renato da Costa",
             # [INSERIDO] Remove a assinatura quando ela vier colada no fim do enunciado
-            r" - Prof\. Diego Carvalho e Renato da Costa"
+            r" - Prof\. Diego Carvalho e Renato da Costa",
+            r" - Prof\. Diego Carvalho e Emannuelle Gouveia"
         ])
 
     # Loop de limpeza com rastreamento de capturas
