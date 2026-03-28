@@ -380,7 +380,7 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
         r"10763321451",
         r"70925316407\s*-\s*Lucas\s*de\s*Oliveira",  # Limpa sua marca d'água/ID de usuário
     ]
-    # [INSERIDO] Adiciona a limpeza de números puros APENAS se NÃO for Modo Prova
+    # [INSERIDO] Adiciona a limpeza de números purosx APENAS se NÃO for Modo Prova
     # Isso protege os números das questões no layout da Eletronuclear/Cesgranrio
     if not modo_prova:
         patterns_to_remove.append(r"^\s*\d+\s*$")
@@ -467,7 +467,8 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             # [INSERIDO] Remove a assinatura quando ela vier colada no fim do enunciado
             r" - Prof\. Diego Carvalho e Renato da Costa",
             r" - Prof\. Diego Carvalho e Emannuelle Gouveia",
-            r" - Prof. Diego Carvalho e Fernando Pedrosa"
+            r" - Prof\. Diego Carvalho e Fernando Pedrosa",
+            r" - Prof\. Paolla Ramos \(Somente PDF\)"
         ])
 
     # Loop de limpeza com rastreamento de capturas
