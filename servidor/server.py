@@ -371,6 +371,8 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
     patterns_to_remove = [
         r"PETROBRAS \(Nível Superior\) Português\s*\d*",
         r"TRANSPETRO \(Profissional Nível Superior - Ênfase 19: Engenharia de Produção\)",
+        r"ANSA \(Ênfase 9 - Engenharia de Produção\) - 2026 \(Pós-Edital\)",
+        r" - Lucas de Oliveira ",
         r"www\.estrategiaconcursos\.com\.br\s*\d*",
         r".*Ricardo Aciole.*",
         r"Equipe Português Estratégia Concursos, Felipe Luccas",
@@ -419,6 +421,7 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             r".*Felipe Canella.*",
             r".*Antonio Daud.*",
             r".*Stefan Fantini.*",
+            r" Daniel Almeida , Equipe Exatas Estratégia Concursos, Luciano Rosa, Júlio Cardozo",
         ])
     elif disciplina == "Inglês":
         patterns_to_remove.extend([
