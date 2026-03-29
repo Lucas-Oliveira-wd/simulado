@@ -371,8 +371,8 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
     patterns_to_remove = [
         r"PETROBRAS \(Nível Superior\) Português\s*\d*",
         r"TRANSPETRO \(Profissional Nível Superior - Ênfase 19: Engenharia de Produção\)",
-        r"ANSA \(Ênfase 9 - Engenharia de Produção\) - 2026 \(Pós-Edital\)",
-        r" - Lucas de Oliveira ",
+        r"ANSA\s*\(.nfase\s*9\s*[\-\–\—]\s*Engenharia\s*de\s*Produ..o\)(?:\s*Conhecimentos\s*Espec.ficos)?\s*[\-\–\—]?\s*2026\s*\(Pós.Edital\)",
+        r"[\-\–\—]\s*Lucas\s*de\s*Oliveira\s*",
         r"www\.estrategiaconcursos\.com\.br\s*\d*",
         r".*Ricardo Aciole.*",
         r"Equipe Português Estratégia Concursos, Felipe Luccas",
@@ -380,7 +380,7 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
         r"==\w+==",
         r"^\.\d+\.\.\)\.",
         r"10763321451",
-        r"70925316407\s*-\s*Lucas\s*de\s*Oliveira",  # Limpa sua marca d'água/ID de usuário
+        r"70925316407\s*[\-\–\—]\s*Lucas\s*de\s*Oliveira",  # Limpa sua marca d'água/ID de usuário
     ]
     # [INSERIDO] Adiciona a limpeza de números purosx APENAS se NÃO for Modo Prova
     # Isso protege os números das questões no layout da Eletronuclear/Cesgranrio
@@ -415,13 +415,13 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
         patterns_to_remove.extend([
             r"PETROBRAS \(Engenharia de Produção\)",
             r"Conhecimentos Específicos",
-            r"(Parte de Engenharia de Produção) - Prof."
-            r"(Parte de Engenharia de Produção) - Prof. Daniel Almeida"
+            r"(Parte de Engenharia de Produção) - Prof.",
+            r"(Parte de Engenharia de Produção) - Prof. Daniel Almeida",
             r".*Daniel Almeida.*",
             r".*Felipe Canella.*",
             r".*Antonio Daud.*",
             r".*Stefan Fantini.*",
-            r" Daniel Almeida , Equipe Exatas Estratégia Concursos, Luciano Rosa, Júlio Cardozo",
+            r"Daniel Almeida , Equipe Exatas Estratégia Concursos, Luciano Rosa, Júlio Cardozo",
         ])
     elif disciplina == "Inglês":
         patterns_to_remove.extend([
