@@ -227,11 +227,6 @@ def reconstruir_header_logico(texto, disciplina=""):
         # G1: Linha 1 (Letras) | G2: Linha 2 (Palavras) | G3: Linha 3 (Letras) | G4: Linha 4 (Palavras)
         pattern = r"([A-ZÀ-Ú \t\-\–—]+)[\r\n]+\s*((?:QUESTÕES|ISTA|UESTÕES|LISTA)[^\r\n]*)[\r\n]+\s*([A-ZÀ-Ú \t\-\–—]+)[\r\n]+\s*([A-ZÀ-Ú \t]+)(?:\r?\n|$)"
 
-        # CÓDIGO INSERIDO: Print para ver se o Regex ao menos localiza os fragmentos no texto bruto
-        candidatos = re.findall(pattern, texto)
-        print(f"\n[DEBUG RECONSTRUÇÃO] Candidatos a título encontrados no texto bruto: {len(candidatos)}")
-        for c in candidatos:
-            print(f"   -> Fragmento detectado: G1={repr(c[0].strip())} | G2={repr(c[1].strip())}")
 
         def resolver_match_cg(m):
             # CÓDIGO INSERIDO: Extração segura de até 4 grupos
@@ -242,13 +237,6 @@ def reconstruir_header_logico(texto, disciplina=""):
             raw_palavras_l2 = grupos[1] or ""
             raw_letras_l3 = grupos[2] or ""
             raw_palavras_l4 = grupos[3] or ""
-
-            # Debug para confirmar a separação física por linha
-            print(f"\n[DEBUG MATCH CG] Separação de Linhas:")
-            print(f"   L1 (Letras): {repr(raw_letras_l1.strip())}")
-            print(f"   L2 (Palavras): {repr(raw_palavras_l2.strip())}")
-            print(f"   L3 (Letras): {repr(raw_letras_l3.strip())}")
-            print(f"   L4 (Palavras): {repr(raw_palavras_l4.strip())}")
 
             # Unifica as pilhas de peças: L1+L3 (Letras) e L2+L4 (Palavras)
             raw_letras = (raw_letras_l1.strip() + " " + raw_letras_l3.strip()).strip()
@@ -310,11 +298,6 @@ def reconstruir_header_logico(texto, disciplina=""):
             raw_letras = m.group(1)
             raw_palavras = m.group(2)
 
-            # CÓDIGO INSERIDO: Debug para ver a fragmentação original
-            print(f"\n[DEBUG HEADER] Detectado fragmento de título:")
-            print(f"   Letras capturadas (G1): {repr(raw_letras)}")
-            print(f"   Palavras capturadas (G2): {repr(raw_palavras)}")
-
             matches_guia = list(re.finditer(r'([A-Z]|-)', raw_letras))
             palavras_quebradas = raw_palavras.split()
             stopwords = ["VERBAL", "TRAIÇOEIROS", "PARA", "COM", "DE", "DA", "DO", "DOS", "DAS", "EM", "QUE", "SE"]
@@ -345,8 +328,6 @@ def reconstruir_header_logico(texto, disciplina=""):
 
             final = "\n" + re.sub(r'\s+', ' ', resultado_final).strip() + "\n"
 
-            # CÓDIGO INSERIDO: Debug do resultado da reconstrução
-            print(f"   Resultado reconstruído: {repr(final.strip())}")
             return final
 
         return re.sub(pattern, resolver_match, texto)
@@ -362,7 +343,6 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
 
     # Verificar o estado do texto IMEDIATAMENTE após a reconstrução
     titulos_pos_rec = re.findall(r'(?:QUESTÕES|LISTA).*', texto, re.IGNORECASE)
-    print(f"[DEBUG LIMPEZA] Títulos presentes ANTES de remover ruído: {titulos_pos_rec}")
 
 
     # Normaliza a palavra GABARITO que pode vir espaçada ou quebrada
@@ -415,8 +395,8 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
         patterns_to_remove.extend([
             r"PETROBRAS \(Engenharia de Produção\)",
             r"Conhecimentos Específicos",
-            r"(Parte de Engenharia de Produção) - Prof.",
-            r"(Parte de Engenharia de Produção) - Prof. Daniel Almeida",
+            r"\(Parte de Engenharia de Produção\) - Prof\.",
+            r"\(Parte de Engenharia de Produção\) - Prof\. Daniel Almeida",
             r".*Daniel Almeida.*",
             r".*Felipe Canella.*",
             r".*Antonio Daud.*",
@@ -479,18 +459,11 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
         # Busca todas as ocorrências antes de deletar
         matches = re.findall(pattern, texto, flags=re.MULTILINE | re.IGNORECASE | re.DOTALL)
 
-        for m in matches:
-            if "QUESTÕES" in str(m).upper() or "LISTA" in str(m).upper():
-                print(f"   [ALERTA] Pattern de limpeza removeu título legítimo: {repr(m)}")
-
 
         # Realiza a remoção efetiva
         texto = re.sub(pattern, "", texto, flags=re.MULTILINE | re.IGNORECASE)
 
     texto = re.sub(r'\n{3,}', '\n\n', texto)
-
-    # Log de conclusão
-    print(f"{'=' * 30}\n[DEBUG LIMPEZA] Limpeza concluída.\n{'=' * 30}\n")
 
     return texto
 
@@ -513,9 +486,6 @@ def extrair_mapa_gabaritos_local(texto_bloco):
 def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=None):
     if modo_prova == False:
         texto_limpo = limpar_ruido(texto_bruto, disciplina)
-
-        # CÓDIGO INSERIDO: Ver o início do texto limpo para entender por que a segmentação falha
-        print(f"\n[DEBUG PARSER] Amostra do texto limpo (primeiros 500 chars):\n{repr(texto_limpo[:500])}")
 
         desc_g1 = ["Português",
                    "Conhecimentos Específicos",
@@ -552,21 +522,13 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
             blocos = [m.group(1) for m in matches_blocos]
 
             if not blocos:
-                print("[DEBUG PARSER] Nenhum bloco identificado pelo Regex de Divisão.")
                 blocos = [texto_limpo]
-            else:
-                print(f"--- [DEBUG SEGMENTAÇÃO] Blocos encontrados: {len(blocos)} ---")
-                for i, b in enumerate(blocos):
-                    # Imprime os primeiros 150 caracteres para identificar o tipo do bloco
-                    print(f"   Bloco {i + 1} inicia com: {repr(b.strip()[:150])}")
 
             assunto_atual = "Geral"
 
             for idx_bloco, bloco in enumerate(blocos):
                 # CÓDIGO INSERIDO: Debug do início exato do bloco para conferir o re.match
                 bloco_clean = bloco.strip()
-                print(f"\n[DEBUG PARSER] Bloco {idx_bloco + 1} - Primeiros 100 caracteres:")
-                print(f"   {repr(bloco_clean[:100])}")
 
                 # Detecta o assunto do bloco pelo título
                 match_titulo = re.match(r'((?:QUESTÕES\s+COMENTADAS|LISTA\s+(?:DE|E)\s+QUESTÕES).+?)(?:\n|$)', bloco,
@@ -593,8 +555,6 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                         assunto_atual = "Sinônimos e Antônimos"
                     elif "DENOTAÇÃO" in linha_completa.upper():
                         assunto_atual = "Denotação e Conotação"
-
-                    print(f"Bloco {idx_bloco + 1}: Assunto detectado -> {assunto_atual}")
 
                 banca = "CESGRANRIO"
                 instituicao = ""
@@ -623,12 +583,9 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
 
                 elif disciplina in desc_g2:
                     # Sem ^ (início de linha) e sem $ (fim de linha). Pega inline.
-                    pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-\)]\s*(\(.*?\))', re.MULTILINE)
+                    pattern_questao = re.compile(r'(?:^|\n)\s*(\d+)\s*[\.\-–—\)]\s*(\(.*?\))', re.MULTILINE)
 
                 matches_questoes = list(pattern_questao.finditer(bloco))
-
-
-                print(f"[Bloco {idx_bloco + 1}] Questões encontradas: {len(matches_questoes)}")
 
                 # --- Extração do Conteúdo do Texto de Apoio ---
                 texto_apoio_bloco = ""
@@ -637,11 +594,6 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                     q_numero = m.group(1) if m.group(1) else str(i + 1)
                     q_meta = m.group(2)
 
-                    # CÓDIGO INSERIDO: Debug dos metadados da questão
-                    if i < 3:  # Loga apenas as 3 primeiras para não poluir
-                        print(f"   [DEBUG PARSER] Vinculando questões do Bloco {idx_bloco + 1} ao assunto: {assunto_atual}")
-                        print(f"  -> Q{q_numero} Meta capturada: {repr(q_meta)}")
-
                     if disciplina == "Português":
                         # Filtro para evitar falsos positivos (como "1. Noções..." no índice)
                         if not re.search(r'^\(|CESGRANRIO|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|BANCO|PETROBRAS',
@@ -649,7 +601,6 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                             continue
                     elif disciplina in desc_g2:
                         if len(q_meta) < 3:
-                            print(f"Questão {q_numero}: Descartada por metadados muito curtos: '{q_meta}'")
                             continue
 
 
@@ -780,18 +731,8 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                                 "comentarios": comentario_extraido
                             }
 
-                            # CÓDIGO INSERIDO: Confirmação de que o assunto faz parte do dicionário antes do append
-                            if i < 3:
-                                print(f"      -> Q{q_numero}: Assunto no objeto = {questao_final['assunto']}")
-
                             questoes.append(questao_final)
-                        else:
-                            # CÓDIGO INSERIDO: Log de descarte final
-                            print(f"Questão {q_numero}: Descartada por falta de alternativas válidas após limpeza.")
 
-                    else:
-                        # CÓDIGO INSERIDO: Log de falha de enunciado
-                        print(f"  [ALERTA] Q{q_numero} descartada: Enunciado vazio após limpeza.")
 
         elif disciplina == "Inglês":
 
@@ -829,8 +770,6 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                 matches_questoes = []
                 numeros_vistos = set()
 
-                print(f"\n--- [DEBUG] INICIANDO CAPTURA NO BLOCO ---")
-
                 for idx, m in enumerate(todos_matches):
                     q_num = m.group(1)
                     pos_match = m.start()
@@ -845,16 +784,11 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                     tem_alts = re.search(r'\bA[\)\.]|\(A\)', janela_de_texto) and \
                                re.search(r'\bB[\)\.]|\(B\)', janela_de_texto)
                     if q_num not in numeros_vistos and tem_alts:
-                        print(f"[DEBUG - CAPTURA] Q{q_num} validada na pos {pos_match}")
                         matches_questoes.append(m)
                         numeros_vistos.add(q_num)
-                    else:
-                        razao = "repetida" if q_num in numeros_vistos else "número de margem/sem alternativas"
-                        print(f"[DEBUG - DESCARTADA] Ocorrência {q_num} na pos {pos_match} -> {razao}")
 
                 matches_questoes.sort(key=lambda m: m.start())
 
-                print(f"--- [DEBUG] INICIANDO PARSING INDIVIDUAL ---")
                 for i, m in enumerate(matches_questoes):
                     q_numero = m.group(1)
                     start_index = m.end()
@@ -864,11 +798,9 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                     if i + 1 < len(matches_questoes):
                         prox_match = matches_questoes[i + 1]
                         end_index = prox_match.start()
-                        print(
-                            f"[DEBUG - PROCESSANDO] Q{q_numero} -> Fim definido pelo início da Q{prox_match.group(1)} na posição {end_index}")
+
                     else:
                         end_index = len(bloco)
-                        print(f"[DEBUG - PROCESSANDO] Q{q_numero} -> Última questão do bloco. Fim na posição {end_index}")
                     # 1. PEGA O BLOCO BRUTO (GIGANTE)
                     q_conteudo_bruto = bloco[start_index:end_index]
 
@@ -916,7 +848,6 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                                 # TUDO após o corte vira comentário
                                 comentarios_extraidos = q_conteudo_bruto[posicao_corte:].strip()
 
-                        print(f"comentarios: {comentarios_extraidos}")
 
                     # 5. SEPARAÇÃO FINAL DAS ALTERNATIVAS (Agora no corpo já cortado)
                     content_final = re.sub(r'(?:^|\s)\(([A-E])\)(?=\s)', r'\n\1)', corpo_util)
@@ -943,10 +874,7 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                             "imagem": "", "comentarios": comentarios_extraidos
                         })
 
-        print(f"--- [DEBUG] FIM DO PROCESSAMENTO ---\n")
     else:
-        # MODO PROVA: Parser Universal e Estrutural
-        print(f"\n--- [DEBUG] INICIANDO MODO PROVA (PARSER UNIVERSAL) ---")
 
         texto_limpo = limpar_ruido(texto_bruto, disciplina, modo_prova)
 
@@ -1028,14 +956,6 @@ def extrair_gabarito_externo(texto):
         if int(chave) < 200:
             mapa[chave] = letra.upper()
 
-    # Bloco de Debug para conferência manual no terminal
-    print("\n" + "=" * 50)
-    print("DEBUG: CONTEÚDO DO DICIONÁRIO DE GABARITO (EXTERNO)")
-    print(json.dumps(mapa, sort_keys=True, indent=2))
-    print(f"Total de itens mapeados: {len(mapa)}")
-    print("=" * 50 + "\n")
-
-    print(f"[DEBUG GABARITO] Mapa final extraído: {len(mapa)} itens encontrados.")
     return mapa
 
 def extrair_texto_pdf(caminho_arquivo, modo_prova=False):
@@ -1103,7 +1023,6 @@ def carregar_questoes():
             })
         return dados
     except Exception as e:
-        print(f"Erro ao carregar questões: {e}")
         return []
 
 def salvar_questoes(dados):
