@@ -876,67 +876,67 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
 
     else:
 
+        # MODO PROVA: Parser Universal e Estrutural Corrigido
+        print(f"\n--- [DEBUG] INICIANDO MODO PROVA (PARSER UNIVERSAL) ---")
+
         texto_limpo = limpar_ruido(texto_bruto, disciplina, modo_prova)
 
         # Normaliza alternativas para garantir o split: (A) ou A. viram A)
-        texto_limpo = re.sub(r'(?i)(?:^|\s)\(?([A-E])\)(?=\s|\n)', r'\n\1)', texto_limpo)
+        texto_limpo = re.sub(r'(?i)(?:^|\s)\(?([A-E])\)(?=\s|\n)', r'\n\1) ', texto_limpo)
 
-        # [MODIFICADO] Regex atualizada: agora o fatiador aceita que após o número
-        # venha uma letra MAIÚSCULA, Aspas (“ ou "), ou Parênteses (.
-        # Isso evita que a questão 18 seja ignorada por começar com aspas.
-        segmentos = re.split(r'(?:^|\n)\s*(\d{1,3})[\.\)]?\s*(?:\n+)(?=[A-ZÀ-Ú“"\(])', texto_limpo)
-        # [CÓDIGO EXCLUÍDO]: segmentos = re.split(r'\n\s*(\d{1,3})\.\s+', texto_limpo)
+        # [CÓDIGO MODIFICADO] - Agora aceita Espaço OU Quebra de linha após o número
+        # Isso permite capturar "1 Dado..." e "1. \n Dado..."
+        segmentos = re.split(r'(?:^|\n)\s*(\d{1,3})[\.\)]?\s+(?=[A-ZÀ-Ú“"\(])', texto_limpo)
 
         questoes = []
-        # O mapa_local busca o gabarito no final do PDF da própria prova
         mapa_local = extrair_mapa_gabaritos_local(texto_limpo)
 
         for i in range(1, len(segmentos), 2):
             q_num_raw = segmentos[i]
             corpo = segmentos[i + 1]
 
-            # [INSERIDO] VALIDAÇÃO DE SEGURANÇA:
-            # Se o bloco não contiver as alternativas A e B, o número capturado era uma
-            # instrução ou margem de texto. Ignorar para não deslocar as questões reais.
-            if not (re.search(r'A\)', corpo) and re.search(r'B\)', corpo)):
-                continue
+            # [CÓDIGO MODIFICADO] - Lógica dinâmica para definir tipo
+            # Se encontrar "A)", é ME. Se não, é CE.
+            tem_alternativas = re.search(r'[A-E]\)', corpo)
+            tipo_detectado = "ME" if tem_alternativas else "CE"
 
-            # Remove números de linha do texto de apoio de dentro do corpo
+            # [CÓDIGO EXCLUÍDO] - Removida a trava obrigatória de A) e B)
+            # if not (re.search(r'A\)', corpo) and re.search(r'B\)', corpo)): continue
+
+            # Remove números de linha residuais (comum em textos de apoio)
             corpo = re.sub(r'(?:^|\n)\s*\d{1,2}\.\s', ' ', corpo)
 
-            partes_alt = re.split(r'\n\s*([A-E])\)', corpo, flags=re.IGNORECASE)
-            enunciado = sanitizar_texto(partes_alt[0].strip())
+            # Separação Enunciado/Alternativas
+            if tipo_detectado == "ME":
+                partes_alt = re.split(r'\n\s*([A-E])\)', corpo, flags=re.IGNORECASE)
+                enunciado = sanitizar_texto(partes_alt[0].strip())
+                alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
+                if len(partes_alt) > 1:
+                    for k in range(1, len(partes_alt), 2):
+                        letra = partes_alt[k].upper()
+                        if k + 1 < len(partes_alt): alts[letra] = sanitizar_texto(partes_alt[k + 1].strip())
+            else:
+                # Se for CE, o corpo inteiro é o enunciado
+                enunciado = sanitizar_texto(corpo.strip())
+                alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
 
-            alts = {"A": "", "B": "", "C": "", "D": "", "E": ""}
-            if len(partes_alt) > 1:
-                for k in range(1, len(partes_alt), 2):
-                    letra = partes_alt[k].upper()
-                    if k + 1 < len(partes_alt): alts[letra] = sanitizar_texto(partes_alt[k + 1].strip())
-
-            # Busca o gabarito usando a mesma normalização (int -> str)
-            # Isso resolve o problema de o PDF de prova dizer "01" e o gabarito dizer "1"
             q_idx_norm = str(int(q_num_raw))
-
             gabarito_final = ""
 
-            # [MODIFICADO] Lógica de decisão do gabarito:
-            # 1. Tenta o arquivo externo (Gabarito separado)
             if mapa_externo and q_idx_norm in mapa_externo:
                 gabarito_final = mapa_externo[q_idx_norm]
-            # 2. Tenta a tabela no final da própria prova (Fallback)
             elif q_num_raw in mapa_local:
                 gabarito_final = mapa_local[q_num_raw]
 
-
-            # Retorna apenas a estrutura; o frontend preenche os metadados globais
-            questoes.append({
-                "temp_id": str(uuid.uuid4()),
-                "enunciado": enunciado,
-                "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"],
-                "alt_d": alts["D"], "alt_e": alts["E"],
-                "gabarito": gabarito_final,
-                "tipo": "ME"
-            })
+            if enunciado:
+                questoes.append({
+                    "temp_id": str(uuid.uuid4()),
+                    "enunciado": enunciado,
+                    "alt_a": alts["A"], "alt_b": alts["B"], "alt_c": alts["C"],
+                    "alt_d": alts["D"], "alt_e": alts["E"],
+                    "gabarito": gabarito_final,
+                    "tipo": tipo_detectado  # Agora é dinâmico!
+                })
 
     return questoes
 
