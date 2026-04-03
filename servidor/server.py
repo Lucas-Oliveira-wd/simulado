@@ -944,16 +944,40 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
 # Nova função para processar o PDF de respostas
 def extrair_gabarito_externo(texto):
     if not texto: return {}
-    # Regex ajustada para evitar capturar números de páginas ou anos isolados
-    padrao = re.compile(r'(?i)(?:^|\s)(\d{1,3})[\s\.\-]+\s*([A-E])(?!\w)')
+    mapa = {}
+
+    # [CÓDIGO INSERIDO] - Lógica para o formato tabular do CEBRASPE (Item ... Gabarito ...)
+    # Procura a linha de números e a linha de respostas logo abaixo
+    linhas = texto.split('\n')
+    for i in range(len(linhas) - 1):
+        linha_atual = linhas[i].strip()
+        if re.search(r'(?i)^Item\s+', linha_atual):
+            num_line = re.sub(r'(?i)^Item\s+', '', linha_atual)
+            gab_line = ""
+            # Procura a linha "Gabarito" nas próximas 2 linhas para garantir o par
+            for j in range(i + 1, min(i + 3, len(linhas))):
+                if re.search(r'(?i)^Gabarito\s+', linhas[j].strip()):
+                    gab_line = re.sub(r'(?i)^Gabarito\s+', '', linhas[j].strip())
+                    break
+
+            if num_line and gab_line:
+                numeros = num_line.split()
+                respostas = gab_line.split()
+                # Pareia os números com as respostas correspondentes
+                for n, r in zip(numeros, respostas):
+                    # Filtra o '0' que o Cebraspe usa como preenchimento de tabela no PDF
+                    if n.isdigit() and int(n) > 0:
+                        mapa[str(int(n))] = r.upper()
+
+    # [CÓDIGO MODIFICADO] - Fallback para layouts padrão (1 A, 2 B...) expandido para X (anulada)
+    # padrao = re.compile(r'(?i)(?:^|\s)(\d{1,3})[\s\.\-]+\s*([A-E])(?!\w)')
+    padrao = re.compile(r'(?i)(?:^|\s)(\d{1,3})[\s\.\-]+\s*([A-EX])(?!\w)')
     matches = padrao.findall(texto)
 
-    # Normalização: garante que "01" vire "1" e remove duplicatas de captura
-    mapa = {}
     for q_num, letra in matches:
         chave = str(int(q_num))
-        # Se o número for muito alto (ex: > 200), provavelmente é um ruído (ano ou lei) e deve ser ignorado
-        if int(chave) < 200:
+        # Adiciona apenas se não foi capturado pela lógica tabular acima
+        if chave not in mapa and int(chave) < 200:
             mapa[chave] = letra.upper()
 
     return mapa
