@@ -158,6 +158,10 @@ def normalizar_texto_para_banco(texto):
     if not texto: return ""
     txt = str(texto)
 
+    # [CÓDIGO INSERIDO] - Remove caracteres de controle ilegais para o Excel (ASCII 0-31)
+    # Mantém apenas \t (9), \n (10) e \r (13). O \x0c (decimal 12) é removido aqui.
+    txt = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', txt)
+
     # 1. Remove caracteres de retorno de carro do Windows (\r)
     txt = txt.replace('\r\n', '\n').replace('\r', '\n')
 
