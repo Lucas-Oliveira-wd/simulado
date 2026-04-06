@@ -292,132 +292,277 @@ function aplicarIntervalosNaGrade() {
     renderizarGridPlano();
 }
 
-// [CÓDIGO MODIFICADO] - Lógica para forçar a troca de matéria ao atingir o Sessão Max
-function distribuirSugestoesNaGrade() {
-    if (!window.planoAtual.horas) return;
+function capturarRestricoesUI() {
     const restricoes = {};
-    
     document.querySelectorAll(".peso-mcda").forEach(input => {
         const disc = input.getAttribute("data-disc").trim();
-        const totalBlocos = Math.round((window.planoAtual.horas[disc] || 0) * 2);
-        
         const inputMin = document.querySelector(`.sessao-min[data-disc="${disc}"]`);
         const inputMax = document.querySelector(`.sessao-max[data-disc="${disc}"]`);
+        const selectTipo = document.querySelector(`.tipo-mcda[data-disc="${disc}"]`);
         
         restricoes[disc] = {
             materia: disc,
-            min: parseInt(inputMin.value),
-            max: parseInt(inputMax.value),
-            blocosRestantes: totalBlocos
+            peso: parseFloat(input.value),
+            tipo: selectTipo ? selectTipo.value : 'classificatorio',
+            min: parseInt(inputMin.value) || 2,
+            max: parseInt(inputMax.value) || 4,
+            horasOriginais: window.planoAtual.horas[disc] || 0
         };
     });
+    return restricoes;
+}
 
-    const startMin = converterParaMinutos(el("plan-config-inicio").value);
-    const endMin = converterParaMinutos(el("plan-config-fim").value);
+function gerarCombinacoesAleatorias(restricoes) {
+    let inventario = [];
+    Object.entries(restricoes).forEach(([nome, r]) => {
+        if (r.peso === 0) return; // Ignora o que você zerou no plano
 
-    DIAS_SEMANA.forEach((dia) => {
-        // Controle de matérias já vistas hoje para forçar a rotatividade (Fila)
-        let materiasVistasHoje = new Set();
-        let materiaAnterior = null; // Rastreia a última matéria para evitar repetição imediata
-        let materiaAtual = null;
-        let contagemSessao = 0;
+        let blocosRestantes = Math.round(r.horasOriginais * 2);
 
-        for (let minAtual = startMin; minAtual < endMin; minAtual += 30) {
-            const h = Math.floor(minAtual / 60);
-            const m = minAtual % 60;
-            const horaStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            const chave = `cell-${dia}-${horaStr}`;
+        while (blocosRestantes > 0) {
+            // Gera tamanho randômico incluindo intermediários (ex: entre 2 e 6, pode vir 3, 4, 5)
+            let tamanho = Math.floor(Math.random() * (r.max - r.min + 1)) + r.min;
 
-            if (window.planoAtual.grade[chave] !== "Estudar") {
-                if (materiaAtual) materiasVistasHoje.add(materiaAtual);
-                materiaAtual = null;
-                contagemSessao = 0;
-                // [CÓDIGO INSERIDO] - Continue garante que o loop não aborte se houver um buraco na grade
-                continue; 
+            if (tamanho > blocosRestantes) tamanho = blocosRestantes;
+            
+            // Proteção para não quebrar o 'Sessão Min' no último bloco
+            if (blocosRestantes - tamanho < r.min && blocosRestantes - tamanho > 0) {
+                tamanho = blocosRestantes;
             }
 
-            let escolha = "Descanso";
-            // Lógica de seleção (SAW/Restrições)
-            if (materiaAtual && restricoes[materiaAtual].blocosRestantes > 0) {
-                const r = restricoes[materiaAtual];
-                if (contagemSessao < r.min) {
-                    escolha = materiaAtual; 
-                } else if (contagemSessao < r.max) {
-                    const candidatos = Object.values(restricoes)
-                        .filter(c => c.materia !== materiaAtual && c.blocosRestantes >= c.min)
-                        .sort((a, b) => {
-                            const vistoA = materiasVistasHoje.has(a.materia) ? 1 : 0;
-                            const vistoB = materiasVistasHoje.has(b.materia) ? 1 : 0;
-                            if (vistoA !== vistoB) return vistoA - vistoB;
-                            return b.blocosRestantes - a.blocosRestantes;    
-                        }); 
-
-                    if (candidatos.length > 0) {
-                        const proxima = candidatos[0];
-                        if (proxima.blocosRestantes > r.blocosRestantes * 1.5) {
-                            escolha = "Descanso"; 
-                        } else {
-                            escolha = materiaAtual;
-                        }
-                    } else {
-                        escolha = materiaAtual;
-                    }
-                } else {
-                    materiaAnterior = materiaAtual;
-                    escolha = "Descanso";
-                }
-            }
-
-            if (escolha === "Descanso") {
-                if (materiaAtual) materiasVistasHoje.add(materiaAtual);
-                materiaAtual = null;
-                contagemSessao = 0;
-
-                const disponiveis = Object.values(restricoes)
-                    .filter(r => r.blocosRestantes > 0 && r.materia !== materiaAnterior)
-                    .sort((a, b) => {
-                        const vistoA = materiasVistasHoje.has(a.materia) ? 1 : 0;
-                        const vistoB = materiasVistasHoje.has(b.materia) ? 1 : 0;
-                        if (vistoA !== vistoB) return vistoA - vistoB;
-                        return b.blocosRestantes - a.blocosRestantes;  
-                    });
-
-                if (disponiveis.length > 0 && materiasVistasHoje.has(disponiveis[0].materia)) {
-                    materiasVistasHoje.clear();
-                }
-
-                const candidatosFinais = disponiveis.length > 0 ? disponiveis : Object.values(restricoes).filter(r => r.blocosRestantes > 0);
-
-                if (candidatosFinais.length > 0 && materiasVistasHoje.has(candidatosFinais[0].materia)) {
-                    materiasVistasHoje.clear();
-                }
-
-                if (candidatosFinais.length > 0) {
-                    const top = candidatosFinais[0];
-                    if (top.blocosRestantes >= top.min || candidatosFinais.length === 1) {
-                        escolha = top.materia;
-                        materiaAtual = top.materia;
-                        materiaAnterior = null;
-                    }
-                }
-            }
-
-            if (escolha !== "Descanso") {
-                window.planoAtual.grade[chave] = escolha;
-                restricoes[escolha].blocosRestantes--;
-                contagemSessao++;
-            } else {
-                window.planoAtual.grade[chave] = "Descanso";
-            }
+            inventario.push({ materia: nome, tamanho: tamanho, peso: r.peso });
+            blocosRestantes -= tamanho;
         }
     });
+    // Embaralha a ordem de entrada dos blocos para a tentativa atual
+    return inventario.sort(() => Math.random() - 0.5);
+}
+
+async function distribuirSugestoesNaGrade() {
+    const restricoes = capturarRestricoesUI();
+    const gradeTeste = resetarGradeParaSlotsEstudar(); // Gera a grade com "Estudar" e "Descanso"
+
+    // 1. DISCRETIZAÇÃO: Contagem de slots físicos disponíveis
+    const totalSlotsDisponiveis = Object.values(gradeTeste).filter(v => v === "Estudar").length;
+    console.log(`🏭 Capacidade Total da Fábrica: ${totalSlotsDisponiveis} slots.`);
+
+    // 2. Cálculo da Proporção baseada no output do MCDA (window.planoAtual.horas)
+    const totalHorasTeoricas = Object.values(window.planoAtual.horas).reduce((a, b) => a + b, 0);
+    
+    // Distribuímos os slots proporcionalmente (Método de Hamilton/Resto Maior)
+    let totalAlocado = 0;
+    Object.keys(window.planoAtual.horas).forEach(materia => {
+        const proporcao = window.planoAtual.horas[materia] / totalHorasTeoricas;
+        // Força a variável a ser discreta (Inteiro)
+        let slotsDiscretos = Math.floor(proporcao * totalSlotsDisponiveis);
+        
+        // Garante que o Sessão Min seja respeitado se houver carga mínima
+        if (slotsDiscretos > 0 && slotsDiscretos < restricoes[materia].min) {
+            slotsDiscretos = restricoes[materia].min;
+        }
+
+        restricoes[materia].blocosRestantes = slotsDiscretos;
+        totalAlocado += slotsDiscretos;
+    });
+
+    // 3. Ajuste de Saldo (Preencher o que sobrou devido ao Math.floor)
+    let saldo = totalSlotsDisponiveis - totalAlocado;
+    if (saldo > 0) {
+        // O "resto" vai para a disciplina com maior peso (Conhecimentos Específicos)
+        const principal = Object.values(restricoes).sort((a,b) => b.peso - a.peso)[0].materia;
+        restricoes[principal].blocosRestantes += saldo;
+        console.log(`⚖️ Ajuste de saldo: +${saldo} slots para ${principal}`);
+    }
+
+    // 4. Início das Tentativas de Alocação
+    let sucesso = false;
+    let tentativas = 0;
+    let nivelRelaxamento = 0;
+
+    while (!sucesso && tentativas < 200) {
+        // Gera o inventário agora baseado nos blocos discretos recalculados
+        let inventario = gerarCombinacoesAleatoriasComSlotsFixos(restricoes);
+        let gradeAtual = resetarGradeParaSlotsEstudar();
+        
+        if (tentarEncaixeLote(inventario, gradeAtual, nivelRelaxamento, restricoes)) {
+            window.planoAtual.grade = gradeAtual;
+            sucesso = true;
+            console.log("✅ Produção Finalizada com Sucesso!");
+        } else {
+            tentativas++;
+            if (tentativas > 50) nivelRelaxamento = 1;
+            if (tentativas > 100) nivelRelaxamento = 2;
+        }
+    }
     renderizarGridPlano();
 }
 
-/* [CÓDIGO EXCLUÍDO]:
-// Objeto cotasHoje e cálculos de diasQueFaltam foram removidos.
-// A distribuição agora é baseada apenas na pressão de blocosRestantes vs Sessão Min/Max.
-*/
+function gerarCombinacoesAleatoriasComSlotsFixos(restricoes) {
+    let inventario = [];
+    Object.values(restricoes).forEach(r => {
+        let saldoMat = r.blocosRestantes;
+        
+        while (saldoMat > 0) {
+            let tamanho = Math.floor(Math.random() * (r.max - r.min + 1)) + r.min;
+            
+            if (tamanho > saldoMat) tamanho = saldoMat;
+            if (saldoMat - tamanho < r.min && saldoMat - tamanho > 0) tamanho = saldoMat;
+
+            inventario.push({ materia: r.materia, tamanho: tamanho, peso: r.peso });
+            saldoMat -= tamanho;
+        }
+    });
+    return inventario.sort(() => Math.random() - 0.5);
+}
+// MODIFICAÇÃO: Ajuste no helper de reset para respeitar os intervalos salvos
+function resetarGradeParaSlotsEstudar() {
+    let novaGrade = {};
+    const startMin = converterParaMinutos(el("plan-config-inicio").value);
+    const endMin = converterParaMinutos(el("plan-config-fim").value);
+
+    DIAS_SEMANA.forEach(dia => {
+        const intervalos = window.planoAtual.intervalos[dia] || [];
+        for (let minAtual = startMin; minAtual < endMin; minAtual += 30) {
+            const h = Math.floor(minAtual / 60);
+            const m = minAtual % 60;
+            const horaStr = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+            const chave = `cell-${dia}-${horaStr}`;
+            
+            let estaNoIntervalo = false;
+            intervalos.forEach(int => {
+                const minI = converterParaMinutos(int.inicio);
+                const minF = converterParaMinutos(int.fim);
+                if (minAtual >= minI && minAtual < minF) estaNoIntervalo = true;
+            });
+
+            // AQUI ESTÁ A CHAVE: Se não está no intervalo, é DESCANSO e o motor não pode tocar.
+            novaGrade[chave] = estaNoIntervalo ? "Estudar" : "Descanso";
+        }
+    });
+    return novaGrade;
+}
+
+function tentarEncaixeLote(inventario, grade, nivel, restricoes) {
+    const logDia = { "Segunda": [], "Terça": [], "Quarta": [], "Quinta": [], "Sexta": [], "Sábado": [], "Domingo": [] };
+    const ultimaMateriaNoDia = { "Segunda": null, "Terça": null, "Quarta": null, "Quinta": null, "Sexta": null, "Sábado": null, "Domingo": null };
+
+    for (let bloco of inventario) {
+        let alocado = false;
+        // Ordem de dias randômica para evitar saturar a Segunda-feira
+        const dias = [...DIAS_SEMANA].sort(() => Math.random() - 0.5);
+
+        for (let dia of dias) {
+            const jaTeveNoDia = logDia[dia].includes(bloco.materia);
+            const foiAAnterior = ultimaMateriaNoDia[dia] === bloco.materia;
+
+            // Lógica de Relaxamento de Repetição
+            if (jaTeveNoDia) {
+                if (nivel === 0) continue; 
+                if (nivel === 1) {
+                    const maiorMateria = Object.values(restricoes).sort((a,b) => b.horasOriginais - a.horasOriginais)[0].materia;
+                    if (bloco.materia !== maiorMateria || foiAAnterior) continue;
+                }
+                if (nivel >= 2 && foiAAnterior) continue; // Repete no dia, mas nunca em sequência direta
+            }
+
+            const slotInicio = buscarEspaçoDisponivel(bloco.tamanho, dia, grade);
+            if (slotInicio) {
+                aplicarBlocoNaGrade(slotInicio, bloco, dia, grade);
+                logDia[dia].push(bloco.materia);
+                ultimaMateriaNoDia[dia] = bloco.materia;
+                alocado = true;
+                break;
+            }
+        }
+        if (!alocado) return false; 
+    }
+    return true;
+}
+
+function aplicarBlocoNaGrade(idInicio, bloco, dia, grade) {
+    const slots = Object.keys(grade).filter(k => k.startsWith(`cell-${dia}`)).sort();
+    let idx = slots.indexOf(idInicio);
+    for (let i = 0; i < bloco.tamanho; i++) {
+        grade[slots[idx + i]] = bloco.materia;
+    }
+}
+
+function buscarEspaçoDisponivel(tamanho, dia, grade) {
+    const slots = Object.keys(grade).filter(k => k.startsWith(`cell-${dia}`)).sort();
+    let contagem = 0;
+    for (let s of slots) {
+        if (grade[s] === "Estudar") {
+            contagem++;
+            if (contagem === tamanho) return slots[slots.indexOf(s) - (tamanho - 1)];
+        } else { contagem = 0; }
+    }
+    return null;
+}
+
+function gerarCombinacoesDeBlocos(horasPorMateria, restricoes) {
+    let inventario = [];
+
+    Object.entries(horasPorMateria).forEach(([materia, horas]) => {
+        let blocosRestantes = Math.round(horas * 2); // Conv p/ slots de 30min
+        const r = restricoes[materia];
+
+        while (blocosRestantes > 0) {
+            // Gera tamanho entre MIN e MAX (ex: 2, 3, 4, 5 ou 6)
+            let tamanho = Math.floor(Math.random() * (r.max - r.min + 1)) + r.min;
+
+            if (tamanho > blocosRestantes) tamanho = blocosRestantes;
+            
+            // Proteção para não deixar bloco órfão menor que o mínimo
+            if (blocosRestantes - tamanho < r.min && blocosRestantes - tamanho > 0) {
+                tamanho = blocosRestantes;
+            }
+
+            inventario.push({ materia, tamanho, peso: r.peso });
+            blocosRestantes -= tamanho;
+        }
+    });
+
+    // Embaralha a ordem das disciplinas para a tentativa atual
+    return inventario.sort(() => Math.random() - 0.5);
+}
+
+function tentarPreencherGrade(inventario, grade, nivel, restricoes) {
+    const materiasPorDia = { "Segunda": [], "Terça": [], "Quarta": [], "Quinta": [], "Sexta": [], "Sábado": [], "Domingo": [] };
+
+    for (let bloco of inventario) {
+        let alocado = false;
+
+        // Tenta encaixar nos dias disponíveis
+        for (let dia of DIAS_SEMANA) {
+            if (podeAlocarNoDia(bloco, dia, grade, materiasPorDia, nivel, restricoes)) {
+                alocarBloco(bloco, dia, grade, materiasPorDia);
+                alocado = true;
+                break;
+            }
+        }
+        if (!alocado) return false; // Falhou nesta combinação
+    }
+    return true;
+}
+
+function podeAlocarNoDia(bloco, dia, grade, logDias, nivel, restricoes) {
+    // Regra do "Nunca visto no dia" (Relaxamento 0)
+    const jaVisto = logDias[dia].includes(bloco.materia);
+    
+    if (jaVisto) {
+        if (nivel === 0) return false;
+        if (nivel === 1) {
+            // Só permite repetição se for a matéria com maior peso (CE)
+            const maiorPeso = Math.max(...Object.values(restricoes).map(r => r.peso));
+            if (restricoes[bloco.materia].peso < maiorPeso) return false;
+        }
+        // No nível 2+, permite repetição de qualquer matéria (regra do "visto hoje" quebrada)
+    }
+
+    // Busca slots contíguos livres (chave: cell-DIA-HH:mm com valor "Estudar")
+    // Se encontrar espaço == bloco.tamanho, retorna true
+    return verificarEspacoDisponivel(bloco.tamanho, dia, grade);
+}
 
 // Função para clicar e editar matéria na grade
 function definirMateriaCelular(dia, hora) {
