@@ -9,21 +9,13 @@ window.planoAtual = window.planoAtual || {
 
 window.planConfig = window.planConfig || {};
 
-
-const PALETA_LIGHT = [
-    "var(--purple)", 
-    "var(--disc-blue)", 
-    "var(--succ)", 
-    "var(--orange)", 
-    "var(--acc)", 
-    "var(--sec)",
-    "var(--disc-pink)",
-    "var(--disc-teal)",
-    "var(--disc-indigo)",
-    "var(--disc-lime)"
+const PALETA_CORES = [
+    "var(--purple)", "var(--disc-blue)", "var(--succ)", 
+    "var(--orange)", "var(--acc)", "var(--sec)",
+    "var(--disc-pink)", "var(--disc-teal)",
+    "var(--disc-indigo)", "var(--disc-lime)",
+    "#e67e22", "#1abc9c", "#34495e"
 ];
-
-const PALETA_DARK = PALETA_LIGHT;
 
 const converterParaMinutos = (timeStr) => {
     const [h, m] = (timeStr || "00:00").split(':').map(Number);
@@ -84,6 +76,54 @@ async function fluxoGerarPlanoCompleto() {
     }
 }
 
+async function distribuirSugestoesNaGrade() {
+    // [CÓDIGO INSERIDO] - Início da lógica de discretização de slots
+    const restricoes = capturarRestricoesUI();
+    const gradeTeste = resetarGradeParaSlotsEstudar(); 
+
+    const totalSlotsDisponiveis = Object.values(gradeTeste).filter(v => v === "Estudar").length;
+    const totalHorasTeoricas = Object.values(window.planoAtual.horas).reduce((a, b) => a + b, 0);
+    
+    let totalAlocado = 0;
+    Object.keys(window.planoAtual.horas).forEach(materia => {
+        const proporcao = window.planoAtual.horas[materia] / totalHorasTeoricas;
+        let slotsDiscretos = Math.floor(proporcao * totalSlotsDisponiveis);
+        
+        if (slotsDiscretos > 0 && slotsDiscretos < restricoes[materia].min) {
+            slotsDiscretos = restricoes[materia].min;
+        }
+        restricoes[materia].blocosRestantes = slotsDiscretos;
+        totalAlocado += slotsDiscretos;
+    });
+
+    let saldo = totalSlotsDisponiveis - totalAlocado;
+    if (saldo > 0) {
+        const principal = Object.values(restricoes).sort((a,b) => b.peso - a.peso)[0].materia;
+        restricoes[principal].blocosRestantes += saldo;
+    }
+    // [FIM DO CÓDIGO INSERIDO]
+
+    let sucesso = false;
+    let tentativas = 0;
+    let nivelRelaxamento = 0;
+
+    while (!sucesso && tentativas < 200) {
+        // [CÓDIGO MODIFICADO] - Uso da função de slots fixos
+        let inventario = gerarCombinacoesAleatoriasComSlotsFixos(restricoes);
+        let gradeAtual = resetarGradeParaSlotsEstudar();
+        
+        if (tentarEncaixeLote(inventario, gradeAtual, nivelRelaxamento, restricoes)) {
+            window.planoAtual.grade = gradeAtual;
+            sucesso = true;
+        } else {
+            tentativas++;
+            if (tentativas > 50) nivelRelaxamento = 1;
+            if (tentativas > 100) nivelRelaxamento = 2;
+        }
+    }
+    renderizarGridPlano();
+}
+
 // Função para alternar entre os modos Configuração e Resultado
 function alternarVisibilidadePlano(mostrarPlano) {
     const config = el("wrapper-config-inputs");
@@ -122,7 +162,7 @@ function initPlanoEstudos() {
         window.opcoes.disciplinas.forEach((nome, index) => {
             if (!window.planConfig[nome]) {
                 window.planConfig[nome] = {
-                    corIndex: index % PALETA_LIGHT.length, // Atribui cor da paleta
+                    corIndex: index % PALETA_CORES.length, // Atribui cor da paleta
                     min: 2, // Default: 1h
                     max: 4  // Default: 2h
                 };
@@ -166,7 +206,7 @@ function renderizarTabelaPesos() {
     window.opcoes.disciplinas.forEach(disc => {
         const meta = window.planConfig[disc] || { min: 2, max: 4, corIndex: 0};
         const idx = meta.corIndex || 0;
-        const corLinha = isDark ? PALETA_DARK[idx] : PALETA_LIGHT[idx];
+        const corLinha = PALETA_CORES[idx];
         const pesoPadrao = disc.includes("Específicos") ? 65 : 14; 
         tbody.innerHTML += `
             <tr">
@@ -310,32 +350,6 @@ function capturarRestricoesUI() {
         };
     });
     return restricoes;
-}
-
-function gerarCombinacoesAleatorias(restricoes) {
-    let inventario = [];
-    Object.entries(restricoes).forEach(([nome, r]) => {
-        if (r.peso === 0) return; // Ignora o que você zerou no plano
-
-        let blocosRestantes = Math.round(r.horasOriginais * 2);
-
-        while (blocosRestantes > 0) {
-            // Gera tamanho randômico incluindo intermediários (ex: entre 2 e 6, pode vir 3, 4, 5)
-            let tamanho = Math.floor(Math.random() * (r.max - r.min + 1)) + r.min;
-
-            if (tamanho > blocosRestantes) tamanho = blocosRestantes;
-            
-            // Proteção para não quebrar o 'Sessão Min' no último bloco
-            if (blocosRestantes - tamanho < r.min && blocosRestantes - tamanho > 0) {
-                tamanho = blocosRestantes;
-            }
-
-            inventario.push({ materia: nome, tamanho: tamanho, peso: r.peso });
-            blocosRestantes -= tamanho;
-        }
-    });
-    // Embaralha a ordem de entrada dos blocos para a tentativa atual
-    return inventario.sort(() => Math.random() - 0.5);
 }
 
 async function distribuirSugestoesNaGrade() {
@@ -499,71 +513,6 @@ function buscarEspaçoDisponivel(tamanho, dia, grade) {
     return null;
 }
 
-function gerarCombinacoesDeBlocos(horasPorMateria, restricoes) {
-    let inventario = [];
-
-    Object.entries(horasPorMateria).forEach(([materia, horas]) => {
-        let blocosRestantes = Math.round(horas * 2); // Conv p/ slots de 30min
-        const r = restricoes[materia];
-
-        while (blocosRestantes > 0) {
-            // Gera tamanho entre MIN e MAX (ex: 2, 3, 4, 5 ou 6)
-            let tamanho = Math.floor(Math.random() * (r.max - r.min + 1)) + r.min;
-
-            if (tamanho > blocosRestantes) tamanho = blocosRestantes;
-            
-            // Proteção para não deixar bloco órfão menor que o mínimo
-            if (blocosRestantes - tamanho < r.min && blocosRestantes - tamanho > 0) {
-                tamanho = blocosRestantes;
-            }
-
-            inventario.push({ materia, tamanho, peso: r.peso });
-            blocosRestantes -= tamanho;
-        }
-    });
-
-    // Embaralha a ordem das disciplinas para a tentativa atual
-    return inventario.sort(() => Math.random() - 0.5);
-}
-
-function tentarPreencherGrade(inventario, grade, nivel, restricoes) {
-    const materiasPorDia = { "Segunda": [], "Terça": [], "Quarta": [], "Quinta": [], "Sexta": [], "Sábado": [], "Domingo": [] };
-
-    for (let bloco of inventario) {
-        let alocado = false;
-
-        // Tenta encaixar nos dias disponíveis
-        for (let dia of DIAS_SEMANA) {
-            if (podeAlocarNoDia(bloco, dia, grade, materiasPorDia, nivel, restricoes)) {
-                alocarBloco(bloco, dia, grade, materiasPorDia);
-                alocado = true;
-                break;
-            }
-        }
-        if (!alocado) return false; // Falhou nesta combinação
-    }
-    return true;
-}
-
-function podeAlocarNoDia(bloco, dia, grade, logDias, nivel, restricoes) {
-    // Regra do "Nunca visto no dia" (Relaxamento 0)
-    const jaVisto = logDias[dia].includes(bloco.materia);
-    
-    if (jaVisto) {
-        if (nivel === 0) return false;
-        if (nivel === 1) {
-            // Só permite repetição se for a matéria com maior peso (CE)
-            const maiorPeso = Math.max(...Object.values(restricoes).map(r => r.peso));
-            if (restricoes[bloco.materia].peso < maiorPeso) return false;
-        }
-        // No nível 2+, permite repetição de qualquer matéria (regra do "visto hoje" quebrada)
-    }
-
-    // Busca slots contíguos livres (chave: cell-DIA-HH:mm com valor "Estudar")
-    // Se encontrar espaço == bloco.tamanho, retorna true
-    return verificarEspacoDisponivel(bloco.tamanho, dia, grade);
-}
-
 // Função para clicar e editar matéria na grade
 function definirMateriaCelular(dia, hora) {
     const atual = window.planoAtual.grade[`cell-${dia}-${hora}`] || "";
@@ -609,7 +558,7 @@ function renderizarGridPlano() {
             } else if (window.planConfig[materia]) {
                 const idx = window.planConfig[materia].corIndex;
                 
-                bg = PALETA_LIGHT[idx];
+                bg = PALETA_CORES[idx];
         
                 text = "var(--disc-text)";
             }
@@ -627,38 +576,6 @@ function renderizarGridPlano() {
     const mF = endMin % 60;
     const fimStr = `${hF.toString().padStart(2, '0')}:${mF.toString().padStart(2, '0')}`;
     corpo.innerHTML += `<tr style="height:0;"><td class="hora-col"><span>${fimStr}</span></td><td colspan="7" style="border:none;"></td></tr>`;
-}
-
-// Lógica TOPSIS para cálculo de horas
-async function calcularCargaHorariaMCDA() {
-
-    if (!silencioso && typeof showLoader === 'function') showLoader("Calculando otimização MCDA...");
-
-    const horasSemanais = parseFloat(calcularHorasTotaisDisponiveis());
-    if (!horasSemanais || horasSemanais <= 0) return;
-    
-    const criterios = Array.from(document.querySelectorAll(".peso-mcda")).map(input => {
-        const disc = input.getAttribute("data-disc");
-        const select = document.querySelector(`.tipo-mcda[data-disc="${disc}"]`);
-        return {
-            disciplina: disc,
-            peso_prova: parseFloat(input.value) || 0.1,
-            tipo: select ? select.value : 'classificatorio'
-        };
-    });
-
-    try {
-        const response = await fetch(`${API}/plan/calculate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ horas_semanais: horasSemanais, criterios: criterios })
-        });
-        const distribuicaoHoras = await response.json();
-        window.planoAtual.horas = distribuicaoHoras;
-        renderizarListaSugestao(distribuicaoHoras);
-    } catch (e) {
-        console.error("Erro no TOPSIS:", e);
-    }
 }
 
 // [CÓDIGO MODIFICADO] - Monitor em tempo real com detecção de sessões contínuas e contagem regressiva inteligente
@@ -730,7 +647,7 @@ setInterval(() => {
         if (window.planConfig[materiaAtual]) {
             // Acessa a paleta dinâmica via corIndex
             const idx = window.planConfig[materiaAtual].corIndex;
-            monitorMateria.style.color = isDarkNow ? PALETA_DARK[idx] : PALETA_LIGHT[idx];
+            monitorMateria.style.color = PALETA_CORES[idx];
         }
     } else {
         // [CÓDIGO INSERIDO] - Exibe a próxima disciplina no lugar do "Descanso" genérico
