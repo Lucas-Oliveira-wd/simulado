@@ -1864,4 +1864,7 @@ def handle_textos():
         return jsonify({"erro": "ID não encontrado"}), 404
 
 
-if __name__ == "__main__": app.run(debug=True, port=5000)
+if __name__ == "__main__":
+    # O host '0.0.0.0' libera o acesso para qualquer dispositivo na mesma rede
+    app.run(host='0.0.0.0', port=5000, debug=True)
+

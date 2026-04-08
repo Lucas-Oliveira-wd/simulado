@@ -1,0 +1,104 @@
+/* [CÓDIGO INSERIDO] Bloco de estilização do menu hambúrguer e dropdown mobile */
+/* Esconde o hambúrguer no desktop */
+.hamburger { display: none; cursor: pointer; }
+
+@media (max-width: 768px) {
+    /* Mantém o título de um lado e o hambúrguer do outro */
+    #main-header .container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: nowrap;
+    }
+
+    /* O menu normal desaparece da tela e vira um painel lateral */
+    #main-header nav {
+        position: fixed;
+        top: 0;
+        right: -250px; /* Escondido totalmente na lateral direita */
+        width: 250px;
+        height: 100vh;
+        background-color: var(--primary);
+        display: flex;
+        flex-direction: column;
+        padding-top: 70px; /* Dá um espaço para o botão X respirar */
+        transition: right 0.3s ease-in-out; /* Animação de deslizar */
+        z-index: 1000;
+        box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+    }
+
+    /* Classe que o JavaScript vai ativar para mostrar o menu */
+    #main-header nav.active {
+        right: 0;
+    }
+
+    /* Ajuste dos botões dentro do menu lateral */
+    #main-header nav button {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+        padding: 15px 20px;
+        background: transparent;
+        color: #fff;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        text-align: left;
+        font-size: 1.1rem;
+        box-shadow: none; /* Tira aquela sombra de botão solto */
+    }
+
+    /* Estilização da caixa do Hambúrguer */
+    .hamburger {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 30px;
+        height: 22px;
+        z-index: 1001; /* Tem que ser maior que o do nav (1000) para ficar por cima dele */
+        position: relative;
+    }
+
+    /* As linhas do hambúrguer (AGORA BRANCAS PARA DAR CONTRASTE) */
+    .hamburger span {
+        width: 100%;
+        height: 3px;
+        background-color: #ffffff; 
+        transition: all 0.3s ease-in-out;
+        border-radius: 2px;
+    }
+
+    /* Animação: Transforma as 3 linhas em um X */
+    .hamburger.active span:nth-child(1) {
+        transform: translateY(9.5px) rotate(45deg);
+    }
+    .hamburger.active span:nth-child(2) {
+        opacity: 0; /* A linha do meio some */
+    }
+    .hamburger.active span:nth-child(3) {
+        transform: translateY(-9.5px) rotate(-45deg);
+    }
+
+    #nav-menu {
+        display: none;
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background-color: var(--bg-card, #ffffff);
+        padding: 15px;
+        box-sizing: border-box;
+        z-index: 1000;
+        box-shadow: 0px 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    #nav-menu.active {
+        display: flex;
+    }
+
+    #nav-menu button {
+        width: 100%;
+        margin: 5px 0;
+        padding: 12px;
+        font-size: 1.1rem;
+    }
+}

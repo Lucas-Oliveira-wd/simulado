@@ -1,5 +1,6 @@
 
-window.API = "http://localhost:5000";
+window.API = "http://10.0.0.194:5000";
+
 window.el = id => document.getElementById(id);
 
 window.db = [];
@@ -483,3 +484,26 @@ function repararTextoSmart(idElemento = null) {
   // Dispara evento de input para salvar alterações
   textarea.dispatchEvent(new Event('input', { bubbles: true }));
 };
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Busca os elementos diretamente pelas tags e classes que você já tem
+    const hamburger = document.querySelector('.hamburger');
+    const navMenu = document.querySelector('#main-header nav');
+
+    if (hamburger && navMenu) {
+        // Evento de clique no botão hambúrguer / X
+        hamburger.addEventListener('click', () => {
+            hamburger.classList.toggle('active');
+            navMenu.classList.toggle('active');
+        });
+
+        // Evento para fechar o menu lateral ao clicar em um botão
+        const navButtons = navMenu.querySelectorAll('button');
+        navButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                hamburger.classList.remove('active');
+                navMenu.classList.remove('active');
+            });
+        });
+    }
+});
