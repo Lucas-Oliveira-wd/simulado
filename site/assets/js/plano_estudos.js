@@ -22,6 +22,13 @@ const converterParaMinutos = (timeStr) => {
     return h * 60 + m;
 };
 
+// ==========================================
+// PARÂMETROS DO MOTOR DE ALOCAÇÃO (HEURÍSTICA)
+// ==========================================
+const MOTOR_MAX_TENTATIVAS = 5000; // Limite de exaustão do algoritmo
+const MOTOR_RELAX_NIVEL_1 = 1500;  // Permite repetir matéria no dia (não sequencial)
+const MOTOR_RELAX_NIVEL_2 = 3000;  // Permite repetir matéria colada (se necessário)
+
 // [CÓDIGO INSERIDO] - Função para buscar o plano persistido no servidor Python
 async function carregarPlanoServidor() {
     try {
@@ -107,8 +114,7 @@ async function distribuirSugestoesNaGrade() {
     let tentativas = 0;
     let nivelRelaxamento = 0;
 
-    while (!sucesso && tentativas < 200) {
-        // [CÓDIGO MODIFICADO] - Uso da função de slots fixos
+    while (!sucesso && tentativas < MOTOR_MAX_TENTATIVAS) {
         let inventario = gerarCombinacoesAleatoriasComSlotsFixos(restricoes);
         let gradeAtual = resetarGradeParaSlotsEstudar();
         
@@ -117,10 +123,15 @@ async function distribuirSugestoesNaGrade() {
             sucesso = true;
         } else {
             tentativas++;
-            if (tentativas > 50) nivelRelaxamento = 1;
-            if (tentativas > 100) nivelRelaxamento = 2;
+            if (tentativas > MOTOR_RELAX_NIVEL_1) nivelRelaxamento = 1;
+            if (tentativas > MOTOR_RELAX_NIVEL_2) nivelRelaxamento = 2;
         }
     }
+
+    if (!sucesso) {
+        console.warn(`⚠️ O algoritmo exauriu o limite de ${MOTOR_MAX_TENTATIVAS} tentativas e não conseguiu gerar um encaixe válido.`);
+    }
+    
     renderizarGridPlano();
 }
 
