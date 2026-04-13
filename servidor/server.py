@@ -1181,7 +1181,9 @@ def salvar_flashcards_dados(dados):
 def extrair_opcoes_do_banco():
     questoes = carregar_questoes()
 
-    
+    # [CÓDIGO INSERIDO] - Chamada para ler também os dados da planilha de flashcards
+    flashcards = carregar_flashcards()
+
     bancas = set()
     instituicoes = set()
     disciplinas = set()
@@ -1193,6 +1195,17 @@ def extrair_opcoes_do_banco():
         disc_raw = str(q['disciplina']).strip()
         disc_norm = disc_raw.title() if disc_raw else ""
         assunto_raw = str(q['assunto']).strip()
+
+        if disc_norm:
+            disciplinas.add(disc_norm)
+            if disc_norm not in assuntos_map: assuntos_map[disc_norm] = set()
+            if assunto_raw: assuntos_map[disc_norm].add(assunto_raw)
+
+    # [CÓDIGO INSERIDO] - Nova varredura exclusiva para os Flashcards
+    for f in flashcards:
+        disc_raw = str(f.get('disciplina', '')).strip()
+        disc_norm = disc_raw.title() if disc_raw else ""
+        assunto_raw = str(f.get('assunto', '')).strip()
 
         if disc_norm:
             disciplinas.add(disc_norm)
