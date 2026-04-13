@@ -39,6 +39,13 @@ async function carregarPlanoServidor() {
             // Verifica se o plano retornado possui dados válidos antes de sobrescrever a memória
             if (planoSalvo.grade && Object.keys(planoSalvo.grade).length > 0) {
                 window.planoAtual = planoSalvo;
+
+                // [CÓDIGO INSERIDO] - Restaura as disciplinas no objeto global e força renderização
+                window.opcoes = window.opcoes || {};
+                if ((!window.opcoes.disciplinas || window.opcoes.disciplinas.length === 0) && window.planoAtual.config_inputs) {
+                    window.opcoes.disciplinas = Object.keys(window.planoAtual.config_inputs);
+                }
+                renderizarTabelaPesos();
                 
                 // [CÓDIGO INSERIDO] - Atualiza a interface visual com os dados carregados
                 renderizarGridPlano();
@@ -81,58 +88,6 @@ async function fluxoGerarPlanoCompleto() {
     } finally {
         if (typeof hideLoader === 'function') hideLoader();
     }
-}
-
-async function distribuirSugestoesNaGrade() {
-    // [CÓDIGO INSERIDO] - Início da lógica de discretização de slots
-    const restricoes = capturarRestricoesUI();
-    const gradeTeste = resetarGradeParaSlotsEstudar(); 
-
-    const totalSlotsDisponiveis = Object.values(gradeTeste).filter(v => v === "Estudar").length;
-    const totalHorasTeoricas = Object.values(window.planoAtual.horas).reduce((a, b) => a + b, 0);
-    
-    let totalAlocado = 0;
-    Object.keys(window.planoAtual.horas).forEach(materia => {
-        const proporcao = window.planoAtual.horas[materia] / totalHorasTeoricas;
-        let slotsDiscretos = Math.floor(proporcao * totalSlotsDisponiveis);
-        
-        if (slotsDiscretos > 0 && slotsDiscretos < restricoes[materia].min) {
-            slotsDiscretos = restricoes[materia].min;
-        }
-        restricoes[materia].blocosRestantes = slotsDiscretos;
-        totalAlocado += slotsDiscretos;
-    });
-
-    let saldo = totalSlotsDisponiveis - totalAlocado;
-    if (saldo > 0) {
-        const principal = Object.values(restricoes).sort((a,b) => b.peso - a.peso)[0].materia;
-        restricoes[principal].blocosRestantes += saldo;
-    }
-    // [FIM DO CÓDIGO INSERIDO]
-
-    let sucesso = false;
-    let tentativas = 0;
-    let nivelRelaxamento = 0;
-
-    while (!sucesso && tentativas < MOTOR_MAX_TENTATIVAS) {
-        let inventario = gerarCombinacoesAleatoriasComSlotsFixos(restricoes);
-        let gradeAtual = resetarGradeParaSlotsEstudar();
-        
-        if (tentarEncaixeLote(inventario, gradeAtual, nivelRelaxamento, restricoes)) {
-            window.planoAtual.grade = gradeAtual;
-            sucesso = true;
-        } else {
-            tentativas++;
-            if (tentativas > MOTOR_RELAX_NIVEL_1) nivelRelaxamento = 1;
-            if (tentativas > MOTOR_RELAX_NIVEL_2) nivelRelaxamento = 2;
-        }
-    }
-
-    if (!sucesso) {
-        console.warn(`⚠️ O algoritmo exauriu o limite de ${MOTOR_MAX_TENTATIVAS} tentativas e não conseguiu gerar um encaixe válido.`);
-    }
-    
-    renderizarGridPlano();
 }
 
 // Função para alternar entre os modos Configuração e Resultado
@@ -211,26 +166,42 @@ function renderizarTabelaPesos() {
     const tbody = el("corpo-pesos-disciplinas");
     if (!tbody || !window.opcoes.disciplinas) return;
 
-    const isDark = document.body.classList.contains('dark-mode');
-
     tbody.innerHTML = "";
     window.opcoes.disciplinas.forEach(disc => {
         const meta = window.planConfig[disc] || { min: 2, max: 4, corIndex: 0};
+        
+        // [CÓDIGO INSERIDO] - Busca valores salvos, se não existirem, usa os defaults
+        const salvo = (window.planoAtual.config_inputs && window.planoAtual.config_inputs[disc]) ? 
+                      window.planoAtual.config_inputs[disc] : null;
+
+        const valPeso = salvo ? salvo.peso : (disc.includes("Específicos") ? 65 : 14);
+        const valTipo = salvo ? salvo.tipo : (disc.includes("Específicos") ? 'eliminatorio' : 'classificatorio');
+        const valMin  = salvo ? salvo.min  : meta.min;
+        const valMax  = salvo ? salvo.max  : meta.max;
+
         const idx = meta.corIndex || 0;
         const corLinha = PALETA_CORES[idx];
-        const pesoPadrao = disc.includes("Específicos") ? 65 : 14; 
+
+        // [CÓDIGO MODIFICADO] - Tenta recuperar o peso salvo anteriormente no planoAtual
+        let pesoSalvo = null;
+        if (window.planoAtual.criterios) {
+            const crit = window.planoAtual.criterios.find(c => c.disciplina === disc);
+            if (crit) pesoSalvo = crit.valor_prova || crit.peso_prova;
+        }
+
+        
         tbody.innerHTML += `
             <tr">
                 <td style="border-left: 5px solid ${corLinha}">${disc}</td>
-                <td><input type="number" step="0.1" value="${pesoPadrao}" class="peso-mcda" data-disc="${disc}"></td>
+                <td><input type="number" step="0.1" value="${valPeso}" class="peso-mcda" data-disc="${disc}"></td>
                 <td>
                     <select class="tipo-mcda" data-disc="${disc}">
-                        <option value="eliminatorio" ${disc.includes("Específicos") ? 'selected' : ''}>Elim.</option>
-                        <option value="classificatorio">Class.</option>
+                        <option value="eliminatorio" ${valTipo === 'eliminatorio' ? 'selected' : ''}>Elim.</option>
+                        <option value="classificatorio" ${valTipo === 'classificatorio' ? 'selected' : ''}>Class.</option>
                     </select>
                 </td>
-                <td><input type="number" class="sessao-min" data-disc="${disc}" value="${meta.min}" title="Mínimo de blocos seguidos (ex: 2 = 1h)"></td>
-                <td><input type="number" class="sessao-max" data-disc="${disc}" value="${meta.max}" title="Máximo de blocos seguidos (ex: 4 = 2h)"></td>
+                <td><input type="number" class="sessao-min" data-disc="${disc}" value="${valMin}" title="Mínimo de blocos seguidos (ex: 2 = 1h)"></td>
+                <td><input type="number" class="sessao-max" data-disc="${disc}" value="${valMax}" title="Máximo de blocos seguidos (ex: 4 = 2h)"></td>
             </tr>
         `;
     });
@@ -390,6 +361,19 @@ async function distribuirSugestoesNaGrade() {
         totalAlocado += slotsDiscretos;
     });
 
+    // [CÓDIGO INSERIDO] - Trava de segurança para impedir estado matematicamente impossível
+    if (totalAlocado > totalSlotsDisponiveis) {
+        console.warn(`Ajustando blocos: alocação teórica (${totalAlocado}) excede capacidade (${totalSlotsDisponiveis}).`);
+        let excesso = totalAlocado - totalSlotsDisponiveis;
+        for (let mat in restricoes) {
+            while (excesso > 0 && restricoes[mat].blocosRestantes > 1) {
+                restricoes[mat].blocosRestantes--;
+                excesso--;
+            }
+        }
+        totalAlocado = totalSlotsDisponiveis;
+    }
+
     // 3. Ajuste de Saldo (Preencher o que sobrou devido ao Math.floor)
     let saldo = totalSlotsDisponiveis - totalAlocado;
     if (saldo > 0) {
@@ -404,8 +388,8 @@ async function distribuirSugestoesNaGrade() {
     let tentativas = 0;
     let nivelRelaxamento = 0;
 
-    while (!sucesso && tentativas < 200) {
-        // Gera o inventário agora baseado nos blocos discretos recalculados
+    // [CÓDIGO MODIFICADO] - Uso das constantes corretas e acréscimo de nível crítico final
+    while (!sucesso && tentativas < MOTOR_MAX_TENTATIVAS) {
         let inventario = gerarCombinacoesAleatoriasComSlotsFixos(restricoes);
         let gradeAtual = resetarGradeParaSlotsEstudar();
         
@@ -415,10 +399,17 @@ async function distribuirSugestoesNaGrade() {
             console.log("✅ Produção Finalizada com Sucesso!");
         } else {
             tentativas++;
-            if (tentativas > 50) nivelRelaxamento = 1;
-            if (tentativas > 100) nivelRelaxamento = 2;
+            if (tentativas > MOTOR_RELAX_NIVEL_1) nivelRelaxamento = 1;
+            if (tentativas > MOTOR_RELAX_NIVEL_2) nivelRelaxamento = 2;
+            if (tentativas > (MOTOR_MAX_TENTATIVAS - 500)) nivelRelaxamento = 3; 
         }
     }
+
+    if (!sucesso) {
+        console.warn(`⚠️ O algoritmo exauriu o limite de ${MOTOR_MAX_TENTATIVAS} tentativas.`);
+    }
+
+    
     renderizarGridPlano();
 }
 
@@ -487,7 +478,8 @@ function tentarEncaixeLote(inventario, grade, nivel, restricoes) {
                     const maiorMateria = Object.values(restricoes).sort((a,b) => b.horasOriginais - a.horasOriginais)[0].materia;
                     if (bloco.materia !== maiorMateria || foiAAnterior) continue;
                 }
-                if (nivel >= 2 && foiAAnterior) continue; // Repete no dia, mas nunca em sequência direta
+                // [CÓDIGO MODIFICADO] - Nível 3 quebra a trava de sequência direta em último recurso
+                if (nivel === 2 && foiAAnterior) continue;
             }
 
             const slotInicio = buscarEspaçoDisponivel(bloco.tamanho, dia, grade);
@@ -700,10 +692,29 @@ function alternarModoFoco() {
 
 // Função para o botão Salvar
 async function salvarPlanoEstudos() {
+    // [CÓDIGO INSERIDO] - Captura os pesos globais da interface antes de salvar
+    window.planoAtual.pesos_globais = [
+        parseFloat(el("input-w-prova").value),
+        parseFloat(el("input-w-desempenho").value),
+        parseFloat(el("input-w-tipo").value)
+    ];
+
     window.planoAtual.config = {
         inicio: el("plan-config-inicio").value,
         fim: el("plan-config-fim").value
     };
+
+    // [CÓDIGO INSERIDO] - Salva as configurações individuais da tabela (Pesos, Min, Max, Tipo)
+    window.planoAtual.config_inputs = {};
+    document.querySelectorAll(".peso-mcda").forEach(input => {
+        const disc = input.getAttribute("data-disc");
+        window.planoAtual.config_inputs[disc] = {
+            peso: parseFloat(input.value),
+            tipo: document.querySelector(`.tipo-mcda[data-disc="${disc}"]`).value,
+            min: parseInt(document.querySelector(`.sessao-min[data-disc="${disc}"]`).value),
+            max: parseInt(document.querySelector(`.sessao-max[data-disc="${disc}"]`).value)
+        };
+    });
 
     localStorage.setItem("plano_estudos_user", JSON.stringify(window.planoAtual));
     
@@ -741,6 +752,22 @@ window.addEventListener('load', async () => {
                 window.planoAtual = planoSalvo;
                 console.log("✅ Plano carregado do servidor físico.");
 
+                // [CÓDIGO INSERIDO] - Restaura opções de disciplinas globalmente pelo servidor
+                window.opcoes = window.opcoes || {};
+                if ((!window.opcoes.disciplinas || window.opcoes.disciplinas.length === 0) && window.planoAtual.config_inputs) {
+                    window.opcoes.disciplinas = Object.keys(window.planoAtual.config_inputs);
+                }
+
+                // [CÓDIGO INSERIDO] - Restaura os pesos globais nos inputs da UI
+                if (planoSalvo.pesos_globais) {
+                    el("input-w-prova").value = planoSalvo.pesos_globais[0];
+                    el("input-w-desempenho").value = planoSalvo.pesos_globais[1];
+                    el("input-w-tipo").value = planoSalvo.pesos_globais[2];
+                }
+
+                // [CÓDIGO MODIFICADO] - Garante que a renderização da tabela aconteça APÓS carregar os dados
+                renderizarTabelaPesos();
+
                 // Restaura os inputs da interface com o que foi salvo
                 if (planoSalvo.config) {
                     el("plan-config-inicio").value = planoSalvo.config.inicio;
@@ -765,6 +792,13 @@ window.addEventListener('load', async () => {
     const salvoLocal = localStorage.getItem("plano_estudos_user");
     if (salvoLocal) {
         window.planoAtual = JSON.parse(salvoLocal);
+
+        // [CÓDIGO INSERIDO] - Restaura opções de disciplinas globalmente pelo disco local
+        window.opcoes = window.opcoes || {};
+        if ((!window.opcoes.disciplinas || window.opcoes.disciplinas.length === 0) && window.planoAtual.config_inputs) {
+            window.opcoes.disciplinas = Object.keys(window.planoAtual.config_inputs);
+        }
+        
         renderizarGridPlano();
         renderizarTabelaPesos();
     }

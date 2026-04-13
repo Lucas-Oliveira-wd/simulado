@@ -1180,6 +1180,8 @@ def salvar_flashcards_dados(dados):
 
 def extrair_opcoes_do_banco():
     questoes = carregar_questoes()
+
+    
     bancas = set()
     instituicoes = set()
     disciplinas = set()
