@@ -1591,13 +1591,12 @@ def get_q():
             # Filtro Texto (Enunciado)
             if texto and texto not in (str(q.get('enunciado') or '')).lower(): continue
 
-            # Filtros Exatos (Banca, Disciplina, etc)
-            # Usamos 'or ""' para evitar erro se o campo for None
-            if banca and str(q.get('banca') or '') != banca: continue
-            if instituicao and str(q.get('instituicao') or '').upper() != instituicao.upper(): continue
-            if disciplina and str(q.get('disciplina') or '') != disciplina: continue
-            if assunto and str(q.get('assunto') or '') != assunto: continue
-            if dificuldade and str(q.get('dificuldade') or '') != dificuldade: continue
+            # [CÓDIGO INSERIDO] - Comparação robusta que ignora divergências de espaços e de maiúsculas/minúsculas
+            if banca and str(q.get('banca') or '').strip().upper() != banca.strip().upper(): continue
+            if instituicao and str(q.get('instituicao') or '').strip().upper() != instituicao.strip().upper(): continue
+            if disciplina and str(q.get('disciplina') or '').strip().title() != disciplina.strip().title(): continue
+            if assunto and str(q.get('assunto') or '').strip().lower() != assunto.strip().lower(): continue
+            if dificuldade and str(q.get('dificuldade') or '').strip().lower() != dificuldade.strip().lower(): continue
 
             filtrados.append(q)
         dados = filtrados

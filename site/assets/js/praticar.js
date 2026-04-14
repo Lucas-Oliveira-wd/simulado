@@ -1,6 +1,9 @@
 // VARIÁVEIS DE ESTADO
 let sessaoAtiva = { pool: [], idx: 0, acertos: 0, modo: '', timer: null, tempo: 0 };
 
+// Função auxiliar para normalizar textos e ignorar maiúsculas/minúsculas/espaços
+const normStr = (str) => String(str || "").trim().toLowerCase();
+
 // Alterna entre Lista e Simulado na tela de configuração
 function alternarInterfacePratica(modo) {
     el('prat-config-lista').style.display = modo === 'lista' ? 'block' : 'none';
@@ -103,12 +106,20 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
     const logs = await respHist.json();
 
     const mapaHist = {};
+    // [CÓDIGO MODIFICADO] - Padronização do ID convertendo obrigatoriamente para Número Inteiro
     logs.forEach(log => {
-        const [dia, mes, ano, hora] = log.data.split(/[\/\s:]/);
-        const ts = new Date(ano, mes - 1, dia, hora.substring(0, 2), hora.substring(3)).getTime();
-        if (!mapaHist[log.q_id]) mapaHist[log.q_id] = { ts: 0, count: 0 };
-        mapaHist[log.q_id].count++;
-        if (ts > mapaHist[log.q_id].ts) mapaHist[log.q_id].ts = ts;
+        const partes = log.data.split(/[\/\s:]/);
+        const dia = partes[0], mes = partes[1], ano = partes[2];
+        const hora = partes[3] || 0, minuto = partes[4] || 0;
+        
+        const ts = new Date(ano, mes - 1, dia, hora, minuto).getTime();
+        
+        // Converte qualquer formato (string, float ou int) para um número inteiro puro
+        const qId = parseInt(log.q_id, 10);
+
+        if (!mapaHist[qId]) mapaHist[qId] = { ts: 0, count: 0 };
+        mapaHist[qId].count++;
+        if (ts > mapaHist[qId].ts) mapaHist[qId].ts = ts;
     });
 
     let distribuicao = redistribuirCotas(gradeDesejada, qtdTotal, filtrosGlobais);
@@ -119,9 +130,9 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
         console.log(`📦 Processando ${disc} (Alvo: ${alvo})`);
 
         const todasDaDisc = db.filter(q => 
-            q.disciplina === disc &&
-            (filtrosGlobais.banca === "" || q.banca === filtrosGlobais.banca) &&
-            (filtrosGlobais.assunto === "" || q.assunto === filtrosGlobais.assunto)
+            normStr(q.disciplina) === normStr(disc) &&
+            (filtrosGlobais.banca === "" || normStr(q.banca) === normStr(filtrosGlobais.banca)) &&
+            (filtrosGlobais.assunto === "" || normStr(q.assunto) === normStr(filtrosGlobais.assunto))
         );
 
         // Agrupamento em Unidades Atômicas
@@ -136,13 +147,14 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
             } else isoladas.push(q);
         });
 
+        // [CÓDIGO MODIFICADO] - Garantindo o cast do ID local para NÚMERO ao buscar no mapa do histórico
         gruposPorTexto.forEach((grupo) => {
-            const stats = grupo.map(x => mapaHist[x.id] || { ts: 0, count: 0 });
+            const stats = grupo.map(x => mapaHist[parseInt(x.id, 10)] || { ts: 0, count: 0 });
             unidades.push({ tipo: 'bloco', questoes: grupo, ts: Math.min(...stats.map(s => s.ts)), count: Math.min(...stats.map(s => s.count)) });
         });
 
         isoladas.forEach(q => {
-            const s = mapaHist[q.id] || { ts: 0, count: 0 };
+            const s = mapaHist[parseInt(q.id, 10)] || { ts: 0, count: 0 };
             unidades.push({ tipo: 'isolada', questoes: [q], ts: s.ts, count: s.count });
         });
 
@@ -242,10 +254,11 @@ function redistribuirCotas(grade, total, filtros) {
         let deficit = 0, comVagas = [];
         
         ativos.forEach(d => {
+            // [CÓDIGO MODIFICADO]
             const disponiveis = db.filter(q => 
-                q.disciplina === d &&
-                (filtros.banca === "" || q.banca === filtros.banca) &&
-                (filtros.assunto === "" || q.assunto === filtros.assunto)
+                normStr(q.disciplina) === normStr(d) &&
+                (filtros.banca === "" || normStr(q.banca) === normStr(filtros.banca)) &&
+                (filtros.assunto === "" || normStr(q.assunto) === normStr(filtros.assunto))
             ).length;
 
             if (dist[d] > disponiveis) {
@@ -565,7 +578,8 @@ function gerarSimuladoProporcional() {
     let simulado = [];
     
     for (const [disc, qtd] of Object.entries(grade)) {
-        const filtradas = db.filter(q => q.disciplina === disc);
+        // [CÓDIGO MODIFICADO]
+        const filtradas = db.filter(q => normStr(q.disciplina) === normStr(disc));
         // Sorteia questões e adiciona ao bolo
         const sorteadas = filtradas.sort(() => 0.5 - Math.random()).slice(0, qtd);
         simulado = simulado.concat(sorteadas);
