@@ -46,6 +46,12 @@ const fmt = (elem, t) => {
 };
 
 const fmtUlt = (t) => { if (foco) fmt(foco, t); };
+
+// Função auxiliar para normalizar textos e ignorar maiúsculas/minúsculas/espaços
+const normStr = (str) => String(str || "").trim().toLowerCase();
+
+
+
 function showToolbar(elem) {
     foco = elem; const tb = el('floating-toolbar');
     const rect = elem.getBoundingClientRect();
@@ -125,7 +131,13 @@ function carregarAssuntos(prefixo, disciplinaManual = null) {
             lista.forEach(a => html += `<option value="${a.nome}">`);
         }
         listaAss.innerHTML = html;
-    } else {
+    }
+    /* [CÓDIGO INSERIDO] - Desvio para renderização de checkboxes múltiplos */
+    else if (prefixo === 'prat') {
+        renderizarCheckboxesAssuntos(disc);
+    }
+    /* [FIM DO CÓDIGO INSERIDO] */
+    else {
         let selAss = el(`${prefixo}-assunto`);
         if (!selAss) return;
         let html = '<option value="">Todos Assuntos</option>';
@@ -134,6 +146,35 @@ function carregarAssuntos(prefixo, disciplinaManual = null) {
             lista.forEach(a => html += `<option value="${a.nome}">${a.nome}</option>`);
         }
         selAss.innerHTML = html;
+    }
+}
+
+// [CÓDIGO INSERIDO] - Gera a lista de checkboxes baseada na disciplina selecionada
+function renderizarCheckboxesAssuntos(disc) {
+    const container = el("prat-assuntos-filtros"); // Div que deve existir na sua seção-praticar
+    if (!container) return;
+
+    container.innerHTML = "";
+    if (!disc) {
+        container.innerHTML = "<small style='color:var(--sec)'>Selecione uma disciplina para ver os assuntos...</small>";
+        return;
+    }
+
+    if (opcoes.assuntos) {
+        const lista = opcoes.assuntos.filter(a => normStr(a.disciplina) === normStr(disc));
+        
+        if (lista.length === 0) {
+            container.innerHTML = "<small>Nenhum assunto encontrado.</small>";
+            return;
+        }
+
+        lista.forEach(a => {
+            container.innerHTML += `
+                <label style="display:flex; gap:8px; margin-bottom:6px; font-size:0.9rem; cursor:pointer; align-items:center;">
+                    <input type="checkbox" class="chk-assunto-filtro" value="${a.nome}">
+                    <span>${a.nome}</span>
+                </label>`;
+        });
     }
 }
 

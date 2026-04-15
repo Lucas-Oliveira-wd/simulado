@@ -1,9 +1,6 @@
 // VARIÁVEIS DE ESTADO
 let sessaoAtiva = { pool: [], idx: 0, acertos: 0, modo: '', timer: null, tempo: 0 };
 
-// Função auxiliar para normalizar textos e ignorar maiúsculas/minúsculas/espaços
-const normStr = (str) => String(str || "").trim().toLowerCase();
-
 // Alterna entre Lista e Simulado na tela de configuração
 function alternarInterfacePratica(modo) {
     el('prat-config-lista').style.display = modo === 'lista' ? 'block' : 'none';
@@ -29,6 +26,31 @@ function renderizarGradeProporcao() {
     });
 }
 
+// [CORREÇÃO 1] - Ajuste do ID do container e classe CSS para o layout
+function atualizarCheckboxesAssuntos(disciplina) {
+    // No seu HTML o ID é 'prat-assuntos-filtros'
+    const container = el("prat-assuntos-filtros"); 
+    if (!container) return;
+
+    if (!disciplina) {
+        container.innerHTML = "<p>Selecione uma disciplina primeiro.</p>";
+        return;
+    }
+
+    const assuntos = [...new Set(db
+        .filter(q => normStr(q.disciplina) === normStr(disciplina))
+        .map(q => q.assunto))]
+        .sort();
+
+    // Adicionado classe chk-assunto-label para o CSS que enviarei abaixo
+    container.innerHTML = assuntos.map(a => `
+        <label class="chk-assunto-label">
+            <input type="checkbox" class="chk-assunto-filtro" value="${a}">
+            <span>${a}</span>
+        </label>
+    `).join('');
+}
+
 function calcTotalPorcentagemPratica() {
     let t = 0;
     document.querySelectorAll(".inp-dist-prat").forEach(i => t += parseInt(i.value || 0));
@@ -47,12 +69,17 @@ async function lancarPraticaUnificada() {
     showLoader("Processando banco de dados...");
 
     try {
+        // [CÓDIGO INSERIDO] - Captura os assuntos selecionados nos checkboxes
+        const assuntosMarcados = Array.from(document.querySelectorAll(".chk-assunto-filtro:checked"))
+                                      .map(chk => normStr(chk.value));
         if (modoRadio === 'lista') {
             console.log("📝 Modo: Lista de Questões");
+
+
             const filtros = {
                 disciplina: el("prat-disciplina").value,
                 banca: el("prat-banca").value,
-                assunto: el("prat-assunto").value
+                assuntos: assuntosMarcados
             };
             const qtdTotal = parseInt(el("prat-qtd").value);
 
@@ -86,7 +113,7 @@ async function lancarPraticaUnificada() {
             tempoSegundos = parseInt(el("prova-tempo").value) * 60;
             tipoSessao = 'simulado';
 
-            poolFinal = await prepararPoolInteligente(grade, qtdTotal, { banca: "", assunto: "" });
+            poolFinal = await prepararPoolInteligente(grade, qtdTotal, { banca: "", assuntos: [] });
         }
 
         console.log(`✅ Pool final gerado com ${poolFinal.length} questões.`);
@@ -132,7 +159,7 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
         const todasDaDisc = db.filter(q => 
             normStr(q.disciplina) === normStr(disc) &&
             (filtrosGlobais.banca === "" || normStr(q.banca) === normStr(filtrosGlobais.banca)) &&
-            (filtrosGlobais.assunto === "" || normStr(q.assunto) === normStr(filtrosGlobais.assunto))
+            (filtrosGlobais.assuntos.length === 0 || filtrosGlobais.assuntos.includes(normStr(q.assunto)))
         );
 
         // Agrupamento em Unidades Atômicas
@@ -258,7 +285,7 @@ function redistribuirCotas(grade, total, filtros) {
             const disponiveis = db.filter(q => 
                 normStr(q.disciplina) === normStr(d) &&
                 (filtros.banca === "" || normStr(q.banca) === normStr(filtros.banca)) &&
-                (filtros.assunto === "" || normStr(q.assunto) === normStr(filtros.assunto))
+                (filtros.assuntos.length === 0 || filtros.assuntos.includes(normStr(q.assunto))) // [CÓDIGO INSERIDO]
             ).length;
 
             if (dist[d] > disponiveis) {
