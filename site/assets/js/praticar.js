@@ -103,6 +103,10 @@ async function lancarPraticaUnificada() {
             });
 
             console.log("📊 Grade do Simulado:", grade);
+
+            // [CÓDIGO INSERIDO] - Captura a banca selecionada no simulado
+            const bancaSimulado = el("prova-banca").value;
+
             const totalPerc = Object.values(grade).reduce((a, b) => a + b, 0);
             if (totalPerc !== 100) {
                 hideLoader();
@@ -113,7 +117,7 @@ async function lancarPraticaUnificada() {
             tempoSegundos = parseInt(el("prova-tempo").value) * 60;
             tipoSessao = 'simulado';
 
-            poolFinal = await prepararPoolInteligente(grade, qtdTotal, { banca: "", assuntos: [] });
+            poolFinal = await prepararPoolInteligente(grade, qtdTotal, { banca: bancaSimulado, assuntos: [] });
         }
 
         console.log(`✅ Pool final gerado com ${poolFinal.length} questões.`);

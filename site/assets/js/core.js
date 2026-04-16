@@ -108,7 +108,7 @@ function popSelGeral() {
     pop(el("lista-instituicoes"), opcoes.instituicoes, "", true);
     pop(el("lista-disciplinas"), opcoes.disciplinas, "", true);
     ['busca', 'prat', 'prova', 'fc-estudo'].forEach(p => {
-        if (el(`${p}-banca`)) pop(el(`${p}-banca`), opcoes.bancas, p === 'imp' ? "Banca Padrão..." : "Banca...");
+        if (el(`${p}-banca`)) pop(el(`${p}-banca`), opcoes.bancas, "Todas as Bancas");
         if (el(`${p}-instituicao`)) pop(el(`${p}-instituicao`), opcoes.instituicoes, "Instituição...");
         let idDisc = (p === 'fc-estudo') ? 'fc-estudo-disc' : `${p}-disciplina`;
         if (el(idDisc)) pop(el(idDisc), opcoes.disciplinas, "Disciplina...");
