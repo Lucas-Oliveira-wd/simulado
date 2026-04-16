@@ -286,11 +286,10 @@
                 <div id="prat-config-lista">
                     <div class="filtro-grid">
                         <select id="prat-disciplina" onchange="carregarAssuntos('prat')"></select>
-                        <div id="prat-assuntos-filtros" 
-                            style="grid-column: span 2; max-height: 180px; overflow-y: auto; background: var(--dark-light); padding: 12px; border-radius: 6px; border: 1px solid #444; margin: 5px 0;">
-                            <small style="color:var(--sec)">Aguardando disciplina...</small>
-                        </div>
-                        <div id="prat-banca-filtros" style="grid-column: span 1; max-height: 180px; overflow-y: auto; background: var(--dark-light); padding: 10px; border-radius: 6px; border: 1px solid #444;"></div>
+
+                        <div id="prat-assuntos-filtros"></div>
+                        <div id="prat-banca-filtros"></div>
+                        
                         <input type="number" id="prat-qtd" value="10" placeholder="Qtd">
                         <div style="display:flex; align-items:center; gap:5px; margin-top:5px">
                             <input type="checkbox" id="prat-modo-cego">

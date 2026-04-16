@@ -308,7 +308,8 @@ body.dark-mode .texto-titulo {
 
 /* Força a caixa de assuntos a ignorar o grid apertado e respirar */
 #prat-assuntos-filtros {
-    grid-column: span 2 !important; /* Faz ocupar o espaço de 2 selects */
+    grid-column: span 1;
+    position: relative;
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
@@ -319,6 +320,7 @@ body.dark-mode .texto-titulo {
     border-radius: 8px !important;
     max-height: 200px !important;
     overflow-y: auto !important;
+    overflow: visible !important;
 }
 
 /* CORREÇÃO CRÍTICA: Remove o width 100% que o main.css:211 aplica */

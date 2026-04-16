@@ -38,6 +38,7 @@
     --z-modal: 20;       /* Janela do modal */
     --z-toolbar: 25;     /* Toolbar DEVE ser maior que o Modal */
     --z-loader: 30;      /* Loader de carregamento (sempre no topo) */
+    --z-dropdown: 35; /* Criando uma camada superior para elementos de formulário abertos */
 }
 
 body.dark-mode{
@@ -558,4 +559,82 @@ body.dark-mode textarea {
     width: auto !important;
     margin: 0 !important;
     cursor: pointer;
+}
+
+
+/* Estilo do Botão disparador */
+.btn-dropdown-multi {
+    background: var(--dark-input);
+    color: var(--dark-text);
+    border: 1px solid var(--dark-border);
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+/* [MODIFICADO] Ajuste no Dropdown Flutuante */
+.multi-select-floating {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 280px;
+    max-height: 350px;
+    background-color: var(--dark-surface) !important;
+    border: 1px solid var(--purple);
+    border-radius: 4px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+    
+    /* [CÓDIGO MODIFICADO] Usando a nova variável de camada superior */
+    z-index: var(--z-dropdown); 
+    
+    margin-top: 5px;
+    display: none;
+    flex-direction: column;
+}
+
+/* Garante que a lista interna use todo o espaço e permita scroll */
+.multi-select-list {
+    overflow-y: auto;
+    padding: 10px;
+    background-color: var(--dark-surface);
+    display: block !important; /* Força sair de qualquer contexto flex herdado */
+}
+
+/* CORREÇÃO: Força cada banca/assunto a ocupar uma linha inteira */
+.multi-select-list .chk-item-label {
+    display: flex !important;
+    width: 100% !important;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    white-space: nowrap;
+    align-items: center;
+    gap: 10px;
+    color: var(--dark-text);
+}
+
+.multi-select-header {
+    padding: 10px;
+    background: var(--dark-primary); /* Fundo levemente diferente para o topo */
+    border-bottom: 1px solid var(--dark-border);
+}
+
+/* Ajuste no input de busca dentro do drop para não sumir */
+.multi-select-header input[type="text"] {
+    margin-bottom: 8px;
+    height: 30px;
+}
+
+/* [MODIFICADO] Ajuste para containers de dropdown múltiplo */
+#prat-assuntos-filtros, #prat-banca-filtros {
+    grid-column: span 1; /* Ou span 2 se você quiser que eles sejam mais largos */
+    min-width: 200px;
+    position: relative; /* Essencial para o posicionamento do drop-floating */
+}
+
+/* [INSERIDO] Garante que o botão de seleção ocupe o espaço corretamente */
+.btn-dropdown-multi {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
 }

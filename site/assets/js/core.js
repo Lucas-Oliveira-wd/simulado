@@ -123,9 +123,6 @@ function popSelGeral() {
 function carregarAssuntos(prefixo, disciplinaManual = null) {
     let idDisc = (prefixo === 'fc-estudo') ? 'fc-estudo-disc' : `${prefixo}-disciplina`;
     let elDisc = el(idDisc);
-
-    // [MODIFICADO] Se houver disciplinaManual (vinda da linha), usa ela. 
-    // Caso contrário, busca o valor do elemento de disciplina padrão do topo.
     let disc = disciplinaManual || (elDisc ? elDisc.value : "");
 
     if (['cad', 'imp', 'edit', 'fc'].includes(prefixo)) {
@@ -139,7 +136,12 @@ function carregarAssuntos(prefixo, disciplinaManual = null) {
     }
     /* [CÓDIGO INSERIDO] - Desvio para renderização de checkboxes múltiplos */
     else if (prefixo === 'prat') {
-        renderizarCheckboxesAssuntos(disc);
+        const listaAssuntos = opcoes.assuntos 
+            ? opcoes.assuntos.filter(a => normStr(a.disciplina) === normStr(disc)).map(a => a.nome)
+            : [];
+
+        // Agora usa a função global de dropdown
+        renderSeletorMultiplo("prat-assuntos-filtros", listaAssuntos, "chk-assunto-filtro", "Filtrar Assuntos");
     }
     /* [FIM DO CÓDIGO INSERIDO] */
     else {
@@ -561,29 +563,67 @@ document.addEventListener('DOMContentLoaded', () => {
  * @param {string} containerId - ID do elemento pai.
  * @param {Array} lista - Array de strings ou objetos.
  * @param {string} classCheck - Classe para identificar os checkboxes depois.
+ * * @param {string} labelBotao - Texto que aparecerá no botão (VALOR PADRÃO ADICIONADO)
  */
-function renderSeletorMultiplo(containerId, lista, classCheck) {
+function renderSeletorMultiplo(containerId, lista, classCheck, labelBotao = "Selecionar...") {
     const container = el(containerId);
     if (!container || !lista) return;
 
+    // Estilização do container pai para permitir posicionamento absoluto do filho
+    container.style.position = "relative";
+
     // Criar cabeçalho com Busca e "Selecionar Todos"
     container.innerHTML = `
-        <div class="multi-select-header" style="position: sticky; top: 0; background: var(--dark-light); z-index: 5; padding-bottom: 10px; border-bottom: 1px solid #444; margin-bottom: 10px;">
-            <input type="text" placeholder="Buscar..." oninput="filtrarCheckbox(this, '${containerId}')" style="width: 100%; margin-bottom: 8px; padding: 5px;">
-            <label style="display: flex; gap: 8px; align-items: center; cursor: pointer; font-weight: bold; font-size: 0.85rem;">
-                <input type="checkbox" class="chk-input-reset" onchange="toggleTodosCheckboxes(this, '${containerId}')"> Marcar/Desmarcar Todos
-            </label>
-        </div>
-        <div class="multi-select-list">
-            ${lista.map(item => `
-                <label class="chk-item-label" style="display:flex; gap:8px; margin-bottom:6px; font-size:0.9rem; cursor:pointer; align-items:center;">
-                    <input type="checkbox" class="${classCheck} chk-input-reset" value="${item}">
-                    <span>${item}</span>
+        <button type="button" class="btn-dropdown-multi" onclick="toggleDropdownMulti('${containerId}')" 
+                style="width:100%; display:flex; justify-content:space-between; align-items:center;">
+            <span>${labelBotao}</span>
+            <span class="seta-drop">▼</span>
+        </button>
+
+        <div class="multi-select-floating" id="drop-${containerId}" style="display:none;">
+            <div class="multi-select-header">
+                <input type="text" placeholder="Buscar..." oninput="filtrarCheckbox(this, '${containerId}')">
+                <label>
+                    <input type="checkbox" class="chk-input-reset" onchange="toggleTodosCheckboxes(this, '${containerId}')"> Todos
                 </label>
-            `).join('')}
+            </div>
+            <div class="multi-select-list">
+                ${lista.map(item => `
+                    <label class="chk-item-label">
+                        <input type="checkbox" class="${classCheck} chk-input-reset" value="${item}">
+                        <span>${item}</span>
+                    </label>
+                `).join('')}
+            </div>
         </div>
     `;
 }
+
+// Função para abrir/fechar
+function toggleDropdownMulti(id) {
+    const drop = el(`drop-${id}`);
+    const isVisible = drop.style.display === "block";
+    
+    // Fecha todos os outros abertos antes de abrir este
+    document.querySelectorAll('.multi-select-floating').forEach(d =>{
+        d.style.display = 'none'// [CÓDIGO INSERIDO] Remove o z-index do pai para não conflitar
+        if(d.parentElement) d.parentElement.style.zIndex = "auto";
+    });
+    
+    if (!isVisible) {
+        drop.style.display = "block";
+        // [CÓDIGO INSERIDO] Eleva o container pai imediato para garantir o topo
+        drop.parentElement.style.zIndex = "1001"; 
+    }
+}
+
+// Fechar ao clicar fora
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.secao')) return; // ignore fora da área útil
+    if (!e.target.closest('.multi-select-floating') && !e.target.closest('.btn-dropdown-multi')) {
+        document.querySelectorAll('.multi-select-floating').forEach(d => d.style.display = 'none');
+    }
+});
 
 // Auxiliar: Filtro em tempo real
 function filtrarCheckbox(input, containerId) {

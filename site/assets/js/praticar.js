@@ -14,7 +14,7 @@ function alternarInterfacePratica(modo) {
 // Crie esta função para ser chamada quando os dados estiverem prontos
 function initPraticarFiltros() {
     if (opcoes.bancas) {
-        renderSeletorMultiplo("prat-banca-filtros", opcoes.bancas, "chk-banca-filtro");
+        renderSeletorMultiplo("prat-banca-filtros", opcoes.bancas, "chk-banca-filtro", "Filtrar Bancas");
     }
 }
 
@@ -34,8 +34,12 @@ function renderizarGradeProporcao() {
 }
 
 function atualizarCheckboxesAssuntos(disciplina) {
+    const container = el("prat-assuntos-filtros");
+    if (!container) return;
+
     if (!disciplina) {
-        el("prat-assuntos-filtros").innerHTML = "<small style='color:var(--sec)'>Selecione uma disciplina...</small>";
+        // Se não tiver disciplina, mostra um botão desativado ou aviso
+        container.innerHTML = `<button class="btn-dropdown-multi" disabled>Selecione uma Disciplina</button>`;
         return;
     }
 
@@ -45,7 +49,7 @@ function atualizarCheckboxesAssuntos(disciplina) {
         .sort();
 
     // Chamada da função generalista
-    renderSeletorMultiplo("prat-assuntos-filtros", assuntos, "chk-assunto-filtro");
+    renderSeletorMultiplo("prat-assuntos-filtros", assuntos, "chk-assunto-filtro", "Filtrar Assuntos");
 }
 
 function calcTotalPorcentagemPratica() {
