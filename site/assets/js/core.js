@@ -84,6 +84,11 @@ async function init() {
         popSelGeral();
         altTipo('cad');
 
+        // [CÓDIGO INSERIDO] Inicializa os filtros múltiplos agora que 'opcoes' existe
+        if (typeof initPraticarFiltros === 'function') {
+            initPraticarFiltros();
+        }
+
         // Se estiver na tela de banco, atualiza a tabela automaticamente
         if (el('secao-banco').style.display === 'block') carrTab();
         // Se estiver gerenciando flashcards, atualiza a lista
@@ -548,3 +553,54 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// core.js
+
+/**
+ * Transforma um container em um seletor de checkboxes múltiplo com busca.
+ * @param {string} containerId - ID do elemento pai.
+ * @param {Array} lista - Array de strings ou objetos.
+ * @param {string} classCheck - Classe para identificar os checkboxes depois.
+ */
+function renderSeletorMultiplo(containerId, lista, classCheck) {
+    const container = el(containerId);
+    if (!container || !lista) return;
+
+    // Criar cabeçalho com Busca e "Selecionar Todos"
+    container.innerHTML = `
+        <div class="multi-select-header" style="position: sticky; top: 0; background: var(--dark-light); z-index: 5; padding-bottom: 10px; border-bottom: 1px solid #444; margin-bottom: 10px;">
+            <input type="text" placeholder="Buscar..." oninput="filtrarCheckbox(this, '${containerId}')" style="width: 100%; margin-bottom: 8px; padding: 5px;">
+            <label style="display: flex; gap: 8px; align-items: center; cursor: pointer; font-weight: bold; font-size: 0.85rem;">
+                <input type="checkbox" onchange="toggleTodosCheckboxes(this, '${containerId}')"> Marcar/Desmarcar Todos
+            </label>
+        </div>
+        <div class="multi-select-list">
+            ${lista.map(item => `
+                <label class="chk-item-label" style="display:flex; gap:8px; margin-bottom:6px; font-size:0.9rem; cursor:pointer; align-items:center;">
+                    <input type="checkbox" class="${classCheck}" value="${item}">
+                    <span>${item}</span>
+                </label>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Auxiliar: Filtro em tempo real
+function filtrarCheckbox(input, containerId) {
+    const termo = normStr(input.value);
+    const labels = el(containerId).querySelectorAll('.chk-item-label');
+    labels.forEach(lbl => {
+        const txt = normStr(lbl.innerText);
+        lbl.style.display = txt.includes(termo) ? 'flex' : 'none';
+    });
+}
+
+// Auxiliar: Toggle Global
+function toggleTodosCheckboxes(master, containerId) {
+    const checkboxes = el(containerId).querySelectorAll('.multi-select-list input[type="checkbox"]');
+    checkboxes.forEach(chk => {
+        if (chk.parentElement.style.display !== 'none') {
+            chk.checked = master.checked;
+        }
+    });
+}

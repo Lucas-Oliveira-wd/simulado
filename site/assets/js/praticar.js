@@ -11,6 +11,13 @@ function alternarInterfacePratica(modo) {
     }
 }
 
+// Crie esta função para ser chamada quando os dados estiverem prontos
+function initPraticarFiltros() {
+    if (opcoes.bancas) {
+        renderSeletorMultiplo("prat-banca-filtros", opcoes.bancas, "chk-banca-filtro");
+    }
+}
+
 // CORREÇÃO: Carrega as disciplinas para escolha de %
 function renderizarGradeProporcao() {
     const div = el("lista-distribuicao-pratica");
@@ -26,14 +33,9 @@ function renderizarGradeProporcao() {
     });
 }
 
-// [CORREÇÃO 1] - Ajuste do ID do container e classe CSS para o layout
 function atualizarCheckboxesAssuntos(disciplina) {
-    // No seu HTML o ID é 'prat-assuntos-filtros'
-    const container = el("prat-assuntos-filtros"); 
-    if (!container) return;
-
     if (!disciplina) {
-        container.innerHTML = "<p>Selecione uma disciplina primeiro.</p>";
+        el("prat-assuntos-filtros").innerHTML = "<small style='color:var(--sec)'>Selecione uma disciplina...</small>";
         return;
     }
 
@@ -42,13 +44,8 @@ function atualizarCheckboxesAssuntos(disciplina) {
         .map(q => q.assunto))]
         .sort();
 
-    // Adicionado classe chk-assunto-label para o CSS que enviarei abaixo
-    container.innerHTML = assuntos.map(a => `
-        <label class="chk-assunto-label">
-            <input type="checkbox" class="chk-assunto-filtro" value="${a}">
-            <span>${a}</span>
-        </label>
-    `).join('');
+    // Chamada da função generalista
+    renderSeletorMultiplo("prat-assuntos-filtros", assuntos, "chk-assunto-filtro");
 }
 
 function calcTotalPorcentagemPratica() {
@@ -66,6 +63,10 @@ async function lancarPraticaUnificada() {
     let tipoSessao = 'praticar';
     let tempoSegundos = 0;
 
+    // [MODIFICADO] Captura bancas marcadas em vez de um único valor de select
+    const bancasMarcadas = Array.from(document.querySelectorAll(".chk-banca-filtro:checked"))
+                            .map(chk => normStr(chk.value));
+
     showLoader("Processando banco de dados...");
 
     try {
@@ -78,7 +79,7 @@ async function lancarPraticaUnificada() {
 
             const filtros = {
                 disciplina: el("prat-disciplina").value,
-                banca: el("prat-banca").value,
+                banca: bancasMarcadas,
                 assuntos: assuntosMarcados
             };
             const qtdTotal = parseInt(el("prat-qtd").value);
@@ -107,6 +108,9 @@ async function lancarPraticaUnificada() {
             // [CÓDIGO INSERIDO] - Captura a banca selecionada no simulado
             const bancaSimulado = el("prova-banca").value;
 
+            // Converte para array se houver valor, ou array vazio se for "Todas"
+            const filtroBancaSimulado = bancaSimulado ? [normStr(bancaSimulado)] : [];
+
             const totalPerc = Object.values(grade).reduce((a, b) => a + b, 0);
             if (totalPerc !== 100) {
                 hideLoader();
@@ -117,7 +121,7 @@ async function lancarPraticaUnificada() {
             tempoSegundos = parseInt(el("prova-tempo").value) * 60;
             tipoSessao = 'simulado';
 
-            poolFinal = await prepararPoolInteligente(grade, qtdTotal, { banca: bancaSimulado, assuntos: [] });
+            poolFinal = await prepararPoolInteligente(grade, qtdTotal, { banca: filtroBancaSimulado, assuntos: [] });
         }
 
         console.log(`✅ Pool final gerado com ${poolFinal.length} questões.`);
@@ -162,7 +166,7 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
 
         const todasDaDisc = db.filter(q => 
             normStr(q.disciplina) === normStr(disc) &&
-            (filtrosGlobais.banca === "" || normStr(q.banca) === normStr(filtrosGlobais.banca)) &&
+            (filtrosGlobais.banca.length === 0 || filtrosGlobais.banca.includes(normStr(q.banca))) &&
             (filtrosGlobais.assuntos.length === 0 || filtrosGlobais.assuntos.includes(normStr(q.assunto)))
         );
 
@@ -285,10 +289,9 @@ function redistribuirCotas(grade, total, filtros) {
         let deficit = 0, comVagas = [];
         
         ativos.forEach(d => {
-            // [CÓDIGO MODIFICADO]
             const disponiveis = db.filter(q => 
                 normStr(q.disciplina) === normStr(d) &&
-                (filtros.banca === "" || normStr(q.banca) === normStr(filtros.banca)) &&
+                (filtros.banca.length === 0 || filtros.banca.includes(normStr(q.banca))) &&
                 (filtros.assuntos.length === 0 || filtros.assuntos.includes(normStr(q.assunto))) // [CÓDIGO INSERIDO]
             ).length;
 
