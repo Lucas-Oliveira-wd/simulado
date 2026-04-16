@@ -571,13 +571,13 @@ function renderSeletorMultiplo(containerId, lista, classCheck) {
         <div class="multi-select-header" style="position: sticky; top: 0; background: var(--dark-light); z-index: 5; padding-bottom: 10px; border-bottom: 1px solid #444; margin-bottom: 10px;">
             <input type="text" placeholder="Buscar..." oninput="filtrarCheckbox(this, '${containerId}')" style="width: 100%; margin-bottom: 8px; padding: 5px;">
             <label style="display: flex; gap: 8px; align-items: center; cursor: pointer; font-weight: bold; font-size: 0.85rem;">
-                <input type="checkbox" onchange="toggleTodosCheckboxes(this, '${containerId}')"> Marcar/Desmarcar Todos
+                <input type="checkbox" class="chk-input-reset" onchange="toggleTodosCheckboxes(this, '${containerId}')"> Marcar/Desmarcar Todos
             </label>
         </div>
         <div class="multi-select-list">
             ${lista.map(item => `
                 <label class="chk-item-label" style="display:flex; gap:8px; margin-bottom:6px; font-size:0.9rem; cursor:pointer; align-items:center;">
-                    <input type="checkbox" class="${classCheck}" value="${item}">
+                    <input type="checkbox" class="${classCheck} chk-input-reset" value="${item}">
                     <span>${item}</span>
                 </label>
             `).join('')}

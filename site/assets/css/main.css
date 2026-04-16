@@ -542,3 +542,20 @@ body.dark-mode .preview-q-comentarios{
         transform: rotate(360deg);
     }
 }
+
+/* MODIFICADO: Adicionado o :not(.chk-input-reset) para impedir o 100% nesses elementos */
+body.dark-mode input:not(.chk-input-reset), 
+body.dark-mode select, 
+body.dark-mode textarea {
+    width: 100%;
+    background-color: var(--dark-input) !important;
+    color: #fff;
+    border-color: var(--dark-border);
+}
+
+/* Adicione esta regra no final do arquivo para garantir que o tamanho seja automático */
+.chk-input-reset {
+    width: auto !important;
+    margin: 0 !important;
+    cursor: pointer;
+}
