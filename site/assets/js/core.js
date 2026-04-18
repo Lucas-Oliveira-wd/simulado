@@ -646,3 +646,25 @@ function toggleTodosCheckboxes(master, containerId) {
         }
     });
 }
+
+// INSERIDO: Configuração global do MathJax
+window.MathJax = {
+    tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+    },
+    options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+    }
+};
+
+/**
+ * INSERIDO: Função para renderizar o LaTeX em elementos carregados dinamicamente
+ * Chame esta função sempre que o conteúdo de um card for alterado via JS.
+ */
+function renderizarMath() {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise().catch((err) => console.log('Erro ao renderizar Math:', err));
+    }
+}

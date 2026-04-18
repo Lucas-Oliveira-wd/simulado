@@ -158,6 +158,9 @@ function renderGrid() {
 
   html += `</div>`; // Fecha Grid
   container.innerHTML = html;
+
+  // [CÓDIGO INSERIDO] Renderiza as fórmulas após injetar o Grid no HTML
+  renderizarMath();
 }
 
 function renderCard() {
