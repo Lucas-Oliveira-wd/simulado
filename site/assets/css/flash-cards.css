@@ -25,9 +25,9 @@
 
 .flip-card-container {
     perspective: 1000px;
-    height: 350px;
+    height: 450px;
     margin: 20px auto;
-    max-width: 280px;
+    max-width: 450px;
     cursor: pointer;
 }
 
@@ -177,8 +177,8 @@ body.dark-mode .fc-content-back{
     display: grid;
     /* Cria colunas automáticas com no mínimo 300px cada. 
        Em telas full HD, isso garante 3 ou 4 por linha. */
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 100px; /* Espaço entre os cartões */
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 40px; /* Espaço entre os cartões */
     padding: 20px;
     justify-content: center;
 }
@@ -186,7 +186,7 @@ body.dark-mode .fc-content-back{
 /* Ajuste no container do cartão para o Grid */
 .fc-card-wrapper {
     /* Altura fixa para garantir uniformidade na grade */
-    height: 350px; 
+    height: 600px; 
     perspective: 1000px;
 }
 
