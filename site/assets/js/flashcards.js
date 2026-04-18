@@ -135,6 +135,9 @@ function renderGrid() {
               </div>
 
               <div class="flip-card-back">
+                  <div class="fc-content-front-recap" style="font-size: 0.85em; opacity: 0.7; border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px; font-style: italic; color: var(--sec);">
+                    ${frente}
+                  </div>
                   <div class="fc-content-back">${verso}</div>
                   
                   <div class="fc-botoes-internos" onclick="event.stopPropagation()">
@@ -177,7 +180,18 @@ function renderCard() {
   }`;
   el("fc-front-tag").innerText = `${c.disciplina} > ${c.assunto}`;
   el("fc-front-content").innerHTML = c.frente.replace(/\n/g, "<br>");
-  el("fc-back-content").innerHTML = c.verso.replace(/\n/g, "<br>");
+
+
+  // --- MODIFICADO: O conteúdo do verso agora concatena o conteúdo da frente no topo ---
+  // --- EXCLUÍDO: el("fc-back-content").innerHTML = c.verso.replace(/\n/g, "<br>"); ---
+  el("fc-back-content").innerHTML = `
+    <div style="font-size: 0.85em; opacity: 0.7; border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px; font-style: italic;">
+        ${c.frente.replace(/\n/g, "<br>")}
+    </div>
+    ${c.verso.replace(/\n/g, "<br>")}
+  `;
+  // --- FIM DA MODIFICAÇÃO ---
+
   el("card-ativo").classList.remove("virado");
   el("fc-botoes").classList.remove("visivel");
 }
