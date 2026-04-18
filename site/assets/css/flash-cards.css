@@ -241,3 +241,17 @@ body.dark-mode .fc-content-back{
     width: 100%;
     display: block;
 }
+
+/* 1. Remove as margens da lista para ela não "empurrar" nada */
+.flip-card-front ul, .flip-card-back ul, 
+.flip-card-front ol, .flip-card-back ol {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* 2. O PULO DO GATO: Esconde APENAS o <br> que vem DEPOIS da lista.
+   Como o </ul> já quebra a linha por natureza, esse <br> é sempre redundante. */
+.fc-content-front ul + br, .fc-content-back ul + br,
+.fc-content-front ol + br, .fc-content-back ol + br {
+    display: none !important;
+}
