@@ -82,13 +82,19 @@ el("fc-form").onsubmit = async (e) => {
 };
 
 function iniciarEstudoFC() {
-  let disc = el("fc-estudo-disc").value,
-    ass = el("fc-estudo-assunto").value;
-  flashPool = flashDb.filter(
-    (f) =>
-      (disc === "" || f.disciplina === disc) &&
-      (ass === "" || f.assunto === ass)
-  );
+  let disc = el("fc-estudo-disc").value;
+  // [CÓDIGO INSERIDO] Captura os assuntos selecionados nos checkboxes múltiplos
+  const assuntosMarcados = Array.from(document.querySelectorAll(".chk-fc-assunto-filtro:checked"))
+                                .map(chk => normStr(chk.value));
+
+  // Filtragem inteligente
+  flashPool = flashDb.filter((f) => {
+      const matchDisc = (disc === "" || normStr(f.disciplina) === normStr(disc));
+      // Se nenhum assunto estiver marcado, considera todos. Se houver marcados, filtra.
+      const matchAssunto = (assuntosMarcados.length === 0 || assuntosMarcados.includes(normStr(f.assunto)));
+      
+      return matchDisc && matchAssunto;
+  });
   if (flashPool.length === 0) return alert("Nenhum cartão encontrado.");
   flashPool = flashPool.sort(() => 0.5 - Math.random());
 

@@ -135,13 +135,15 @@ function carregarAssuntos(prefixo, disciplinaManual = null) {
         listaAss.innerHTML = html;
     }
     /* [CÓDIGO INSERIDO] - Desvio para renderização de checkboxes múltiplos */
-    else if (prefixo === 'prat') {
-        const listaAssuntos = opcoes.assuntos 
+    else if (prefixo === 'prat' || prefixo === 'fc-estudo') {
+        const containerId = prefixo === 'prat' ? "prat-assuntos-filtros" : "fc-assuntos-filtros";
+        const classCheck = prefixo === 'prat' ? "chk-assunto-filtro" : "chk-fc-assunto-filtro";
+
+        const listaNomes = opcoes.assuntos 
             ? opcoes.assuntos.filter(a => normStr(a.disciplina) === normStr(disc)).map(a => a.nome)
             : [];
 
-        // Agora usa a função global de dropdown
-        renderSeletorMultiplo("prat-assuntos-filtros", listaAssuntos, "chk-assunto-filtro", "Filtrar Assuntos");
+        renderSeletorMultiplo(containerId, listaNomes, classCheck, "Filtrar Assuntos");
     }
     /* [FIM DO CÓDIGO INSERIDO] */
     else {
