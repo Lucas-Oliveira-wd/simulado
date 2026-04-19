@@ -352,3 +352,14 @@ body.dark-mode .texto-titulo {
     text-align: left !important;
     white-space: nowrap !important;
 }
+
+.texto-conteudo p{
+    text-indent: 3rem;
+    text-align: justify;
+}
+
+.texto-apoio-box h4{
+    margin-bottom: 1.2rem;
+    text-align: center;
+    font-size: 1.2rem;
+}

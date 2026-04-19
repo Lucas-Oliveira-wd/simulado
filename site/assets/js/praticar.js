@@ -362,12 +362,12 @@ function renderizarQuestaoPratica() {
         ${txt ? `
             <div class="texto-apoio-box" style="margin-bottom:20px; border-left: 4px solid var(--purple); padding-left:15px;">
                 <h4 style="margin-top:0">${txt.titulo}</h4>
-                <div class="texto-conteudo">${txt.conteudo.replace(/\n/g, '<br>')}</div>
+                <div class="texto-conteudo">${renderMarkup(txt.conteudo)}</div>
             </div>
         ` : ''}
         <div class="enunciado render-html" style="font-size:1.1rem; line-height:1.5; margin-bottom:20px;">
             ${q.imagem ? `<img src="${API}/img/q_img/${q.imagem}" class="questao-img" style="max-width:100%; display:block; margin:10px 0;">` : ''}
-            ${q.enunciado}
+            ${renderMarkup(q.enunciado)}
         </div>
         <div class="alternativas" id="sessao-alternativas-container">
             ${(q.tipo === "CE" ? ["C", "E"] : ["A", "B", "C", "D", "E"]).map(l => {
@@ -557,12 +557,12 @@ function renderizarQuestaoSessao() {
             </div>
             <div id="conteudo-texto" class="texto-apoio-box">
                 <h4 class="header-texto">${q.texto_titulo}</h4>
-                ${q.texto_conteudo}
+                ${renderMarkup(q.texto_conteudo)    }
             </div>
         ` : ''}
 
         <div id="conteudo-enunciado" class="enunciado" style="${temTexto ? 'display:none' : 'display:block'}">
-            <p>${q.enunciado}</p>
+            <p>${renderMarkup(q.enunciado)}
             <div class="alternativas">
                 ${['A','B','C','D','E'].map(letra => {
                     const alt = q[`alt_${letra.toLowerCase()}`];
