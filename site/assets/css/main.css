@@ -629,3 +629,13 @@ body.dark-mode .preview-q-comentarios{
     overflow: hidden;
     white-space: nowrap;
 }
+
+p {
+    margin-block-start: 0px;
+    margin-block-end: 0px;
+}
+
+h4 {
+    margin-block-start: 1em;
+    margin-block-end: 0px;
+}

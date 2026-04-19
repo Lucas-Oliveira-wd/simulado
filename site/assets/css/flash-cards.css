@@ -251,11 +251,21 @@ body.dark-mode .fc-content-back{
 }
 
 
-.fc-content-back table{
-    border-collapse: collapse;
-    width: 100%;
+/* Garante que o texto quebre e as células se expandam */
+.fc-content-back table th,
+.fc-content-back table td {
+    white-space: normal !important;   /* Força a quebra de linha (cancela o nowrap) */
+    word-wrap: break-word;           /* Quebra palavras muito longas se necessário */
+    text-overflow: clip;             /* Remove os "..." */
+    overflow: visible;               /* Garante que nada fique escondido */
+    padding: 8px 4px;                /* Um respiro para não grudar nas bordas */
+    line-height: 1.2;                /* Melhora a leitura em múltiplas linhas */
+    vertical-align: middle;          /* Centraliza o texto verticalmente */
     text-align: center;
-    font-size: 0.9em;
-    margin-bottom: 2px;
-    border: 1px
+}
+
+/* Ajuste adicional para a largura das colunas */
+.fc-content-back table {
+    table-layout: auto;              /* Permite que o navegador calcule a largura ideal */
+    border: 1px solid #ccc;          /* Corrigindo seu 'border: 1px' que estava incompleto */
 }

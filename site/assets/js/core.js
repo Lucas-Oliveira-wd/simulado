@@ -672,60 +672,66 @@ function renderizarMath() {
 function renderMarkup(str) {
     if (!str) return "";
 
-    // Adicionado 'small' à lista de tags protegidas (tratadas como bloco)
-    const tagsBloco = /<\/?(table|thead|tbody|tr|th|td|ul|ol|li|h[1-6]|hr|div|p|blockquote|small)[^>]*>/gi;
+    // 1. Definição das Tags de Bloco (Sensores de Interrupção)
+    const tagsBloco = /<\/?(table|thead|tbody|tr|th|td|ul|ol|li|h[1-6]|hr|div|p|blockquote|small|section|header|footer)[^>]*>/gi;
+    
     let resultado = "";
     let emParagrafo = false;
     let nivelNesting = 0;
 
-    // Divide a string mantendo as tags para análise
-    const partes = str.split(/(<\/?(?:table|thead|tbody|tr|th|td|ul|ol|li|h[1-6]|hr|div|p|blockquote|small)[^>]*>)/gi);
+    // 2. Split mantendo as tags. O segredo está em limpar o array de resíduos vazios.
+    const partes = str.split(/(<\/?(?:table|thead|tbody|tr|th|td|ul|ol|li|h[1-6]|hr|div|p|blockquote|small|section|header|footer)[^>]*>)/gi);
 
     partes.forEach(parte => {
-        if (!parte) return;
+        if (parte === undefined) return;
 
-        if (parte.match(tagsBloco)) {
-            // Se for abertura ou fechamento de tag protegida
+        // Identifica se a parte atual é uma tag de bloco
+        const ehTagBloco = parte.match(tagsBloco);
+
+        if (ehTagBloco) {
+            // Se detectou a tag, mata o parágrafo IMEDIATAMENTE (Interrupção Forçada)
+            if (emParagrafo) {
+                resultado += "</p>";
+                emParagrafo = false;
+            }
+
+            // Controle de profundidade para não criar <p> dentro de tabelas/listas
             if (parte.startsWith("</")) {
                 nivelNesting = Math.max(0, nivelNesting - 1);
-                resultado += parte;
-            } else {
-                // Fecha parágrafo aberto antes de iniciar um bloco estrutural
-                if (emParagrafo && nivelNesting === 0) {
-                    resultado += "</p>";
-                    emParagrafo = false;
-                }
-                // Tags que não requerem fechamento (como <hr>) não aumentam o nesting
-                if (!parte.match(/<\s*hr[^>]*>/i)) {
-                    nivelNesting++;
-                }
-                resultado += parte;
+            } else if (!parte.match(/<\s*hr[^>]*>/i)) {
+                nivelNesting++;
             }
+            resultado += parte;
         } else {
-            // Tratamento de conteúdo textual
+            // Lógica de Texto: Só processa se estivermos fora de uma estrutura (Nesting == 0)
             if (nivelNesting > 0) {
-                resultado += parte; // Dentro de blocos, preserva como está
+                resultado += parte;
             } else {
+                // Aqui tratamos os "Alarmes Falsos":
+                // Se a parte contém apenas espaços ou quebras de linha, ela NÃO deve abrir um <p>
                 let linhas = parte.split("\n");
+                
                 linhas.forEach(linha => {
                     let conteudoLimpo = linha.trim();
+                    
                     if (conteudoLimpo.length > 0) {
                         if (!emParagrafo) {
                             resultado += "<p>";
                             emParagrafo = true;
                         }
-                        resultado += linha; 
-                    } else if (emParagrafo) {
+                        resultado += linha;
+                        /* CÓDIGO INSERIDO: Fecha o parágrafo ao final de cada linha com conteúdo para garantir a quebra de linha no HTML */
                         resultado += "</p>";
                         emParagrafo = false;
-                    }
+                        /* FIM DA INSERÇÃO */
+                    };
                 });
             }
         }
     });
 
     if (emParagrafo) resultado += "</p>";
-    
-    // Cleanup de parágrafos vazios residuais
-    return resultado.replace(/<p>\s*<\/p>/g, "");
+
+    // Limpeza final de redundâncias
+    return resultado.replace(/<p>\s*<\/p>/gi, "").trim();
 }
