@@ -124,8 +124,8 @@ function renderGrid() {
       // -------------------------------------------
 
       // Formata quebras de linha
-      let frente = c.frente.replace(/\n/g, "<br>");
-      let verso = c.verso.replace(/\n/g, "<br>");
+      let frente = renderMarkup(c.frente);
+      let verso = renderMarkup(c.verso);
 
       html += `
       <div class="fc-card-wrapper" id="card-${index}" onclick="virarCartaGrid(this)">
@@ -188,14 +188,14 @@ function renderCard() {
     flashPool.length
   }`;
   el("fc-front-tag").innerText = `${c.disciplina} > ${c.assunto}`;
-  el("fc-front-content").innerHTML = c.frente.replace(/\n/g, "<br>");
+  el("fc-front-content").innerHTML = renderMarkup(c.frente);
 
 
   // --- MODIFICADO: O conteúdo do verso agora concatena o conteúdo da frente no topo ---
   // --- EXCLUÍDO: el("fc-back-content").innerHTML = c.verso.replace(/\n/g, "<br>"); ---
   el("fc-back-content").innerHTML = `
     <div style="font-size: 0.85em; opacity: 0.7; border-bottom: 1px dashed #ccc; padding-bottom: 10px; margin-bottom: 10px; font-style: italic;">
-        ${c.frente.replace(/\n/g, "<br>")}
+        ${renderMarkup(c.frente)}
     </div>
     ${c.verso.replace(/\n/g, "<br>")}
   `;
