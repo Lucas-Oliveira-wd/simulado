@@ -672,54 +672,52 @@ function renderizarMath() {
 function renderMarkup(str) {
     if (!str) return "";
 
-    // Regex para identificar abertura e fechamento das tags protegidas
-    const tagsBloco = /<\/?(table|ul|ol|li)[^>]*>/gi;
+    // Adicionado 'small' à lista de tags protegidas (tratadas como bloco)
+    const tagsBloco = /<\/?(table|thead|tbody|tr|th|td|ul|ol|li|h[1-6]|hr|div|p|blockquote|small)[^>]*>/gi;
     let resultado = "";
     let emParagrafo = false;
     let nivelNesting = 0;
 
-    // Divide a string em pedaços, mantendo as tags no array
-    const partes = str.split(/(<\/?(?:table|ul|ol|li)[^>]*>)/gi);
+    // Divide a string mantendo as tags para análise
+    const partes = str.split(/(<\/?(?:table|thead|tbody|tr|th|td|ul|ol|li|h[1-6]|hr|div|p|blockquote|small)[^>]*>)/gi);
 
     partes.forEach(parte => {
+        if (!parte) return;
+
         if (parte.match(tagsBloco)) {
-            // É uma tag de controle (abertura ou fechamento)
+            // Se for abertura ou fechamento de tag protegida
             if (parte.startsWith("</")) {
                 nivelNesting = Math.max(0, nivelNesting - 1);
                 resultado += parte;
             } else {
-                // Se vamos abrir uma tag de bloco e estávamos num parágrafo, fechamos ele
+                // Fecha parágrafo aberto antes de iniciar um bloco estrutural
                 if (emParagrafo && nivelNesting === 0) {
                     resultado += "</p>";
                     emParagrafo = false;
                 }
-                nivelNesting++;
+                // Tags que não requerem fechamento (como <hr>) não aumentam o nesting
+                if (!parte.match(/<\s*hr[^>]*>/i)) {
+                    nivelNesting++;
+                }
                 resultado += parte;
             }
         } else {
-            // É conteúdo comum (texto, b, i, span, etc)
+            // Tratamento de conteúdo textual
             if (nivelNesting > 0) {
-                // Estamos dentro de uma tabela ou lista: não mexemos, só passamos adiante
-                resultado += parte;
+                resultado += parte; // Dentro de blocos, preserva como está
             } else {
-                // Estamos fora: vamos gerir os parágrafos baseados em \n
                 let linhas = parte.split("\n");
-                
                 linhas.forEach(linha => {
                     let conteudoLimpo = linha.trim();
-                    
                     if (conteudoLimpo.length > 0) {
                         if (!emParagrafo) {
                             resultado += "<p>";
                             emParagrafo = true;
                         }
                         resultado += linha; 
-                    } else {
-                        // Linha vazia ou apenas \n: fecha o parágrafo atual se existir
-                        if (emParagrafo) {
-                            resultado += "</p>";
-                            emParagrafo = false;
-                        }
+                    } else if (emParagrafo) {
+                        resultado += "</p>";
+                        emParagrafo = false;
                     }
                 });
             }
@@ -727,5 +725,7 @@ function renderMarkup(str) {
     });
 
     if (emParagrafo) resultado += "</p>";
-    return resultado;
+    
+    // Cleanup de parágrafos vazios residuais
+    return resultado.replace(/<p>\s*<\/p>/g, "");
 }
