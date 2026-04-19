@@ -668,3 +668,64 @@ function renderizarMath() {
         window.MathJax.typesetPromise().catch((err) => console.log('Erro ao renderizar Math:', err));
     }
 }
+
+function renderMarkup(str) {
+    if (!str) return "";
+
+    // Regex para identificar abertura e fechamento das tags protegidas
+    const tagsBloco = /<\/?(table|ul|ol|li)[^>]*>/gi;
+    let resultado = "";
+    let emParagrafo = false;
+    let nivelNesting = 0;
+
+    // Divide a string em pedaços, mantendo as tags no array
+    const partes = str.split(/(<\/?(?:table|ul|ol|li)[^>]*>)/gi);
+
+    partes.forEach(parte => {
+        if (parte.match(tagsBloco)) {
+            // É uma tag de controle (abertura ou fechamento)
+            if (parte.startsWith("</")) {
+                nivelNesting = Math.max(0, nivelNesting - 1);
+                resultado += parte;
+            } else {
+                // Se vamos abrir uma tag de bloco e estávamos num parágrafo, fechamos ele
+                if (emParagrafo && nivelNesting === 0) {
+                    resultado += "</p>";
+                    emParagrafo = false;
+                }
+                nivelNesting++;
+                resultado += parte;
+            }
+        } else {
+            // É conteúdo comum (texto, b, i, span, etc)
+            if (nivelNesting > 0) {
+                // Estamos dentro de uma tabela ou lista: não mexemos, só passamos adiante
+                resultado += parte;
+            } else {
+                // Estamos fora: vamos gerir os parágrafos baseados em \n
+                let linhas = parte.split("\n");
+                
+                linhas.forEach(linha => {
+                    let conteudoLimpo = linha.trim();
+                    
+                    if (conteudoLimpo.length > 0) {
+                        if (!emParagrafo) {
+                            resultado += "<p>";
+                            emParagrafo = true;
+                        }
+                        resultado += linha; 
+                    } else {
+                        // Linha vazia ou apenas \n: fecha o parágrafo atual se existir
+                        if (emParagrafo) {
+                            resultado += "</p>";
+                            emParagrafo = false;
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    if (emParagrafo) resultado += "</p>";
+    return resultado;
+}

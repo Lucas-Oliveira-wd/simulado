@@ -249,3 +249,13 @@ body.dark-mode .fc-content-back{
 .fc-content-front ol + br, .fc-content-back ol + br {
     display: none !important;
 }
+
+
+.fc-content-back table{
+    border-collapse: collapse;
+    width: 100%;
+    text-align: center;
+    font-size: 0.9em;
+    margin-bottom: 2px;
+    border: 1px
+}
