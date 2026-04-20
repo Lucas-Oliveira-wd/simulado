@@ -353,7 +353,7 @@ body.dark-mode .texto-titulo {
     white-space: nowrap !important;
 }
 
-.texto-conteudo p{
+.texto-conteudo p, .enunciado p{
     text-indent: 3rem;
     text-align: justify;
 }
