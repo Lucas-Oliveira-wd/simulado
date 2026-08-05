@@ -165,10 +165,6 @@ body {
     align-items: center
 }
 
-.render-html li, .enunciado li {
-    margin-bottom: 5px;
-}
-
 body.header-espaco {
     padding-top: 70px;
 }

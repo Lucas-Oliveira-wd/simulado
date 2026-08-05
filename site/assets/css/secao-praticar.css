@@ -75,7 +75,6 @@
 /* Esta classe diz ao navegador: "Se tiver um Enter no texto, pule a linha na tela" */
 .enunciado,
 .render-html {
-    white-space: pre-wrap;
     word-wrap: break-word;
     /* Evita que palavras longas estourem a tela */
     line-height: 1.6;
