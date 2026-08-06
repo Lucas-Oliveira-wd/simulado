@@ -1,5 +1,5 @@
 
-window.API = "http://10.0.0.194:5000";
+window.API = "http://127.0.0.1:5000";
 
 window.el = id => document.getElementById(id);
 

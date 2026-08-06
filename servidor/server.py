@@ -27,6 +27,13 @@ ARQ_CONFIG = os.path.join(DB_DIR, "config_sistema.json")
 # [CÓDIGO INSERIDO] - Arquivo para salvar o plano de estudos montado
 ARQ_PLANO = os.path.join(DB_DIR, "plano_estudos.json")
 
+print("\n--- DIAGNÓSTICO DE ROTAS ---")
+print(f"BASE_DIR: {BASE_DIR}")
+print(f"DB_DIR: {DB_DIR}")
+print(f"A pasta do BD foi encontrada? {os.path.exists(DB_DIR)}")
+print(f"O arquivo de questões foi encontrado? {os.path.exists(ARQ_QUESTOES)}")
+print("----------------------------\n")
+
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
