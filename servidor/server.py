@@ -27,13 +27,6 @@ ARQ_CONFIG = os.path.join(DB_DIR, "config_sistema.json")
 # [CÓDIGO INSERIDO] - Arquivo para salvar o plano de estudos montado
 ARQ_PLANO = os.path.join(DB_DIR, "plano_estudos.json")
 
-print("\n--- DIAGNÓSTICO DE ROTAS ---")
-print(f"BASE_DIR: {BASE_DIR}")
-print(f"DB_DIR: {DB_DIR}")
-print(f"A pasta do BD foi encontrada? {os.path.exists(DB_DIR)}")
-print(f"O arquivo de questões foi encontrado? {os.path.exists(ARQ_QUESTOES)}")
-print("----------------------------\n")
-
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -372,6 +365,7 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
         r"^\.\d+\.\.\)\.",
         r"10763321451",
         r"70925316407\s*[\-\–\—]\s*Lucas\s*de\s*Oliveira",  # Limpa sua marca d'água/ID de usuário
+        r"70925316407"
     ]
     # [INSERIDO] Adiciona a limpeza de números purosx APENAS se NÃO for Modo Prova
     # Isso protege os números das questões no layout da Eletronuclear/Cesgranrio
@@ -455,6 +449,7 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
     elif disciplina == "Informática":
         patterns_to_remove.extend([
             r"ANSA - Noções de Informática - 2026 \(Pós-Edital\) \d*",
+            r"Prefeitura de Ponta Grossa-PR \(Nível Médio e Superior\) Informática Básica - 2026 \(Pós-Edital\) \d*",
             r"Diego Carvalho, Equipe Informática e TI, Fernando Pedrosa Lopes , Paolla Ramos, Renato da Costa, Antonio Daud",
             # [MODIFICADO] \d+ torna o número da aula flexível
             r"Aula \d+ - Prof\. Diego Carvalho e Renato da Costa",
@@ -462,7 +457,8 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             r" - Prof\. Diego Carvalho e Renato da Costa",
             r" - Prof\. Diego Carvalho e Emannuelle Gouveia",
             r" - Prof\. Diego Carvalho e Fernando Pedrosa",
-            r" - Prof\. Paolla Ramos \(Somente PDF\)"
+            r" - Prof\. Diego Carvalho e Fernando Pedrosa",
+            r"Diego Carvalho, Renato da Costa, Equipe Informática e TI"
         ])
 
     # Loop de limpeza com rastreamento de capturas
