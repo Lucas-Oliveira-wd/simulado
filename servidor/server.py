@@ -457,7 +457,6 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             r" - Prof\. Diego Carvalho e Renato da Costa",
             r" - Prof\. Diego Carvalho e Emannuelle Gouveia",
             r" - Prof\. Diego Carvalho e Fernando Pedrosa",
-            r" - Prof\. Diego Carvalho e Fernando Pedrosa",
             r"Diego Carvalho, Renato da Costa, Equipe Informática e TI"
         ])
 
