@@ -362,6 +362,10 @@ async function salvarIndividual(index) {
       // [CÓDIGO EXCLUÍDO]
       // A chamada global foi inativada para não engasgar o servidor ao salvar questões do PDF.
       // init();
+
+      // [CÓDIGO INSERIDO] - Dispara o aviso de sincronização pendente
+      notificarAlteracaoBanco();
+
     } else if (response.status === 409) {
       alert("Duplicada!");
     } else {
@@ -407,6 +411,9 @@ el("form-cadastro").onsubmit = async (e) => {
       // [CÓDIGO EXCLUÍDO]
       // A chamada global foi inativada. Se o usuário for para a aba Banco, o carrTab() buscará os dados atualizados.
       // init();
+
+      // [CÓDIGO INSERIDO] - Dispara o aviso de sincronização pendente
+      notificarAlteracaoBanco();
     } else throw new Error();
   } catch (err) {
     alert("Erro ao salvar.");

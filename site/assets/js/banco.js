@@ -293,7 +293,8 @@ el("form-edicao").onsubmit = async (e) => {
           // 1. Atualiza o banco global (db) para que Praticar/Simulado vejam a mudança
           // await init(); 
           
-          // 2. Força a tabela a permanecer na página onde você estava
+          // [CÓDIGO INSERIDO] - Dispara o aviso de sincronização e atualiza a tabela visual
+          notificarAlteracaoBanco();
           carrTab(paginaAtual);
         } else {
           const erro = await res.json();

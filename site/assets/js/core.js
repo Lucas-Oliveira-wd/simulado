@@ -735,3 +735,32 @@ function renderMarkup(str) {
     // Limpeza final de redundâncias
     return resultado.replace(/<p>\s*<\/p>/gi, "").trim();
 }
+
+
+// [CÓDIGO INSERIDO] - Lógica de notificação de atualização manual do banco
+function notificarAlteracaoBanco() {
+    let aviso = document.getElementById("aviso-atualizacao-db");
+    
+    // Cria o elemento na primeira vez que for chamado
+    if (!aviso) {
+        aviso = document.createElement("div");
+        aviso.id = "aviso-atualizacao-db";
+        aviso.style.cssText = "position: fixed; bottom: 30px; right: 30px; background: var(--dark-bg); border: 1px solid var(--primary); padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 9999; display: flex; align-items: center; gap: 15px;";
+        aviso.innerHTML = `
+            <span style="color: var(--text); font-size: 0.95rem; font-weight: bold;">O banco de dados foi modificado.</span>
+            <button onclick="executarAtualizacaoManual()" class="btn-prim" style="padding: 6px 15px; font-size: 0.85rem; margin: 0;">Atualizar Página</button>
+        `;
+        document.body.appendChild(aviso);
+    }
+    
+    aviso.style.display = "flex";
+}
+
+async function executarAtualizacaoManual() {
+    const aviso = document.getElementById("aviso-atualizacao-db");
+    if (aviso) aviso.style.display = "none";
+    
+    showLoader("Sincronizando banco de dados...");
+    await init();
+    hideLoader();
+}
