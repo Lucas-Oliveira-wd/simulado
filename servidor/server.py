@@ -8,7 +8,10 @@ import re
 import uuid
 import json
 import numpy as np
-import pandas as pd
+from threading import Lock
+
+# [CÓDIGO INSERIDO] - Trava global para impedir leitura e escrita simultâneas no Excel
+db_lock = Lock()
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///banco_estudos.db'
@@ -1029,31 +1032,33 @@ def verificar_questoes():
 def carregar_questoes():
     verificar_questoes();
 
-    try:
-        wb = load_workbook(ARQ_QUESTOES);
-        ws = wb.active;
-        dados = []
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if row[0] is None: continue
+    # [CÓDIGO INSERIDO] - Aguarda a liberação do arquivo antes de ler
+    with db_lock:
+        try:
+            wb = load_workbook(ARQ_QUESTOES);
+            ws = wb.active;
+            dados = []
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0] is None: continue
 
-            img = row[17] if len(row) > 17 else ""
-            coment = row[18] if len(row) > 18 else ""
-            txt_apoio = row[19] if len(row) > 19 else ""
+                img = row[17] if len(row) > 17 else ""
+                coment = row[18] if len(row) > 18 else ""
+                txt_apoio = row[19] if len(row) > 19 else ""
 
-            dados.append({
-                "id": row[0], "banca": row[1], "instituicao": row[2], "ano": row[3],
-                "enunciado": row[4], "disciplina": row[5], "assunto": row[6],
-                "dificuldade": row[7], "tipo": row[8], "alt_a": row[9],
-                "alt_b": row[10], "alt_c": row[11], "alt_d": row[12], "alt_e": row[13],
-                "gabarito": row[14], "respondidas": row[15] or 0, "acertos": row[16] or 0,
-                "imagem": row[17] if len(row) > 17 else "",
-                "comentarios": row[18] if len(row) > 18 else "",
-                "texto_apoio": row[19] if len(row) > 19 else "",
-                "data_insercao": row[20] if len(row) > 20 else ""  # Nova Coluna
-            })
-        return dados
-    except Exception as e:
-        return []
+                dados.append({
+                    "id": row[0], "banca": row[1], "instituicao": row[2], "ano": row[3],
+                    "enunciado": row[4], "disciplina": row[5], "assunto": row[6],
+                    "dificuldade": row[7], "tipo": row[8], "alt_a": row[9],
+                    "alt_b": row[10], "alt_c": row[11], "alt_d": row[12], "alt_e": row[13],
+                    "gabarito": row[14], "respondidas": row[15] or 0, "acertos": row[16] or 0,
+                    "imagem": row[17] if len(row) > 17 else "",
+                    "comentarios": row[18] if len(row) > 18 else "",
+                    "texto_apoio": row[19] if len(row) > 19 else "",
+                    "data_insercao": row[20] if len(row) > 20 else ""  # Nova Coluna
+                })
+            return dados
+        except Exception as e:
+            return []
 
 def salvar_questoes(dados):
     if os.path.exists(ARQ_QUESTOES):
@@ -1112,34 +1117,37 @@ def salvar_questoes(dados):
 def inserir_questao(nova):
     if not os.path.exists(ARQ_QUESTOES):
         verificar_questoes()
-    try:
-        wb = load_workbook(ARQ_QUESTOES)
 
-        # Garante que a aba correta seja selecionada sem excluí-la
-        if "questoes" in wb.sheetnames:
-            ws = wb["questoes"]
-        else:
-            ws = wb.active
+    # [CÓDIGO INSERIDO] - Tranca o arquivo para impedir leitura durante a escrita
+    with db_lock:
+        try:
+            wb = load_workbook(ARQ_QUESTOES)
 
-        ws.append([
-            nova["id"], nova.get("banca"), nova.get("instituicao"), nova.get("ano"),
-            normalizar_texto_para_banco(nova.get("enunciado", "")),
-            nova["disciplina"], nova["assunto"], nova["dificuldade"], nova["tipo"],
-            normalizar_texto_para_banco(nova.get("alt_a", "")),
-            normalizar_texto_para_banco(nova.get("alt_b", "")),
-            normalizar_texto_para_banco(nova.get("alt_c", "")),
-            normalizar_texto_para_banco(nova.get("alt_d", "")),
-            normalizar_texto_para_banco(nova.get("alt_e", "")),
-            nova["gabarito"], nova["respondidas"], nova["acertos"],
-            nova.get("imagem", ""),
-            normalizar_texto_para_banco(nova.get("comentarios", "")),
-            nova.get("texto_apoio", ""),
-            nova.get("data_insercao", "")
-        ])
+            # Garante que a aba correta seja selecionada sem excluí-la
+            if "questoes" in wb.sheetnames:
+                ws = wb["questoes"]
+            else:
+                ws = wb.active
 
-        wb.save(ARQ_QUESTOES)
-    except PermissionError:
-        print("--- ERRO: Excel aberto. Não foi possível salvar a nova questão. ---")
+            ws.append([
+                nova["id"], nova.get("banca"), nova.get("instituicao"), nova.get("ano"),
+                normalizar_texto_para_banco(nova.get("enunciado", "")),
+                nova["disciplina"], nova["assunto"], nova["dificuldade"], nova["tipo"],
+                normalizar_texto_para_banco(nova.get("alt_a", "")),
+                normalizar_texto_para_banco(nova.get("alt_b", "")),
+                normalizar_texto_para_banco(nova.get("alt_c", "")),
+                normalizar_texto_para_banco(nova.get("alt_d", "")),
+                normalizar_texto_para_banco(nova.get("alt_e", "")),
+                nova["gabarito"], nova["respondidas"], nova["acertos"],
+                nova.get("imagem", ""),
+                normalizar_texto_para_banco(nova.get("comentarios", "")),
+                nova.get("texto_apoio", ""),
+                nova.get("data_insercao", "")
+            ])
+
+            wb.save(ARQ_QUESTOES)
+        except PermissionError:
+            print("--- ERRO: Excel aberto. Não foi possível salvar a nova questão. ---")
 
 
 # --- GERENCIAMENTO DE TEXTOS DE APOIO ---
@@ -1157,14 +1165,20 @@ def verificar_tabela_textos():
 
 def carregar_todos_textos():
     verificar_tabela_textos()
-    wb = load_workbook(ARQ_QUESTOES)
-    if "textos" not in wb.sheetnames: return []
-    ws = wb["textos"]
-    textos = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if row[0]:
-            textos.append({"id": row[0], "titulo": row[1], "conteudo": row[2]})
-    return textos
+
+    # [CÓDIGO INSERIDO] - Impede que os textos sejam lidos enquanto a questão é salva
+    with db_lock:
+        try:
+            wb = load_workbook(ARQ_QUESTOES)
+            if "textos" not in wb.sheetnames: return []
+            ws = wb["textos"]
+            textos = []
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0]:
+                    textos.append({"id": row[0], "titulo": row[1], "conteudo": row[2]})
+            return textos
+        except Exception as e:
+            return []
 
 
 def salvar_novo_texto(novo_texto):
