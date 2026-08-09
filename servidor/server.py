@@ -1679,6 +1679,10 @@ def get_q():
 
 @app.route("/questoes", methods=["POST"])
 def post_q():
+    # [CÓDIGO INSERIDO] - Importação do módulo datetime para o log de performance
+    from datetime import datetime
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 1. Iniciando rota POST /questoes")
+
     nova = {};
     arq = None
     if request.content_type.startswith('multipart'):
@@ -1686,7 +1690,11 @@ def post_q():
         arq = request.files.get('imagem_file')
     else:
         nova = request.json
-    dados = carregar_questoes();
+
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 2. Início do carregar_questoes() (LEITURA DO EXCEL PARA VALIDAÇÃO)")
+    dados = carregar_questoes()
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 3. Fim do carregar_questoes()")
+
     if arq and arq.filename:
         ext = arq.filename.rsplit('.', 1)[1].lower();
         nome_img = f"{uuid.uuid4()}.{ext}";
@@ -1700,6 +1708,7 @@ def post_q():
     if not nova.get("data_insercao"):
         nova["data_insercao"] = datetime.now().strftime("%d/%m/%Y %H:%M")
 
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 4. Verificando assinaturas e duplicidade")
     sig = gerar_assinatura(nova)
     if any(gerar_assinatura(q) == sig for q in dados): return jsonify({"erro": "Duplicada"}), 409
 
@@ -1711,7 +1720,11 @@ def post_q():
     # salvar_questoes(dados)
 
     # [CÓDIGO INSERIDO] - Chama a nova função otimizada de anexo direto
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 5. Início do inserir_questao() (ABERTURA E ESCRITA DO EXCEL)")
+    # [CÓDIGO INSERIDO] - Chama a nova função otimizada de anexo direto
     inserir_questao(nova)
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] 6. Fim do inserir_questao() - Finalizando rota")
+
     return jsonify({"mensagem": "Salvo", "id": nova["id"]}), 201
 
 
