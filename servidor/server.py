@@ -1108,6 +1108,40 @@ def salvar_questoes(dados):
         print("--- ERRO: Excel aberto. Não foi possível salvar as questões. ---")
 
 
+# [CÓDIGO INSERIDO] - Função otimizada para anexar apenas uma linha ao final da planilha
+def inserir_questao(nova):
+    if not os.path.exists(ARQ_QUESTOES):
+        verificar_questoes()
+    try:
+        wb = load_workbook(ARQ_QUESTOES)
+
+        # Garante que a aba correta seja selecionada sem excluí-la
+        if "questoes" in wb.sheetnames:
+            ws = wb["questoes"]
+        else:
+            ws = wb.active
+
+        ws.append([
+            nova["id"], nova.get("banca"), nova.get("instituicao"), nova.get("ano"),
+            normalizar_texto_para_banco(nova.get("enunciado", "")),
+            nova["disciplina"], nova["assunto"], nova["dificuldade"], nova["tipo"],
+            normalizar_texto_para_banco(nova.get("alt_a", "")),
+            normalizar_texto_para_banco(nova.get("alt_b", "")),
+            normalizar_texto_para_banco(nova.get("alt_c", "")),
+            normalizar_texto_para_banco(nova.get("alt_d", "")),
+            normalizar_texto_para_banco(nova.get("alt_e", "")),
+            nova["gabarito"], nova["respondidas"], nova["acertos"],
+            nova.get("imagem", ""),
+            normalizar_texto_para_banco(nova.get("comentarios", "")),
+            nova.get("texto_apoio", ""),
+            nova.get("data_insercao", "")
+        ])
+
+        wb.save(ARQ_QUESTOES)
+    except PermissionError:
+        print("--- ERRO: Excel aberto. Não foi possível salvar a nova questão. ---")
+
+
 # --- GERENCIAMENTO DE TEXTOS DE APOIO ---
 def verificar_tabela_textos():
     garantir_diretorio()
@@ -1672,8 +1706,12 @@ def post_q():
     if not nova.get("id"):
         nova["id"] = obter_proximo_id([q.get("id") for q in dados])
     nova.update({"respondidas": 0, "acertos": 0});
-    dados.append(nova);
-    salvar_questoes(dados)
+    # [CÓDIGO EXCLUÍDO]
+    # dados.append(nova);
+    # salvar_questoes(dados)
+
+    # [CÓDIGO INSERIDO] - Chama a nova função otimizada de anexo direto
+    inserir_questao(nova)
     return jsonify({"mensagem": "Salvo", "id": nova["id"]}), 201
 
 
