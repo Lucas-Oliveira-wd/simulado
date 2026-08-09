@@ -289,8 +289,9 @@ el("form-edicao").onsubmit = async (e) => {
         if (res.ok) {
           alert(metodo === "POST" ? "Nova questão criada com sucesso!" : "Questão atualizada!");
           el("modal-edicao").style.display = "none";
+          // [CÓDIGO EXCLUÍDO]
           // 1. Atualiza o banco global (db) para que Praticar/Simulado vejam a mudança
-          await init(); 
+          // await init(); 
           
           // 2. Força a tabela a permanecer na página onde você estava
           carrTab(paginaAtual);

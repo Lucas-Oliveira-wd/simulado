@@ -359,7 +359,9 @@ async function salvarIndividual(index) {
       r.querySelector(
         ".imp-acoes"
       ).innerHTML = `<span style="color:green; font-weight:bold">Salva!</span>`;
-      init();
+      // [CÓDIGO EXCLUÍDO]
+      // A chamada global foi inativada para não engasgar o servidor ao salvar questões do PDF.
+      // init();
     } else if (response.status === 409) {
       alert("Duplicada!");
     } else {
@@ -402,7 +404,9 @@ el("form-cadastro").onsubmit = async (e) => {
       e.target.reset();
       fileInput.value = "";
       altTipo("cad");
-      init();
+      // [CÓDIGO EXCLUÍDO]
+      // A chamada global foi inativada. Se o usuário for para a aba Banco, o carrTab() buscará os dados atualizados.
+      // init();
     } else throw new Error();
   } catch (err) {
     alert("Erro ao salvar.");
