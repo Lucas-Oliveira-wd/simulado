@@ -588,13 +588,13 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                     )
 
                 # CÓDIGO INSERIDO: Pattern flexível para Contabilidade Gerencial (Metadados sem número ou com número)
-                elif disciplina == "Contabilidade Gerencial" or disciplina == "Raciocínio Lógico":
+                elif disciplina in ["Contabilidade Gerencial", "Raciocínio Lógico", "Matemática"]:
                 # O (?:(\d+)\s*[\.\-\)]\s*)? torna a captura do número opcional no início da questão.
                 # O padrão ([^)]+) captura o conteúdo dos parênteses em múltiplas linhas devido ao re.S.
                     pattern_questao = re.compile(
                     r'(?:^|\n)\s*(?:(\d+)\s*[\.\-\)]\s*)?(\((?:CESGRANRIO|QUADRIX|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|'
                     r'BANCO|PETROBRAS|CFC|CVM|BNDES|FAFIPA|NC UFPR|FEPESE|IBGP|FUNDEP|FAURGS|FUNDATEC|LEGALLE|FUMARC|AOCP|'
-                    r'IBFC|ANS|CONSULPLAN|FAUEL|IDECAN|SELECON|CENTEC|FBC)[^)]+\))',
+                    r'IBFC|ANS|CONSULPLAN|FAUEL|IDECAN|SELECON|CENTEC|FBC|ACCESS|IBADE)[^)]+\))',
                     re.IGNORECASE | re.S)
 
 
