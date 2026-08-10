@@ -594,7 +594,7 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                     pattern_questao = re.compile(
                     r'(?:^|\n)\s*(?:(\d+)\s*[\.\-\)]\s*)?(\((?:CESGRANRIO|QUADRIX|FGV|CEBRASPE|FCC|VUNESP|INSTITUTO|'
                     r'BANCO|PETROBRAS|CFC|CVM|BNDES|FAFIPA|NC UFPR|FEPESE|IBGP|FUNDEP|FAURGS|FUNDATEC|LEGALLE|FUMARC|AOCP|'
-                    r'IBFC|ANS|CONSULPLAN|FAUEL|IDECAN|SELECON|CENTEC|FBC|ACCESS|IBADE|IBAM|Instituto Consulplan)[^)]+\))',
+                    r'IBFC|ANS|CONSULPLAN|FAUEL|IDECAN|SELECON|CENTEC|FBC|ACCESS|IBADE|IBAM|Instituto Consulplan|IADES|COSEAC)[^)]+\))',
                     re.IGNORECASE | re.S)
 
 
