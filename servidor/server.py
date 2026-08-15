@@ -465,9 +465,15 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
     elif disciplina == "Matemática":
         patterns_to_remove.extend([
             r"Prefeitura de Ponta Grossa-PR \(Nível Médio e Superior\) Matemática - 2026 \(Pós-Edital\) \d*",
-            r"Prefeitura de Ponta Grossa-PR \(Nível Médio e Superior\) Informática Básica - 2026 \(Pós-Edital\) \d*",
             r"Equipe Exatas Estratégia Concursos",
         ])
+    elif disciplina == "Conhecimentos Gerais":
+        patterns_to_remove.extend([
+            r"Prefeitura de Ponta Grossa-PR \(Nível Médio e Superior\) Conhecimentos Gerais - 2026 \(Pós-Edital\) \d*",
+            r"Sergio Henrique, Equipe Direito Constitucional Estratégia Concursos",
+    ])
+
+
 
     # Loop de limpeza com rastreamento de capturas
     for pattern in patterns_to_remove:
@@ -510,7 +516,8 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                    "Contabilidade de Custos",
                    "Raciocínio Lógico",
                    "Informática",
-                   "Matemática"]
+                   "Matemática",
+                   "Conhecimentos Gerais"]
 
         desc_g2 = ["Conhecimentos Específicos",
                    "Estatística",
@@ -519,7 +526,8 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                    "Contabilidade de Custos",
                    "Raciocínio Lógico",
                    "Informática",
-                    "Matemática"]
+                    "Matemática",
+                   "Conhecimentos Gerais"]
 
         questoes = []
 
