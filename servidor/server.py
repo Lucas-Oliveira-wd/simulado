@@ -398,18 +398,25 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             r"zo2NzY2:UCLEAR",
             r"ELETRON"
         ])
-
     if disciplina == "Conhecimentos Específicos":
         patterns_to_remove.extend([
-            r"PETROBRAS \(Engenharia de Produção\)",
-            r"Conhecimentos Específicos",
-            r"\(Parte de Engenharia de Produção\) - Prof\.",
-            r"\(Parte de Engenharia de Produção\) - Prof\. Daniel Almeida",
+            # Fragmentos do cabeçalho/rodapé
+            r"Prefeitura de Ponta Grossa.*",
+            r"\(Pós[\W_]*Edital\)",
+
+            # Fragmentos de professores e equipes (o .* apaga a linha inteira onde o nome aparecer)
             r".*Daniel Almeida.*",
             r".*Felipe Canella.*",
             r".*Antonio Daud.*",
             r".*Stefan Fantini.*",
-            r"Daniel Almeida , Equipe Exatas Estratégia Concursos, Luciano Rosa, Júlio Cardozo",
+            r".*Luciano Rosa.*",
+            r".*Júlio Cardozo.*",
+            r".*Equipe Exatas Estratégia Concursos.*",
+
+            # Outros cabeçalhos de PDFs anteriores
+            r"PETROBRAS \(Engenharia de Produção\)",
+            r"Conhecimentos Específicos",
+            r"\(Parte de Engenharia de Produção\).*"
         ])
     elif disciplina == "Inglês":
         patterns_to_remove.extend([
@@ -471,6 +478,7 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
         patterns_to_remove.extend([
             r"Prefeitura de Ponta Grossa-PR \(Nível Médio e Superior\) Conhecimentos Gerais - 2026 \(Pós-Edital\) \d*",
             r"Sergio Henrique, Equipe Direito Constitucional Estratégia Concursos",
+            r"- Equipe Direito Constitucional \(Somente em PDF\)",
     ])
 
 
