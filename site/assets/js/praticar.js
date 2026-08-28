@@ -373,6 +373,14 @@ function renderizarQuestaoPratica() {
             ${(q.tipo === "CE" ? ["C", "E"] : ["A", "B", "C", "D", "E"]).map(l => {
                 let val = q.tipo === "CE" ? (l === "C" ? "Certo" : "Errado") : q[`alt_${l.toLowerCase()}`];
                 if (!val) return '';
+
+                console.log(`--- DIAGNÓSTICO ALTERNATIVA ${l} ---`);
+                console.log(`Original: ${val}`);
+
+                // Protege os cifrões de moeda nas alternativas
+                let valSeguro = String(val).replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>');
+
+                console.log(`Seguro: ${valSeguro}`);
                 
                 // Restaura a estrutura com Radio Button e Botão de Riscar
                 return `
@@ -393,6 +401,7 @@ function renderizarQuestaoPratica() {
     el("sessao-btn-prox").style.display = "none";
     
     window.scrollTo(0, 0);
+    renderizarMath();
 }
 
 async function confirmarRespostaPratica() {
@@ -583,6 +592,7 @@ function renderizarQuestaoSessao() {
         </div>
         <div id="feedback-sessao" style="display:none"></div>
     `;
+    renderizarMath();
 }
 
 async function confirmarRespostaSessao() {

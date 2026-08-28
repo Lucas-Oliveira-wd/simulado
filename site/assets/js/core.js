@@ -452,6 +452,7 @@ function visualizarQuestaoBanco(id) {
         </div>
     `;
     el("modal-visualizacao-real").style.display = "flex";
+    renderizarMath();
 }
 
 
@@ -659,18 +660,54 @@ window.MathJax = {
     }
 };
 
-/**
- * INSERIDO: Função para renderizar o LaTeX em elementos carregados dinamicamente
- * Chame esta função sempre que o conteúdo de um card for alterado via JS.
- */
+// CÓDIGO INSERIDO
 function renderizarMath() {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-        window.MathJax.typesetPromise().catch((err) => console.log('Erro ao renderizar Math:', err));
+    console.log("=== INICIANDO CHAMADA DO MATHJAX ===");
+    console.log("1. Configuração atual em window.MathJax:", window.MathJax);
+
+    if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+        // Limpa o estado dos elementos na página para forçar reavaliação
+        MathJax.typesetClear();
+        
+        // Limpa contadores e referências do MathJax
+        if (MathJax.texReset) {
+            MathJax.texReset();
+        }
+
+        const containerEnunciado = document.querySelector(".enunciado");
+        if (containerEnunciado) {
+            console.log("2. HTML do container do enunciado ANTES do MathJax:", containerEnunciado.innerHTML);
+        }
+        
+        // Dispara a conversão de forma assíncrona
+        MathJax.typesetPromise().then(() => {
+            console.log("3. MathJax concluiu o processamento sem erros.");
+            const containerEnunciadoApos = document.querySelector(".enunciado");
+            if (containerEnunciadoApos) {
+                console.log("4. HTML do container do enunciado APÓS o MathJax:", containerEnunciadoApos.innerHTML);
+            }
+            console.log("======================================");
+        }).catch(function (err) {
+            console.error('Erro ao renderizar Math:', err);
+        });
+    } else {
+        console.log("Atenção: MathJax não encontrado no momento da chamada. Tentando novamente em 500ms...");
+        // Se a biblioteca MathJax ainda estiver carregando via async, tenta novamente em 500ms
+        setTimeout(renderizarMath, 500);
     }
 }
 
 function renderMarkup(str) {
     if (!str) return "";
+
+    console.log("--- DIAGNÓSTICO RENDER MARKUP ---");
+    console.log("String original recebida:", str);
+
+    // Protege os cifrões de moeda (R$) com uma barra invertida (escape)
+    // Assim o MathJax ignora a formatação matemática nesses casos específicos
+    str = str.replace(/R\$/g, 'R\\$');
+
+    console.log("String após replace R$:", str);
 
     // 1. Definição das Tags de Bloco (Sensores de Interrupção)
     const tagsBloco = /<\/?(table|thead|tbody|tr|th|td|ul|ol|li|h[1-6]|hr|div|p|blockquote|small|section|header|footer)[^>]*>/gi;
@@ -732,8 +769,10 @@ function renderMarkup(str) {
 
     if (emParagrafo) resultado += "</p>";
 
-    // Limpeza final de redundâncias
-    return resultado.replace(/<p>\s*<\/p>/gi, "").trim();
+    let retornoFinal = resultado.replace(/<p>\s*<\/p>/gi, "").trim();
+    console.log("String de saída do renderMarkup:", retornoFinal);
+    console.log("---------------------------------");
+    return retornoFinal;
 }
 
 
