@@ -480,6 +480,12 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
             r"Sergio Henrique, Equipe Direito Constitucional Estratégia Concursos",
             r"- Equipe Direito Constitucional \(Somente em PDF\)",
     ])
+    elif disciplina == "Contratação":
+        patterns_to_remove.extend([
+            r"Prefeitura de Ponta Grossa-PR \(Nível Médio e Superior\) Conhecimentos Gerais - 2026 \(Pós-Edital\) \d*",
+            r"Sergio Henrique, Equipe Direito Constitucional Estratégia Concursos",
+            r"- Equipe Direito Constitucional \(Somente em PDF\)",
+    ])
 
 
 
@@ -525,7 +531,8 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                    "Raciocínio Lógico",
                    "Informática",
                    "Matemática",
-                   "Conhecimentos Gerais"]
+                   "Conhecimentos Gerais",
+                   "Contratação"]
 
         desc_g2 = ["Conhecimentos Específicos",
                    "Estatística",
@@ -535,7 +542,8 @@ def parsear_questoes(texto_bruto, disciplina="", modo_prova=False, mapa_externo=
                    "Raciocínio Lógico",
                    "Informática",
                     "Matemática",
-                   "Conhecimentos Gerais"]
+                   "Conhecimentos Gerais",
+                   "Contratação"]
 
         questoes = []
 
