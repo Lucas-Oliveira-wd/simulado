@@ -415,7 +415,7 @@ def limpar_ruido(texto, disciplina="", modo_prova=False):
 
             # Outros cabeçalhos de PDFs anteriores
             r"PETROBRAS \(Engenharia de Produção\)",
-            r".*\(Profissional de Nível Superior - Ênfase 19: Engenharia de Produção\)"
+            r"TRANSPETRO\s*\(Profissional\s+(?:de\s+)?Nível\s+Superior\s*-\s*Ênfase\s*19:\s*Engenharia\s+de\s+Produção\)(?:\s*Conhecimentos\s+Específicos\s*-\s*\d{4})?",
             r"Conhecimentos Específicos",
             r"\(Parte de Engenharia de Produção\).*"
         ])
