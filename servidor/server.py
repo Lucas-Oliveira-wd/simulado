@@ -10,6 +10,9 @@ import json
 import numpy as np
 from threading import Lock
 
+# [CÓDIGO INSERIDO] - Importação necessária no topo do arquivo server.py
+import html
+
 # [CÓDIGO INSERIDO] - Trava global para impedir leitura e escrita simultâneas no Excel
 db_lock = Lock()
 
@@ -185,11 +188,21 @@ def normalizar_para_comparacao(texto):
     texto_sem_tags = re.sub(r'<[^>]+>', '', str(texto))
     # Remove TUDO que não for letra ou número (espaços, tabs, quebras de linha, pontuação)
     # Isso gera uma string "pura" para comparação infalível
+
+    # [CÓDIGO INSERIDO] - Decodifica entidades HTML (ex: &quot; volta a ser ")
+    # antes da remoção de caracteres não-alfanuméricos.
+    texto_decodificado = html.unescape(texto_sem_tags)
+    
     return re.sub(r'[\W_]+', '', texto_sem_tags).lower().strip()
 
 
 def sanitizar_texto(texto):
     if not texto: return ""
+
+    # [CÓDIGO INSERIDO] - Substituição de aspas simples e duplas por entidades HTML.
+    # Isso evita que o frontend corte o texto ao inseri-lo dentro de atributos value="..." nas tags <input>.
+    texto = texto.replace('"', '&quot;').replace("'", '&#39;')
+
     # Remove hifens soltos de quebra de página
     texto = re.sub(r'-\s*\n\s*', '', texto)
 
@@ -201,8 +214,13 @@ def sanitizar_texto(texto):
         if i < len(linhas) - 1:
             proxima = linhas[i + 1]
             pontuacao_final = re.search(r'[.:?!;]$', atual)
+
             # Verifica se a próxima linha parece um novo bloco (começa com letra maiúscula ou número)
-            comeca_novo_bloco = re.match(r'^(?:[A-Z"\'\(]|\d+\.|[a-e]\))', proxima)
+            # [CÓDIGO MODIFICADO] - Atualizado o regex para reconhecer as novas entidades HTML (&quot; e &#39;) introduzidas acima
+            # [CÓDIGO EXCLUÍDO]
+            # comeca_novo_bloco = re.match(r'^(?:[A-Z"\'\(]|\d+\.|[a-e]\))', proxima)
+            comeca_novo_bloco = re.match(r'^(?:[A-Z"\'\(]|&quot;|&#39;|\d+\.|[a-e]\))', proxima)
+
             if not pontuacao_final and not comeca_novo_bloco:
                 resultado.append(atual + " ")
             elif pontuacao_final and comeca_novo_bloco:
