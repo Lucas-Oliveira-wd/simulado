@@ -192,8 +192,8 @@ def normalizar_para_comparacao(texto):
     # [CÓDIGO INSERIDO] - Decodifica entidades HTML (ex: &quot; volta a ser ")
     # antes da remoção de caracteres não-alfanuméricos.
     texto_decodificado = html.unescape(texto_sem_tags)
-    
-    return re.sub(r'[\W_]+', '', texto_sem_tags).lower().strip()
+
+    return re.sub(r'[\W_]+', '', texto_decodificado).lower().strip()
 
 
 def sanitizar_texto(texto):
