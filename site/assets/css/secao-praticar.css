@@ -362,3 +362,32 @@ body.dark-mode .texto-titulo {
     text-align: center;
     font-size: 1.2rem;
 }
+
+/* [CÓDIGO INSERIDO] - Regras de sobreposição para garantir a legibilidade das tabelas no modo escuro. 
+   Devem ser adicionadas na parte inferior do ficheiro secao-praticar.css */
+
+body.dark-mode .render-html table, 
+body.dark-mode .enunciado table {
+    background-color: #2b2b2b !important;
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode .render-html th, 
+body.dark-mode .render-html td,
+body.dark-mode .enunciado th, 
+body.dark-mode .enunciado td {
+    background-color: transparent !important;
+    border: 1px solid #555555 !important;
+    color: #e0e0e0 !important;
+}
+
+body.dark-mode .render-html tr:nth-child(even), 
+body.dark-mode .enunciado tr:nth-child(even) {
+    background-color: #333333 !important;
+}
+
+body.dark-mode .render-html th, 
+body.dark-mode .enunciado th {
+    background-color: #1a1a1a !important;
+    color: #ffffff !important;
+}
