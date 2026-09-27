@@ -363,9 +363,7 @@ body.dark-mode .texto-titulo {
     font-size: 1.2rem;
 }
 
-/* [CÓDIGO INSERIDO] - Regras de sobreposição para garantir a legibilidade das tabelas no modo escuro. 
-   Devem ser adicionadas na parte inferior do ficheiro secao-praticar.css */
-
+/* --- CORREÇÃO DE TABELAS PARA MODO ESCURO --- */
 body.dark-mode .render-html table, 
 body.dark-mode .enunciado table {
     background-color: #2b2b2b !important;
@@ -376,7 +374,8 @@ body.dark-mode .render-html th,
 body.dark-mode .render-html td,
 body.dark-mode .enunciado th, 
 body.dark-mode .enunciado td {
-    background-color: transparent !important;
+    /* Usando uma cor sólida escura em vez de transparent para anular o #fff */
+    background-color: #2b2b2b !important; 
     border: 1px solid #555555 !important;
     color: #e0e0e0 !important;
 }
