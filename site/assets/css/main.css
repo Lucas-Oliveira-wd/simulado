@@ -636,37 +636,3 @@ h4 {
     margin-block-end: 0px;
 }
 
-/* --- CORREÇÃO GLOBAL DE TABELAS PARA MODO ESCURO --- */
-
-/* Força o fundo escuro em qualquer tabela quando o modo escuro está ativo */
-body.dark-mode table,
-body.dark-mode .render-html table,
-body.dark-mode .enunciado table {
-    background-color: var(--dark-surface) !important;
-    color: var(--dark-text) !important;
-    border: 1px solid var(--dark-border) !important;
-}
-
-body.dark-mode th,
-body.dark-mode td,
-body.dark-mode .render-html th,
-body.dark-mode .render-html td,
-body.dark-mode .enunciado th,
-body.dark-mode .enunciado td {
-    background-color: var(--dark-surface) !important; 
-    border: 1px solid var(--dark-border) !important;
-    color: var(--dark-text) !important;
-}
-
-body.dark-mode tr:nth-child(even),
-body.dark-mode .render-html tr:nth-child(even),
-body.dark-mode .enunciado tr:nth-child(even) {
-    background-color: var(--dark-surface-lighter) !important;
-}
-
-body.dark-mode th,
-body.dark-mode .render-html th,
-body.dark-mode .enunciado th {
-    background-color: var(--dark-primary) !important;
-    color: #ffffff !important;
-}
