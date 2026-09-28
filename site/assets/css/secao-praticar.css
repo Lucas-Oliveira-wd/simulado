@@ -129,8 +129,8 @@ textarea {
 .enunciado th, .enunciado td {
     border: 1px solid #d1d1d1; /* Borda cinza suave */
     padding: 10px;             /* Espaçamento interno para não grudar */
-    text-align: left;
-    vertical-align: top;       /* Alinha texto ao topo (útil para textos longos) */
+    text-align: center;
+    vertical-align: center;       /* Alinha texto ao topo (útil para textos longos) */
     
     /* O SEGREDO DO SUCESSO: */
     white-space: normal;       /* Permite quebra de linha */
