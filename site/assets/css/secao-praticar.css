@@ -151,9 +151,6 @@ textarea {
 }
 
 /* --- CORREÇÃO GLOBAL DE TABELAS PARA MODO ESCURO --- */
-
-/* Força o fundo escuro em qualquer tabela quando o modo escuro está ativo */
-body.dark-mode table,
 body.dark-mode .render-html table,
 body.dark-mode .enunciado table {
     background-color: var(--dark-surface) !important;
