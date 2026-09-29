@@ -377,8 +377,10 @@ function renderizarQuestaoPratica() {
                 console.log(`--- DIAGNÓSTICO ALTERNATIVA ${l} ---`);
                 console.log(`Original: ${val}`);
 
-                // Protege os cifrões de moeda nas alternativas
-                let valSeguro = String(val).replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>');
+                // [CÓDIGO MODIFICADO] - Proteção definitiva nas alternativas
+                let valSeguro = String(val)
+                    .replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>')
+                    .replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>');
 
                 console.log(`Seguro: ${valSeguro}`);
                 
@@ -387,7 +389,7 @@ function renderizarQuestaoPratica() {
                     <div class="alternativa-wrapper" onclick="selecionarOpcaoPratica(this, '${l}')">
                         <span class="btn-riscar" onclick="event.stopPropagation(); this.parentElement.classList.toggle('riscado-ativo')" title="Riscar alternativa">✖</span>
                         <input type="radio" name="opt-prat" value="${l}" style="margin:0 10px; pointer-events:none">
-                        <span class="render-html"><b>${l})</b> ${val}</span>
+                        <span class="render-html"><b>${l})</b> ${valSeguro}</span>
                     </div>`;
             }).join('')}
         </div>

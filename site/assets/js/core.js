@@ -703,11 +703,18 @@ function renderMarkup(str) {
     console.log("--- DIAGNÓSTICO RENDER MARKUP ---");
     console.log("String original recebida:", str);
 
-    // Protege os cifrões de moeda (R$) com uma barra invertida (escape)
-    // Assim o MathJax ignora a formatação matemática nesses casos específicos
-    str = str.replace(/R\$/g, 'R\\$');
-
-    console.log("String após replace R$:", str);
+    // [CÓDIGO MODIFICADO] - Proteção via classe ignorada
+    // Envolve os cifrões de moeda na classe que o MathJax foi instruído a pular
+    str = str.replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>');
+    str = str.replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>');
+    
+    // Varredura e Limpeza de Tabelas "Sujas"
+    str = str.replace(/<(table|thead|tbody|tfoot|tr|th|td)([^>]*)>/gi, function(match, tag, atributos) {
+        let limpo = atributos.replace(/bgcolor=["'][^"']*["']/gi, ""); 
+        limpo = limpo.replace(/background-color\s*:[^;'">]*;?/gi, ""); 
+        limpo = limpo.replace(/background\s*:\s*(white|#fff|#ffffff)\s*;?/gi, ""); 
+        return `<${tag}${limpo}>`;
+    });
 
     // 1. Definição das Tags de Bloco (Sensores de Interrupção)
     const tagsBloco = /<\/?(table|thead|tbody|tr|th|td|ul|ol|li|h[1-6]|hr|div|p|blockquote|small|section|header|footer)[^>]*>/gi;
@@ -773,7 +780,7 @@ function renderMarkup(str) {
     console.log("String de saída do renderMarkup:", retornoFinal);
     console.log("---------------------------------");
     return retornoFinal;
-}
+};
 
 
 // [CÓDIGO INSERIDO] - Lógica de notificação de atualização manual do banco
@@ -793,7 +800,7 @@ function notificarAlteracaoBanco() {
     }
     
     aviso.style.display = "flex";
-}
+};
 
 async function executarAtualizacaoManual() {
     const aviso = document.getElementById("aviso-atualizacao-db");
@@ -802,4 +809,17 @@ async function executarAtualizacaoManual() {
     showLoader("Sincronizando banco de dados...");
     await init();
     hideLoader();
-}
+};
+
+// INSERIDO: Configuração global do MathJax
+window.MathJax = {
+    tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+    },
+    options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+        ignoreHtmlClass: 'mathjax-ignore' /* CÓDIGO INSERIDO: Instrução para o MathJax pular esta classe */
+    }
+};
