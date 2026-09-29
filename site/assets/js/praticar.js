@@ -377,10 +377,18 @@ function renderizarQuestaoPratica() {
                 console.log(`--- DIAGNÓSTICO ALTERNATIVA ${l} ---`);
                 console.log(`Original: ${val}`);
 
-                // [CÓDIGO MODIFICADO] - Proteção definitiva nas alternativas
+                /* CÓDIGO EXCLUÍDO
                 let valSeguro = String(val)
                     .replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>')
                     .replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>');
+                */
+
+                /* CÓDIGO INSERIDO */
+                let valSeguro = String(val)
+                    .replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>')
+                    .replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>')
+                    .replace(/(^|\s)\$(\s?\d)/g, '$1<span class="mathjax-ignore">$</span>$2');
+                /* FIM DO CÓDIGO INSERIDO */
 
                 console.log(`Seguro: ${valSeguro}`);
                 

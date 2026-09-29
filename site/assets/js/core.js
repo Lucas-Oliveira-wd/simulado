@@ -705,8 +705,15 @@ function renderMarkup(str) {
 
     // [CÓDIGO MODIFICADO] - Proteção via classe ignorada
     // Envolve os cifrões de moeda na classe que o MathJax foi instruído a pular
+    /* CÓDIGO EXCLUÍDO
     str = str.replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>');
     str = str.replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>');
+    */
+    /* CÓDIGO INSERIDO */
+    str = str.replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>');
+    str = str.replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>');
+    str = str.replace(/(^|\s)\$(\s?\d)/g, '$1<span class="mathjax-ignore">$</span>$2');
+    /* FIM DO CÓDIGO INSERIDO */
     
     // Varredura e Limpeza de Tabelas "Sujas"
     str = str.replace(/<(table|thead|tbody|tfoot|tr|th|td)([^>]*)>/gi, function(match, tag, atributos) {
@@ -764,10 +771,9 @@ function renderMarkup(str) {
                             emParagrafo = true;
                         }
                         resultado += linha;
-                        /* CÓDIGO INSERIDO: Fecha o parágrafo ao final de cada linha com conteúdo para garantir a quebra de linha no HTML */
+                        /*Fecha o parágrafo ao final de cada linha com conteúdo para garantir a quebra de linha no HTML */
                         resultado += "</p>";
                         emParagrafo = false;
-                        /* FIM DA INSERÇÃO */
                     };
                 });
             }
