@@ -158,8 +158,6 @@ body.dark-mode .enunciado table {
     border: 1px solid var(--dark-border) !important;
 }
 
-body.dark-mode th,
-body.dark-mode td,
 body.dark-mode .render-html th,
 body.dark-mode .render-html td,
 body.dark-mode .enunciado th,
