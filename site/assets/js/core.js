@@ -709,8 +709,10 @@ function renderMarkup(str) {
     str = str.replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>');
     str = str.replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>');
     */
+    
     /* CÓDIGO INSERIDO */
-    str = str.replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>');
+    // Captura o 'R$' padrão e também versões com caracteres Unicode matemáticos (ex: 𝑹$)
+    str = str.replace(/(R|r|𝑹|𝒓)\$/g, '<span class="mathjax-ignore">$1$</span>');
     str = str.replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>');
     str = str.replace(/(^|\s)\$(\s?\d)/g, '$1<span class="mathjax-ignore">$</span>$2');
     /* FIM DO CÓDIGO INSERIDO */

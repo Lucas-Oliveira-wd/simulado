@@ -380,12 +380,13 @@ function renderizarQuestaoPratica() {
                 /* CÓDIGO EXCLUÍDO
                 let valSeguro = String(val)
                     .replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>')
-                    .replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>');
+                    .replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>')
+                    .replace(/(^|\s)\$(\s?\d)/g, '$1<span class="mathjax-ignore">$</span>$2');
                 */
 
                 /* CÓDIGO INSERIDO */
                 let valSeguro = String(val)
-                    .replace(/R\$/gi, '<span class="mathjax-ignore">R$</span>')
+                    .replace(/(R|r|𝑹|𝒓)\$/g, '<span class="mathjax-ignore">$1$</span>')
                     .replace(/US\$/gi, '<span class="mathjax-ignore">US$</span>')
                     .replace(/(^|\s)\$(\s?\d)/g, '$1<span class="mathjax-ignore">$</span>$2');
                 /* FIM DO CÓDIGO INSERIDO */
