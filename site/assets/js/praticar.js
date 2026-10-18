@@ -764,28 +764,6 @@ async function confirmarRespostaSessao() {
     }
 }
 
-function gerarSimuladoProporcional() {
-    // Definição das proporções padrão (Exemplo Petrobras)
-    const grade = {
-        "Português": 10,
-        "Inglês": 10,
-        "Conhecimentos Específicos": 40,
-        "Estatística": 10
-    };
-
-    let simulado = [];
-    
-    for (const [disc, qtd] of Object.entries(grade)) {
-        // [CÓDIGO MODIFICADO]
-        const filtradas = db.filter(q => normStr(q.disciplina) === normStr(disc));
-        // Sorteia questões e adiciona ao bolo
-        const sorteadas = filtradas.sort(() => 0.5 - Math.random()).slice(0, qtd);
-        simulado = simulado.concat(sorteadas);
-    }
-
-    iniciarSessaoEstudo(simulado, 'simulado');
-}
-
 
 function selecionarAlternativa(elWrapper, name, val) {
   document
