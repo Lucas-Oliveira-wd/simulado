@@ -145,7 +145,7 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
     const logs = await respHist.json();
 
     const mapaHist = {};
-    // [CÓDIGO MODIFICADO] - Padronização do ID convertendo obrigatoriamente para Número Inteiro
+    // Padronização do ID convertendo obrigatoriamente para Número Inteiro
     logs.forEach(log => {
         const partes = log.data.split(/[\/\s:]/);
         const dia = partes[0], mes = partes[1], ano = partes[2];
@@ -186,92 +186,231 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
             } else isoladas.push(q);
         });
 
-        // [CÓDIGO MODIFICADO] - Garantindo o cast do ID local para NÚMERO ao buscar no mapa do histórico
+        // [CÓDIGO MODIFICADO] - Adicionada a propriedade assuntoPrincipal às unidades
+        // [CÓDIGO EXCLUÍDO]
+        // gruposPorTexto.forEach((grupo) => {
+        //     const stats = grupo.map(x => mapaHist[parseInt(x.id, 10)] || { ts: 0, count: 0 });
+        //     unidades.push({ tipo: 'bloco', questoes: grupo, ts: Math.min(...stats.map(s => s.ts)), count: Math.min(...stats.map(s => s.count)) });
+        // });
+        //
+        // isoladas.forEach(q => {
+        //     const s = mapaHist[parseInt(q.id, 10)] || { ts: 0, count: 0 };
+        //     unidades.push({ tipo: 'isolada', questoes: [q], ts: s.ts, count: s.count });
+        // });
         gruposPorTexto.forEach((grupo) => {
             const stats = grupo.map(x => mapaHist[parseInt(x.id, 10)] || { ts: 0, count: 0 });
-            unidades.push({ tipo: 'bloco', questoes: grupo, ts: Math.min(...stats.map(s => s.ts)), count: Math.min(...stats.map(s => s.count)) });
+            unidades.push({ 
+                tipo: 'bloco', 
+                questoes: grupo, 
+                ts: Math.min(...stats.map(s => s.ts)), 
+                count: Math.min(...stats.map(s => s.count)),
+                assuntoPrincipal: normStr(grupo[0].assunto) 
+            });
         });
 
         isoladas.forEach(q => {
             const s = mapaHist[parseInt(q.id, 10)] || { ts: 0, count: 0 };
-            unidades.push({ tipo: 'isolada', questoes: [q], ts: s.ts, count: s.count });
+            unidades.push({ 
+                tipo: 'isolada', 
+                questoes: [q], 
+                ts: s.ts, 
+                count: s.count,
+                assuntoPrincipal: normStr(q.assunto)
+            });
         });
 
         let poolDisc = [];
         const inéditas = unidades.filter(u => u.count === 0).sort(() => 0.5 - Math.random());
         const respondidas = unidades.filter(u => u.count > 0);
 
-        // Função auxiliar para gerenciar a entrada de uma unidade (pedra ou areia)
-        const tentarAdicionarUnidade = (unidade, alvoDisc) => {
-          let totalAtual = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
-          const qtdNovas = unidade.questoes.length;
+        // [CÓDIGO MODIFICADO] - A função tentarAdicionarUnidade foi renomeada e ajustada para preencherPool para lidar com arrays inteiros
+        // [CÓDIGO EXCLUÍDO]
+        // const tentarAdicionarUnidade = (unidade, alvoDisc) => {
+        //   let totalAtual = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+        //   const qtdNovas = unidade.questoes.length;
+        //
+        //   if (totalAtual + qtdNovas <= alvoDisc) {
+        //     poolDisc.push(unidade);
+        //   } else {
+        //     if (unidade.tipo === 'bloco') {
+        //       while ((totalAtual + qtdNovas > alvoDisc) && poolDisc.some(u => u.tipo === 'isolada')) {
+        //           const idxIsolada = poolDisc.findIndex(u => u.tipo === 'isolada');
+        //           if (idxIsolada !== -1) {
+        //               poolDisc.splice(idxIsolada, 1);
+        //               totalAtual = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+        //           }
+        //       }
+        //     }
+        //     if (totalAtual + qtdNovas <= alvoDisc) {
+        //       poolDisc.push(unidade);
+        //     } else {
+        //       const vagasRestantes = alvoDisc - totalAtual;
+        //       if (vagasRestantes > 0) {
+        //         const parteQuebrada = {
+        //             tipo: unidade.tipo,
+        //             questoes: unidade.questoes.slice(0, vagasRestantes)
+        //         };
+        //         poolDisc.push(parteQuebrada);
+        //       }
+        //     }
+        //   }
+        // };
+        const preencherPool = (poolAlvo, unidadesCandidatas, limiteVagas) => {
+            for (let u of unidadesCandidatas) {
+                let totalAtual = poolAlvo.reduce((acc, item) => acc + item.questoes.length, 0);
+                if (totalAtual >= limiteVagas) break;
 
-          if (totalAtual + qtdNovas <= alvoDisc) {
-            // Cabe perfeitamente
-            poolDisc.push(unidade);
-          } else {
-            // Estouro detectado. Lógica de "Pedras e Areia":
-            if (unidade.tipo === 'bloco') {
-              // Tenta remover "areia" (isoladas) para salvar a "pedra" (bloco)
-              while ((totalAtual + qtdNovas > alvoDisc) && poolDisc.some(u => u.tipo === 'isolada')) {
-                  const idxIsolada = poolDisc.findIndex(u => u.tipo === 'isolada');
-                  if (idxIsolada !== -1) {
-                      poolDisc.splice(idxIsolada, 1);
-                      totalAtual = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
-                  }
-              }
-            }
-
-            // Após tentar limpar a areia, verifica se o bloco cabe ou se precisa ser quebrado
-            if (totalAtual + qtdNovas <= alvoDisc) {
-              poolDisc.push(unidade);
-            } else {
-              // Se ainda não cabe, quebra a unidade atual (seja bloco ou isolada) para fechar o pote
-              const vagasRestantes = alvoDisc - totalAtual;
-              if (vagasRestantes > 0) {
-                const parteQuebrada = {
-                    tipo: unidade.tipo,
-                    questoes: unidade.questoes.slice(0, vagasRestantes)
-                };
-                poolDisc.push(parteQuebrada);
-              }
-            }
-          }
-        };
-        
-        
-        // 1. Processamento de Inéditas com Gestão de Estouro
-        for (let u of inéditas) {
-          let total = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
-          if (total >= alvo) break;
-          tentarAdicionarUnidade(u, alvo);
-        }
-
-        // 2. Processamento de Respondidas (Sorteio Ponderado)
-        let totalAposIneditas = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
-        if (totalAposIneditas < alvo && respondidas.length > 0) {
-            const tsValues = respondidas.map(u => u.ts);
-            const tMin = Math.min(...tsValues), tMax = Math.max(...tsValues);
-            const diff = tMax - tMin || 1;
-
-            let candidatos = respondidas.map(u => ({ u, peso: 0.01 + (0.99 * (tMax - u.ts) / diff) }));
-
-            while (poolDisc.reduce((acc, item) => acc + item.questoes.length, 0) < alvo && candidatos.length > 0) {
-                const somaPesos = candidatos.reduce((a, b) => a + b.peso, 0);
-                let r = Math.random() * somaPesos, acumulado = 0, selIdx = -1;
-
-                for (let i = 0; i < candidatos.length; i++) {
-                    acumulado += candidatos[i].peso;
-                    if (r <= acumulado) { selIdx = i; break; }
+                const qtdNovas = u.questoes.length;
+                if (totalAtual + qtdNovas <= limiteVagas) {
+                    poolAlvo.push(u);
+                } else {
+                    if (u.tipo === 'bloco') {
+                        while ((totalAtual + qtdNovas > limiteVagas) && poolAlvo.some(x => x.tipo === 'isolada')) {
+                            const idxIsolada = poolAlvo.findIndex(x => x.tipo === 'isolada');
+                            if (idxIsolada !== -1) {
+                                poolAlvo.splice(idxIsolada, 1);
+                                totalAtual = poolAlvo.reduce((acc, item) => acc + item.questoes.length, 0);
+                            }
+                        }
+                    }
+                    if (totalAtual + qtdNovas <= limiteVagas) {
+                        poolAlvo.push(u);
+                    } else {
+                        const vagasRestantes = limiteVagas - totalAtual;
+                        if (vagasRestantes > 0) {
+                            poolAlvo.push({ tipo: u.tipo, questoes: u.questoes.slice(0, vagasRestantes) });
+                        }
+                    }
                 }
-                if (selIdx === -1) selIdx = candidatos.length - 1;
-
-                const selecionado = candidatos.splice(selIdx, 1)[0].u;
-                tentarAdicionarUnidade(selecionado, alvo);
             }
+        };
+
+        // [CÓDIGO INSERIDO] - Função de cálculo de cotas fatiadas por assunto
+        const calcularCotasAssuntos = (vagasDisponiveis, arrUnidades) => {
+            let assuntos = [...new Set(arrUnidades.map(u => u.assuntoPrincipal))];
+            let dist = {};
+            if (assuntos.length === 0) return dist;
+
+            let cotaIni = Math.floor(vagasDisponiveis / assuntos.length);
+            let resto = vagasDisponiveis % assuntos.length;
+            assuntos.forEach((a, i) => dist[a] = cotaIni + (i < resto ? 1 : 0));
+
+            let mudou = true, limitador = 0;
+            while(mudou && limitador < 50) {
+                limitador++; mudou = false; let deficit = 0, comVagas = [];
+                assuntos.forEach(a => {
+                    let maxQuestoes = arrUnidades.filter(u => u.assuntoPrincipal === a).reduce((acc, u) => acc + u.questoes.length, 0);
+                    if (dist[a] > maxQuestoes) {
+                        deficit += (dist[a] - maxQuestoes);
+                        dist[a] = maxQuestoes;
+                        mudou = true;
+                    } else if (dist[a] < maxQuestoes) {
+                        comVagas.push(a);
+                    }
+                });
+                if (deficit > 0 && comVagas.length > 0) {
+                    let extra = Math.floor(deficit / comVagas.length), rDiv = deficit % comVagas.length;
+                    comVagas.forEach((a, i) => dist[a] += extra + (i < rDiv ? 1 : 0));
+                    mudou = extra > 0 || rDiv > 0;
+                }
+            }
+            return dist;
+        };
+
+        // [CÓDIGO MODIFICADO] - O processamento foi dividido em dois turnos proporcionais (inéditas e depois respondidas)
+        // [CÓDIGO EXCLUÍDO]
+        // // 1. Processamento de Inéditas com Gestão de Estouro
+        // for (let u of inéditas) {
+        //   let total = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+        //   if (total >= alvo) break;
+        //   tentarAdicionarUnidade(u, alvo);
+        // }
+        // 
+        // // 2. Processamento de Respondidas (Sorteio Ponderado)
+        // let totalAposIneditas = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+        // if (totalAposIneditas < alvo && respondidas.length > 0) {
+        //     const tsValues = respondidas.map(u => u.ts);
+        //     const tMin = Math.min(...tsValues), tMax = Math.max(...tsValues);
+        //     const diff = tMax - tMin || 1;
+        // 
+        //     let candidatos = respondidas.map(u => ({ u, peso: 0.01 + (0.99 * (tMax - u.ts) / diff) }));
+        // 
+        //     while (poolDisc.reduce((acc, item) => acc + item.questoes.length, 0) < alvo && candidatos.length > 0) {
+        //         const somaPesos = candidatos.reduce((a, b) => a + b.peso, 0);
+        //         let r = Math.random() * somaPesos, acumulado = 0, selIdx = -1;
+        // 
+        //         for (let i = 0; i < candidatos.length; i++) {
+        //             acumulado += candidatos[i].peso;
+        //             if (r <= acumulado) { selIdx = i; break; }
+        //         }
+        //         if (selIdx === -1) selIdx = candidatos.length - 1;
+        // 
+        //         const selecionado = candidatos.splice(selIdx, 1)[0].u;
+        //         tentarAdicionarUnidade(selecionado, alvo);
+        //     }
+        // }
+
+        // 2. TURNO 1: Divisão proporcional por assunto APENAS entre as INÉDITAS
+        if (inéditas.length > 0) {
+            let cotasIneditas = calcularCotasAssuntos(alvo, inéditas);
+            
+            Object.keys(cotasIneditas).forEach(assunto => {
+                let cotaAssunto = cotasIneditas[assunto];
+                if (cotaAssunto > 0) {
+                    let uAssunto = inéditas.filter(u => u.assuntoPrincipal === assunto);
+                    let poolAssunto = [];
+                    preencherPool(poolAssunto, uAssunto, cotaAssunto);
+                    poolDisc.push(...poolAssunto);
+                }
+            });
         }
 
-        // Concatena as questões extraídas das unidades selecionadas
+        let vagasRestantesDisc = alvo - poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+
+        // 3. TURNO 2: Divisão proporcional por assunto APENAS entre as RESPONDIDAS
+        if (vagasRestantesDisc > 0 && respondidas.length > 0) {
+            let cotasResp = calcularCotasAssuntos(vagasRestantesDisc, respondidas);
+
+            Object.keys(cotasResp).forEach(assunto => {
+                let cotaAssunto = cotasResp[assunto];
+                if (cotaAssunto > 0) {
+                    let uAssunto = respondidas.filter(u => u.assuntoPrincipal === assunto);
+                    let candidatos = [];
+
+                    // Ponderação temporal (mais antigas ganham mais peso)
+                    const tsValues = uAssunto.map(u => u.ts);
+                    const tMin = Math.min(...tsValues), tMax = Math.max(...tsValues);
+                    const diff = tMax - tMin || 1;
+                    
+                    uAssunto.forEach(u => candidatos.push({ u, peso: 0.01 + (0.99 * (tMax - u.ts) / diff) }));
+
+                    let sorteados = [];
+                    let totalSorteado = 0;
+
+                    while (totalSorteado < cotaAssunto && candidatos.length > 0) {
+                        const somaPesos = candidatos.reduce((a, b) => a + b.peso, 0);
+                        let r = Math.random() * somaPesos, acumulado = 0, selIdx = -1;
+
+                        for (let i = 0; i < candidatos.length; i++) {
+                            acumulado += candidatos[i].peso;
+                            if (r <= acumulado) { selIdx = i; break; }
+                        }
+                        if (selIdx === -1) selIdx = candidatos.length - 1;
+
+                        const selecionado = candidatos.splice(selIdx, 1)[0].u;
+                        sorteados.push(selecionado);
+                        totalSorteado += selecionado.questoes.length;
+                    }
+
+                    // Encaixa as unidades no limite da subcota do assunto
+                    let poolAssunto = [];
+                    preencherPool(poolAssunto, sorteados, cotaAssunto);
+                    poolDisc.push(...poolAssunto);
+                }
+            });
+        }
+
+        // Concatena as questões extraídas de todas as unidades da disciplina
         const questoesFinaisDisc = poolDisc.flatMap(u => u.questoes);
         resultadoFinal = resultadoFinal.concat(questoesFinaisDisc);
     }
