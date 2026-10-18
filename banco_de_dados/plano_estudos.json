@@ -1,7 +1,7 @@
 {
     "config": {
         "inicio": "03:00",
-        "fim": "20:00"
+        "fim": "19:00"
     },
     "config_inputs": {
         "Conhecimentos Específicos": {
@@ -28,12 +28,6 @@
             "min": 2,
             "max": 4
         },
-        "Discursiva": {
-            "peso": 0,
-            "tipo": "eliminatorio",
-            "min": 0,
-            "max": 2
-        },
         "Estatística": {
             "peso": 1,
             "tipo": "classificatorio",
@@ -44,25 +38,13 @@
             "peso": 0,
             "tipo": "eliminatorio",
             "min": 0,
-            "max": 2
-        },
-        "Informática": {
-            "peso": 0,
-            "tipo": "eliminatorio",
-            "min": 0,
-            "max": 2
+            "max": 1
         },
         "Inglês": {
-            "peso": 5,
+            "peso": 10,
             "tipo": "classificatorio",
             "min": 2,
             "max": 4
-        },
-        "Matemática": {
-            "peso": 0,
-            "tipo": "eliminatorio",
-            "min": 0,
-            "max": 2
         },
         "Matemática Financeira": {
             "peso": 1,
@@ -71,15 +53,9 @@
             "max": 4
         },
         "Português": {
-            "peso": 15,
+            "peso": 10,
             "tipo": "classificatorio",
             "min": 2,
-            "max": 4
-        },
-        "Raciocínio Lógico": {
-            "peso": 0,
-            "tipo": "eliminatorio",
-            "min": 0,
             "max": 4
         }
     },
@@ -106,18 +82,16 @@
         "cell-Segunda-12:30": "Descanso",
         "cell-Segunda-13:00": "Descanso",
         "cell-Segunda-13:30": "Descanso",
-        "cell-Segunda-14:00": "Contabilidade Gerencial",
-        "cell-Segunda-14:30": "Contabilidade Gerencial",
-        "cell-Segunda-15:00": "Contabilidade Gerencial",
-        "cell-Segunda-15:30": "Contabilidade Gerencial",
+        "cell-Segunda-14:00": "Conhecimentos Específicos",
+        "cell-Segunda-14:30": "Conhecimentos Específicos",
+        "cell-Segunda-15:00": "Conhecimentos Específicos",
+        "cell-Segunda-15:30": "Conhecimentos Específicos",
         "cell-Segunda-16:00": "Conhecimentos Específicos",
-        "cell-Segunda-16:30": "Conhecimentos Específicos",
-        "cell-Segunda-17:00": "Conhecimentos Específicos",
-        "cell-Segunda-17:30": "Conhecimentos Específicos",
-        "cell-Segunda-18:00": "Matemática Financeira",
-        "cell-Segunda-18:30": "Matemática Financeira",
-        "cell-Segunda-19:00": "Matemática Financeira",
-        "cell-Segunda-19:30": "Matemática Financeira",
+        "cell-Segunda-16:30": "Matemática Financeira",
+        "cell-Segunda-17:00": "Matemática Financeira",
+        "cell-Segunda-17:30": "Matemática Financeira",
+        "cell-Segunda-18:00": "Português",
+        "cell-Segunda-18:30": "Português",
         "cell-Terça-03:00": "Descanso",
         "cell-Terça-03:30": "Descanso",
         "cell-Terça-04:00": "Descanso",
@@ -140,18 +114,16 @@
         "cell-Terça-12:30": "Descanso",
         "cell-Terça-13:00": "Descanso",
         "cell-Terça-13:30": "Descanso",
-        "cell-Terça-14:00": "Estatística",
-        "cell-Terça-14:30": "Estatística",
-        "cell-Terça-15:00": "Inglês",
-        "cell-Terça-15:30": "Inglês",
-        "cell-Terça-16:00": "Inglês",
-        "cell-Terça-16:30": "Inglês",
-        "cell-Terça-17:00": "Conhecimentos Específicos",
-        "cell-Terça-17:30": "Conhecimentos Específicos",
-        "cell-Terça-18:00": "Conhecimentos Específicos",
-        "cell-Terça-18:30": "Conhecimentos Específicos",
-        "cell-Terça-19:00": "Conhecimentos Específicos",
-        "cell-Terça-19:30": "Conhecimentos Específicos",
+        "cell-Terça-14:00": "Contratação",
+        "cell-Terça-14:30": "Contratação",
+        "cell-Terça-15:00": "Contabilidade De Custos",
+        "cell-Terça-15:30": "Contabilidade De Custos",
+        "cell-Terça-16:00": "Contabilidade De Custos",
+        "cell-Terça-16:30": "Português",
+        "cell-Terça-17:00": "Português",
+        "cell-Terça-17:30": "Estatística",
+        "cell-Terça-18:00": "Estatística",
+        "cell-Terça-18:30": "Estatística",
         "cell-Quarta-03:00": "Descanso",
         "cell-Quarta-03:30": "Descanso",
         "cell-Quarta-04:00": "Descanso",
@@ -176,50 +148,46 @@
         "cell-Quarta-13:30": "Descanso",
         "cell-Quarta-14:00": "Português",
         "cell-Quarta-14:30": "Português",
-        "cell-Quarta-15:00": "Contabilidade Gerencial",
-        "cell-Quarta-15:30": "Contabilidade Gerencial",
-        "cell-Quarta-16:00": "Contabilidade Gerencial",
-        "cell-Quarta-16:30": "Contabilidade Gerencial",
-        "cell-Quarta-17:00": "Contabilidade De Custos",
-        "cell-Quarta-17:30": "Contabilidade De Custos",
+        "cell-Quarta-15:00": "Conhecimentos Específicos",
+        "cell-Quarta-15:30": "Conhecimentos Específicos",
+        "cell-Quarta-16:00": "Conhecimentos Específicos",
+        "cell-Quarta-16:30": "Conhecimentos Específicos",
+        "cell-Quarta-17:00": "Conhecimentos Específicos",
+        "cell-Quarta-17:30": "Conhecimentos Específicos",
         "cell-Quarta-18:00": "Contabilidade De Custos",
         "cell-Quarta-18:30": "Contabilidade De Custos",
-        "cell-Quarta-19:00": "Fundamentos De Engenharia",
-        "cell-Quarta-19:30": "Fundamentos De Engenharia",
-        "cell-Quinta-03:00": "Inglês",
-        "cell-Quinta-03:30": "Inglês",
-        "cell-Quinta-04:00": "Inglês",
+        "cell-Quinta-03:00": "Conhecimentos Específicos",
+        "cell-Quinta-03:30": "Conhecimentos Específicos",
+        "cell-Quinta-04:00": "Conhecimentos Específicos",
         "cell-Quinta-04:30": "Conhecimentos Específicos",
         "cell-Quinta-05:00": "Conhecimentos Específicos",
         "cell-Quinta-05:30": "Conhecimentos Específicos",
-        "cell-Quinta-06:00": "Conhecimentos Específicos",
-        "cell-Quinta-06:30": "Conhecimentos Específicos",
-        "cell-Quinta-07:00": "Conhecimentos Específicos",
-        "cell-Quinta-07:30": "Conhecimentos Específicos",
-        "cell-Quinta-08:00": "Conhecimentos Específicos",
-        "cell-Quinta-08:30": "Matemática Financeira",
-        "cell-Quinta-09:00": "Matemática Financeira",
-        "cell-Quinta-09:30": "Matemática Financeira",
-        "cell-Quinta-10:00": "Contabilidade De Custos",
+        "cell-Quinta-06:00": "Contratação",
+        "cell-Quinta-06:30": "Contratação",
+        "cell-Quinta-07:00": "Contratação",
+        "cell-Quinta-07:30": "Contratação",
+        "cell-Quinta-08:00": "Português",
+        "cell-Quinta-08:30": "Português",
+        "cell-Quinta-09:00": "Português",
+        "cell-Quinta-09:30": "Fundamentos De Engenharia",
+        "cell-Quinta-10:00": "Fundamentos De Engenharia",
         "cell-Quinta-10:30": "Contabilidade De Custos",
         "cell-Quinta-11:00": "Contabilidade De Custos",
         "cell-Quinta-11:30": "Contabilidade De Custos",
         "cell-Quinta-12:00": "Descanso",
         "cell-Quinta-12:30": "Descanso",
-        "cell-Quinta-13:00": "Português",
-        "cell-Quinta-13:30": "Português",
-        "cell-Quinta-14:00": "Contratação",
-        "cell-Quinta-14:30": "Contratação",
-        "cell-Quinta-15:00": "Contratação",
-        "cell-Quinta-15:30": "Contratação",
-        "cell-Quinta-16:00": "Conhecimentos Específicos",
-        "cell-Quinta-16:30": "Conhecimentos Específicos",
-        "cell-Quinta-17:00": "Conhecimentos Específicos",
-        "cell-Quinta-17:30": "Conhecimentos Específicos",
-        "cell-Quinta-18:00": "Conhecimentos Específicos",
+        "cell-Quinta-13:00": "Inglês",
+        "cell-Quinta-13:30": "Inglês",
+        "cell-Quinta-14:00": "Inglês",
+        "cell-Quinta-14:30": "Inglês",
+        "cell-Quinta-15:00": "Estatística",
+        "cell-Quinta-15:30": "Estatística",
+        "cell-Quinta-16:00": "Estatística",
+        "cell-Quinta-16:30": "Contabilidade Gerencial",
+        "cell-Quinta-17:00": "Contabilidade Gerencial",
+        "cell-Quinta-17:30": "Contabilidade Gerencial",
+        "cell-Quinta-18:00": "Contabilidade Gerencial",
         "cell-Quinta-18:30": "Contabilidade Gerencial",
-        "cell-Quinta-19:00": "Contabilidade Gerencial",
-        "cell-Quinta-19:30": "Contabilidade Gerencial",
         "cell-Sexta-03:00": "Descanso",
         "cell-Sexta-03:30": "Descanso",
         "cell-Sexta-04:00": "Descanso",
@@ -240,20 +208,18 @@
         "cell-Sexta-11:30": "Descanso",
         "cell-Sexta-12:00": "Descanso",
         "cell-Sexta-12:30": "Descanso",
-        "cell-Sexta-13:00": "Descanso",
-        "cell-Sexta-13:30": "Descanso",
-        "cell-Sexta-14:00": "Português",
-        "cell-Sexta-14:30": "Português",
-        "cell-Sexta-15:00": "Estatística",
-        "cell-Sexta-15:30": "Estatística",
-        "cell-Sexta-16:00": "Estatística",
-        "cell-Sexta-16:30": "Estatística",
-        "cell-Sexta-17:00": "Contratação",
+        "cell-Sexta-13:00": "Contabilidade Gerencial",
+        "cell-Sexta-13:30": "Contabilidade Gerencial",
+        "cell-Sexta-14:00": "Estatística",
+        "cell-Sexta-14:30": "Estatística",
+        "cell-Sexta-15:00": "Inglês",
+        "cell-Sexta-15:30": "Inglês",
+        "cell-Sexta-16:00": "Inglês",
+        "cell-Sexta-16:30": "Inglês",
+        "cell-Sexta-17:00": "Inglês",
         "cell-Sexta-17:30": "Contratação",
         "cell-Sexta-18:00": "Contratação",
-        "cell-Sexta-18:30": "Contabilidade De Custos",
-        "cell-Sexta-19:00": "Contabilidade De Custos",
-        "cell-Sexta-19:30": "Contabilidade De Custos",
+        "cell-Sexta-18:30": "Contratação",
         "cell-Sábado-03:00": "Descanso",
         "cell-Sábado-03:30": "Descanso",
         "cell-Sábado-04:00": "Descanso",
@@ -278,16 +244,14 @@
         "cell-Sábado-13:30": "Descanso",
         "cell-Sábado-14:00": "Matemática Financeira",
         "cell-Sábado-14:30": "Matemática Financeira",
-        "cell-Sábado-15:00": "Português",
-        "cell-Sábado-15:30": "Português",
-        "cell-Sábado-16:00": "Português",
-        "cell-Sábado-16:30": "Português",
-        "cell-Sábado-17:00": "Inglês",
-        "cell-Sábado-17:30": "Inglês",
-        "cell-Sábado-18:00": "Inglês",
-        "cell-Sábado-18:30": "Inglês",
-        "cell-Sábado-19:00": "Estatística",
-        "cell-Sábado-19:30": "Estatística",
+        "cell-Sábado-15:00": "Matemática Financeira",
+        "cell-Sábado-15:30": "Matemática Financeira",
+        "cell-Sábado-16:00": "Matemática Financeira",
+        "cell-Sábado-16:30": "Conhecimentos Específicos",
+        "cell-Sábado-17:00": "Conhecimentos Específicos",
+        "cell-Sábado-17:30": "Conhecimentos Específicos",
+        "cell-Sábado-18:00": "Conhecimentos Específicos",
+        "cell-Sábado-18:30": "Conhecimentos Específicos",
         "cell-Domingo-03:00": "Descanso",
         "cell-Domingo-03:30": "Descanso",
         "cell-Domingo-04:00": "Descanso",
@@ -308,46 +272,35 @@
         "cell-Domingo-11:30": "Descanso",
         "cell-Domingo-12:00": "Descanso",
         "cell-Domingo-12:30": "Descanso",
-        "cell-Domingo-13:00": "Contratação",
-        "cell-Domingo-13:30": "Contratação",
-        "cell-Domingo-14:00": "Contratação",
-        "cell-Domingo-14:30": "Contratação",
-        "cell-Domingo-15:00": "Contratação",
-        "cell-Domingo-15:30": "Matemática Financeira",
-        "cell-Domingo-16:00": "Matemática Financeira",
-        "cell-Domingo-16:30": "Matemática Financeira",
-        "cell-Domingo-17:00": "Estatística",
-        "cell-Domingo-17:30": "Estatística",
-        "cell-Domingo-18:00": "Estatística",
-        "cell-Domingo-18:30": "Estatística",
-        "cell-Domingo-19:00": "Português",
-        "cell-Domingo-19:30": "Português"
+        "cell-Domingo-13:00": "Descanso",
+        "cell-Domingo-13:30": "Descanso",
+        "cell-Domingo-14:00": "Descanso",
+        "cell-Domingo-14:30": "Descanso",
+        "cell-Domingo-15:00": "Descanso",
+        "cell-Domingo-15:30": "Descanso",
+        "cell-Domingo-16:00": "Descanso",
+        "cell-Domingo-16:30": "Descanso",
+        "cell-Domingo-17:00": "Descanso",
+        "cell-Domingo-17:30": "Descanso",
+        "cell-Domingo-18:00": "Descanso",
+        "cell-Domingo-18:30": "Descanso"
     },
     "horas": {
-        "Conhecimentos Específicos": 8,
-        "Contabilidade De Custos": 6.5,
-        "Contabilidade Gerencial": 6.5,
-        "Contratação": 7,
-        "Discursiva": 0.5,
-        "Estatística": 7,
-        "Fundamentos De Engenharia": 1,
-        "Informática": 0.5,
-        "Inglês": 6.5,
-        "Matemática": 0.5,
-        "Matemática Financeira": 7,
-        "Português": 7,
-        "Raciocínio Lógico": 0.5
+        "Conhecimentos Específicos": 10.5,
+        "Contabilidade De Custos": 4.5,
+        "Contabilidade Gerencial": 4,
+        "Contratação": 5,
+        "Estatística": 4.5,
+        "Fundamentos De Engenharia": 1.5,
+        "Inglês": 5.5,
+        "Matemática Financeira": 4.5,
+        "Português": 5.5
     },
     "intervalos": {
-        "Domingo": [
-            {
-                "fim": "20:00",
-                "inicio": "13:00"
-            }
-        ],
+        "Domingo": [],
         "Quarta": [
             {
-                "fim": "20:00",
+                "fim": "19:00",
                 "inicio": "14:00"
             }
         ],
@@ -357,38 +310,42 @@
                 "inicio": "03:00"
             },
             {
-                "inicio": "13:00",
-                "fim": "20:00"
+                "fim": "19:00",
+                "inicio": "13:00"
             }
         ],
         "Segunda": [
             {
-                "fim": "20:00",
+                "fim": "19:00",
                 "inicio": "14:00"
             }
         ],
         "Sexta": [
             {
-                "fim": "20:00",
+                "fim": "12:00",
                 "inicio": "14:00"
+            },
+            {
+                "fim": "19:00",
+                "inicio": "13:00"
             }
         ],
         "Sábado": [
             {
-                "fim": "20:00",
+                "fim": "19:00",
                 "inicio": "14:00"
             }
         ],
         "Terça": [
             {
-                "fim": "20:00",
+                "fim": "19:00",
                 "inicio": "14:00"
             }
         ]
     },
     "pesos_globais": [
-        3,
-        2,
-        15
+        5,
+        1,
+        3
     ]
 }
