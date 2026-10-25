@@ -168,11 +168,22 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
         if (alvo <= 0) continue;
         console.log(`📦 Processando ${disc} (Alvo: ${alvo})`);
 
-        const todasDaDisc = db.filter(q => 
+        let todasDaDisc = db.filter(q => 
             normStr(q.disciplina) === normStr(disc) &&
             (filtrosGlobais.banca.length === 0 || filtrosGlobais.banca.includes(normStr(q.banca))) &&
             (filtrosGlobais.assuntos.length === 0 || filtrosGlobais.assuntos.includes(normStr(q.assunto)))
         );
+
+        /* CÓDIGO INSERIDO: Regra Absoluta do Texto */
+        // Identifica todos os textos que passaram no filtro
+        const textosPresentes = new Set(todasDaDisc.filter(q => q.texto_apoio && q.texto_apoio !== "0").map(q => q.texto_apoio));
+        
+        if (textosPresentes.size > 0) {
+            // Vai no banco geral e busca qualquer questão que tenha esse texto e que tenha ficado de fora
+            const irmasPerdidas = db.filter(q => textosPresentes.has(q.texto_apoio) && !todasDaDisc.some(t => t.id === q.id));
+            todasDaDisc = todasDaDisc.concat(irmasPerdidas);
+        }
+        /* FIM DO CÓDIGO INSERIDO */
 
         // Agrupamento em Unidades Atômicas
         let unidades = [];
@@ -186,17 +197,6 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
             } else isoladas.push(q);
         });
 
-        // [CÓDIGO MODIFICADO] - Adicionada a propriedade assuntoPrincipal às unidades
-        // [CÓDIGO EXCLUÍDO]
-        // gruposPorTexto.forEach((grupo) => {
-        //     const stats = grupo.map(x => mapaHist[parseInt(x.id, 10)] || { ts: 0, count: 0 });
-        //     unidades.push({ tipo: 'bloco', questoes: grupo, ts: Math.min(...stats.map(s => s.ts)), count: Math.min(...stats.map(s => s.count)) });
-        // });
-        //
-        // isoladas.forEach(q => {
-        //     const s = mapaHist[parseInt(q.id, 10)] || { ts: 0, count: 0 };
-        //     unidades.push({ tipo: 'isolada', questoes: [q], ts: s.ts, count: s.count });
-        // });
         gruposPorTexto.forEach((grupo) => {
             const stats = grupo.map(x => mapaHist[parseInt(x.id, 10)] || { ts: 0, count: 0 });
             unidades.push({ 
@@ -204,7 +204,8 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
                 questoes: grupo, 
                 ts: Math.min(...stats.map(s => s.ts)), 
                 count: Math.min(...stats.map(s => s.count)),
-                assuntoPrincipal: normStr(grupo[0].assunto) 
+                // CÓDIGO MODIFICADO: O bloco agora mapeia TODOS os assuntos que possui
+                assuntosContidos: [...new Set(grupo.map(q => normStr(q.assunto)))] 
             });
         });
 
@@ -215,7 +216,7 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
                 questoes: [q], 
                 ts: s.ts, 
                 count: s.count,
-                assuntoPrincipal: normStr(q.assunto)
+                assuntosContidos: [normStr(q.assunto)]
             });
         });
 
@@ -223,60 +224,26 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
         const inéditas = unidades.filter(u => u.count === 0).sort(() => 0.5 - Math.random());
         const respondidas = unidades.filter(u => u.count > 0);
 
-        // [CÓDIGO MODIFICADO] - A função tentarAdicionarUnidade foi renomeada e ajustada para preencherPool para lidar com arrays inteiros
-        // [CÓDIGO EXCLUÍDO]
-        // const tentarAdicionarUnidade = (unidade, alvoDisc) => {
-        //   let totalAtual = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
-        //   const qtdNovas = unidade.questoes.length;
-        //
-        //   if (totalAtual + qtdNovas <= alvoDisc) {
-        //     poolDisc.push(unidade);
-        //   } else {
-        //     if (unidade.tipo === 'bloco') {
-        //       while ((totalAtual + qtdNovas > alvoDisc) && poolDisc.some(u => u.tipo === 'isolada')) {
-        //           const idxIsolada = poolDisc.findIndex(u => u.tipo === 'isolada');
-        //           if (idxIsolada !== -1) {
-        //               poolDisc.splice(idxIsolada, 1);
-        //               totalAtual = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
-        //           }
-        //       }
-        //     }
-        //     if (totalAtual + qtdNovas <= alvoDisc) {
-        //       poolDisc.push(unidade);
-        //     } else {
-        //       const vagasRestantes = alvoDisc - totalAtual;
-        //       if (vagasRestantes > 0) {
-        //         const parteQuebrada = {
-        //             tipo: unidade.tipo,
-        //             questoes: unidade.questoes.slice(0, vagasRestantes)
-        //         };
-        //         poolDisc.push(parteQuebrada);
-        //       }
-        //     }
-        //   }
-        // };
-        const preencherPool = (poolAlvo, unidadesCandidatas, limiteVagas) => {
+        // CÓDIGO MODIFICADO: preencherPool agora aceita um assuntoFoco para contar só o que interessa
+        const preencherPool = (poolAlvo, unidadesCandidatas, limiteVagas, assuntoFoco = null) => {
             for (let u of unidadesCandidatas) {
-                let totalAtual = poolAlvo.reduce((acc, item) => acc + item.questoes.length, 0);
-                if (totalAtual >= limiteVagas) break;
+                let contagemAtual = assuntoFoco 
+                    ? poolAlvo.flatMap(item => item.questoes).filter(q => normStr(q.assunto) === normStr(assuntoFoco)).length 
+                    : poolAlvo.reduce((acc, item) => acc + item.questoes.length, 0);
 
-                const qtdNovas = u.questoes.length;
-                if (totalAtual + qtdNovas <= limiteVagas) {
+                if (contagemAtual >= limiteVagas) break;
+
+                let qtdNovas = assuntoFoco 
+                    ? u.questoes.filter(q => normStr(q.assunto) === normStr(assuntoFoco)).length 
+                    : u.questoes.length;
+                
+                if (contagemAtual + qtdNovas <= limiteVagas) {
                     poolAlvo.push(u);
                 } else {
                     if (u.tipo === 'bloco') {
-                        while ((totalAtual + qtdNovas > limiteVagas) && poolAlvo.some(x => x.tipo === 'isolada')) {
-                            const idxIsolada = poolAlvo.findIndex(x => x.tipo === 'isolada');
-                            if (idxIsolada !== -1) {
-                                poolAlvo.splice(idxIsolada, 1);
-                                totalAtual = poolAlvo.reduce((acc, item) => acc + item.questoes.length, 0);
-                            }
-                        }
-                    }
-                    if (totalAtual + qtdNovas <= limiteVagas) {
-                        poolAlvo.push(u);
+                        poolAlvo.push(u); // Bloco entra inteiro
                     } else {
-                        const vagasRestantes = limiteVagas - totalAtual;
+                        let vagasRestantes = limiteVagas - contagemAtual;
                         if (vagasRestantes > 0) {
                             poolAlvo.push({ tipo: u.tipo, questoes: u.questoes.slice(0, vagasRestantes) });
                         }
@@ -285,9 +252,9 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
             }
         };
 
-        // [CÓDIGO INSERIDO] - Função de cálculo de cotas fatiadas por assunto
         const calcularCotasAssuntos = (vagasDisponiveis, arrUnidades) => {
-            let assuntos = [...new Set(arrUnidades.map(u => u.assuntoPrincipal))];
+            // CÓDIGO MODIFICADO: Extrai os assuntos varrendo o array de assuntosContidos
+            let assuntos = [...new Set(arrUnidades.flatMap(u => u.assuntosContidos))];
             let dist = {};
             if (assuntos.length === 0) return dist;
 
@@ -299,7 +266,11 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
             while(mudou && limitador < 50) {
                 limitador++; mudou = false; let deficit = 0, comVagas = [];
                 assuntos.forEach(a => {
-                    let maxQuestoes = arrUnidades.filter(u => u.assuntoPrincipal === a).reduce((acc, u) => acc + u.questoes.length, 0);
+                    // Contagem precisa de questões daquele assunto específico, mesmo dentro de blocos mistos
+                    let maxQuestoes = arrUnidades
+                        .filter(u => u.assuntosContidos.includes(a))
+                        .reduce((acc, u) => acc + u.questoes.filter(q => normStr(q.assunto) === a).length, 0);
+                        
                     if (dist[a] > maxQuestoes) {
                         deficit += (dist[a] - maxQuestoes);
                         dist[a] = maxQuestoes;
@@ -317,77 +288,40 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
             return dist;
         };
 
-        // [CÓDIGO MODIFICADO] - O processamento foi dividido em dois turnos proporcionais (inéditas e depois respondidas)
-        // [CÓDIGO EXCLUÍDO]
-        // // 1. Processamento de Inéditas com Gestão de Estouro
-        // for (let u of inéditas) {
-        //   let total = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
-        //   if (total >= alvo) break;
-        //   tentarAdicionarUnidade(u, alvo);
-        // }
-        // 
-        // // 2. Processamento de Respondidas (Sorteio Ponderado)
-        // let totalAposIneditas = poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
-        // if (totalAposIneditas < alvo && respondidas.length > 0) {
-        //     const tsValues = respondidas.map(u => u.ts);
-        //     const tMin = Math.min(...tsValues), tMax = Math.max(...tsValues);
-        //     const diff = tMax - tMin || 1;
-        // 
-        //     let candidatos = respondidas.map(u => ({ u, peso: 0.01 + (0.99 * (tMax - u.ts) / diff) }));
-        // 
-        //     while (poolDisc.reduce((acc, item) => acc + item.questoes.length, 0) < alvo && candidatos.length > 0) {
-        //         const somaPesos = candidatos.reduce((a, b) => a + b.peso, 0);
-        //         let r = Math.random() * somaPesos, acumulado = 0, selIdx = -1;
-        // 
-        //         for (let i = 0; i < candidatos.length; i++) {
-        //             acumulado += candidatos[i].peso;
-        //             if (r <= acumulado) { selIdx = i; break; }
-        //         }
-        //         if (selIdx === -1) selIdx = candidatos.length - 1;
-        // 
-        //         const selecionado = candidatos.splice(selIdx, 1)[0].u;
-        //         tentarAdicionarUnidade(selecionado, alvo);
-        //     }
-        // }
+        let cotasGlobais = calcularCotasAssuntos(alvo, unidades);
 
-        // 2. TURNO 1: Divisão proporcional por assunto APENAS entre as INÉDITAS
-        if (inéditas.length > 0) {
-            let cotasIneditas = calcularCotasAssuntos(alvo, inéditas);
+        for (const assunto of Object.keys(cotasGlobais)) {
+            if (poolDisc.reduce((acc, item) => acc + item.questoes.length, 0) >= alvo) break;
+
+            let cotaAssunto = cotasGlobais[assunto];
             
-            Object.keys(cotasIneditas).forEach(assunto => {
-                let cotaAssunto = cotasIneditas[assunto];
-                if (cotaAssunto > 0) {
-                    let uAssunto = inéditas.filter(u => u.assuntoPrincipal === assunto);
-                    let poolAssunto = [];
-                    preencherPool(poolAssunto, uAssunto, cotaAssunto);
-                    poolDisc.push(...poolAssunto);
-                }
-            });
-        }
+            let jaTem = poolDisc.flatMap(u => u.questoes).filter(q => normStr(q.assunto) === normStr(assunto)).length;
+            let limiteReal = cotaAssunto - jaTem;
 
-        let vagasRestantesDisc = alvo - poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
-
-        // 3. TURNO 2: Divisão proporcional por assunto APENAS entre as RESPONDIDAS
-        if (vagasRestantesDisc > 0 && respondidas.length > 0) {
-            let cotasResp = calcularCotasAssuntos(vagasRestantesDisc, respondidas);
-
-            Object.keys(cotasResp).forEach(assunto => {
-                let cotaAssunto = cotasResp[assunto];
-                if (cotaAssunto > 0) {
-                    let uAssunto = respondidas.filter(u => u.assuntoPrincipal === assunto);
+            if (limiteReal > 0) {
+                // Filtra qualquer unidade (bloco ou isolada) que contenha o assunto procurado
+                let uAssuntoIneditas = inéditas.filter(u => u.assuntosContidos.includes(assunto));
+                let poolAssunto = [];
+                
+                // Passa o 'assunto' como foco para que a contagem seja exata
+                preencherPool(poolAssunto, uAssuntoIneditas, limiteReal, assunto);
+                
+                let faltaNesteAssunto = limiteReal - poolAssunto.flatMap(item => item.questoes).filter(q => normStr(q.assunto) === normStr(assunto)).length;
+                
+                if (faltaNesteAssunto > 0) {
+                    let uAssuntoResp = respondidas.filter(u => u.assuntosContidos.includes(assunto));
                     let candidatos = [];
 
-                    // Ponderação temporal (mais antigas ganham mais peso)
-                    const tsValues = uAssunto.map(u => u.ts);
+                    const tsValues = uAssuntoResp.map(u => u.ts);
                     const tMin = Math.min(...tsValues), tMax = Math.max(...tsValues);
                     const diff = tMax - tMin || 1;
                     
-                    uAssunto.forEach(u => candidatos.push({ u, peso: 0.01 + (0.99 * (tMax - u.ts) / diff) }));
+                    uAssuntoResp.forEach(u => candidatos.push({ u, peso: 0.01 + (0.99 * (tMax - u.ts) / diff) }));
 
                     let sorteados = [];
                     let totalSorteado = 0;
 
-                    while (totalSorteado < cotaAssunto && candidatos.length > 0) {
+                    while (totalSorteado < faltaNesteAssunto && candidatos.length > 0) {
                         const somaPesos = candidatos.reduce((a, b) => a + b.peso, 0);
                         let r = Math.random() * somaPesos, acumulado = 0, selIdx = -1;
 
@@ -399,15 +333,28 @@ async function prepararPoolInteligente(gradeDesejada, qtdTotal, filtrosGlobais) 
 
                         const selecionado = candidatos.splice(selIdx, 1)[0].u;
                         sorteados.push(selecionado);
-                        totalSorteado += selecionado.questoes.length;
+                        // CÓDIGO MODIFICADO: Avança o contador do sorteio usando apenas as questões do assunto foco
+                        totalSorteado += selecionado.questoes.filter(q => normStr(q.assunto) === normStr(assunto)).length;
                     }
 
-                    // Encaixa as unidades no limite da subcota do assunto
-                    let poolAssunto = [];
-                    preencherPool(poolAssunto, sorteados, cotaAssunto);
-                    poolDisc.push(...poolAssunto);
+                    preencherPool(poolAssunto, sorteados, faltaNesteAssunto, assunto);
                 }
-            });
+                
+                poolDisc.push(...poolAssunto);
+            }
+        }
+
+        // Repescagem Final
+        let faltaFinal = alvo - poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+        if (faltaFinal > 0) {
+            let ineditasSobrando = inéditas.filter(u => !poolDisc.includes(u));
+            preencherPool(poolDisc, ineditasSobrando, faltaFinal); 
+            
+            faltaFinal = alvo - poolDisc.reduce((acc, item) => acc + item.questoes.length, 0);
+            if (faltaFinal > 0) {
+                let respSobrando = respondidas.filter(u => !poolDisc.includes(u));
+                preencherPool(poolDisc, respSobrando, faltaFinal); 
+            }
         }
 
         // Concatena as questões extraídas de todas as unidades da disciplina
