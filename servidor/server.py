@@ -1363,7 +1363,7 @@ def verificar_historico():
         # ws.append(["id", "data", "questao_id", "disciplina", "assunto", "resultado"])
 
         # CÓDIGO INSERIDO
-        ws.append(["id", "data", "questao_id", "disciplina", "assunto", "alternativa_marcada"])
+        ws.append(["id", "data", "questao_id", "alternativa_marcada"])
         wb.save(ARQ_HISTORICO)
 
 
@@ -1462,11 +1462,35 @@ def calculate_plan_hours():
 
         # Busca desempenho real do banco
         verificar_historico()
+
+        # --- ADICIONA ESTAS DUAS LINHAS AQUI ---
+        questoes_db = carregar_questoes()
+        mapa_questoes = {str(q['id']): q for q in questoes_db if q['id'] is not None}
+        # ---------------------------------------
+
         wb = load_workbook(ARQ_HISTORICO, data_only=True);
         ws = wb.active
         hist = []
         for r in ws.iter_rows(min_row=2, values_only=True):
-            if r[0]: hist.append({"disc": r[3], "res": int(r[5])})
+            if r[0] is not None:
+                # O ID da questão está no índice 2 e a alternativa no índice 3
+                questao_id = str(r[2]) if r[2] is not None else ""
+                alt_marcada = str(r[3]) if len(r) > 3 and r[3] is not None else ""
+
+                # Busca as informações da questão no mapa
+                q_info = mapa_questoes.get(questao_id, {})
+                disciplina_cruzada = q_info.get("disciplina", "")
+                gabarito = str(q_info.get("gabarito", "")).strip().upper()
+
+                # Camada de compatibilidade para histórico antigo (0 e 1)
+                if alt_marcada in ['0', '1']:
+                    res = int(alt_marcada)
+                else:
+                    res = 1 if alt_marcada.upper() == gabarito and gabarito != "" else 0
+
+                # Adiciona apenas se conseguiu identificar a disciplina da questão
+                if disciplina_cruzada:
+                    hist.append({"disc": disciplina_cruzada, "res": res})
 
         disciplinas, matriz = [], []
 
@@ -1554,8 +1578,6 @@ def registrar_resposta():
             proximo_id,
             data_atual,
             data.get("questao_id"),
-            data.get("disciplina"),
-            data.get("assunto"),
             data.get("alternativa_marcada"),
         ])
 
@@ -1573,8 +1595,10 @@ def listar_historico():
 
         # CÓDIGO INSERIDO: Carrega as questões para cruzar o gabarito
         questoes_db = carregar_questoes()
+
         # Cria um dicionário rápido para buscar o gabarito pelo ID da questão
-        mapa_gabaritos = {str(q['id']): str(q['gabarito']).strip().upper() for q in questoes_db if q['id'] is not None}
+        # CÓDIGO MODIFICADO: Em vez de mapear só o gabarito, mapeia a questão inteira
+        mapa_questoes = {str(q['id']): q for q in questoes_db if q['id'] is not None}
 
         # data_only=True para ler o valor 0/1 sem erros
         wb = load_workbook(ARQ_HISTORICO, data_only=True)
@@ -1585,10 +1609,13 @@ def listar_historico():
                 # O ID da questão está na coluna 2 (índice 2)
                 questao_id = str(r[2]) if r[2] is not None else ""
                 # Captura os dados novos, com segurança caso as colunas estejam vazias
-                alt_marcada = str(r[5]) if len(r) > 5 and r[5] is not None else ""
+                alt_marcada = str(r[3]) if len(r) > 3 and r[3] is not None else ""
 
-                # CÓDIGO INSERIDO: Cruza com o mapa criado
-                gabarito = mapa_gabaritos.get(questao_id, "")
+                # CÓDIGO INSERIDO: Busca as informações da questão no mapa
+                q_info = mapa_questoes.get(questao_id, {})
+                gabarito = str(q_info.get("gabarito", "")).strip().upper()
+                disciplina_cruzada = q_info.get("disciplina", "Desconhecida")
+                assunto_cruzado = q_info.get("assunto", "Desconhecido")
 
                 # Camada de compatibilidade com o formato antigo (onde r[5] era 0 ou 1)
                 if alt_marcada in ['0', '1']:
@@ -1612,8 +1639,8 @@ def listar_historico():
                     "id": r[0],
                     "data": r[1],
                     "q_id": r[2],
-                    "disciplina": r[3],
-                    "assunto": r[4],
+                    "disciplina": disciplina_cruzada,
+                    "assunto": assunto_cruzado,
                     "alternativa_marcada": alt_marcada,
                     "resultado": resultado_int
                 })

@@ -815,8 +815,6 @@ function salvarProgressoQuestao(q, acertou, alternativa_marcada) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           questao_id: q.id,
-          disciplina: q.disciplina,
-          assunto: q.assunto,
           alternativa_marcada: alternativa_marcada,
 
         }),
