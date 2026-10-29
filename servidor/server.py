@@ -1357,8 +1357,13 @@ def verificar_historico():
         wb = Workbook()
         ws = wb.active
         ws.title = "historico"
+
+        # CÓDIGO EXCLUÍDO
         # Estrutura solicitada: ID, Data, Q-ID, Disciplina, Assunto, Resultado
-        ws.append(["id", "data", "questao_id", "disciplina", "assunto", "resultado"])
+        # ws.append(["id", "data", "questao_id", "disciplina", "assunto", "resultado"])
+
+        # CÓDIGO INSERIDO
+        ws.append(["id", "data", "questao_id", "disciplina", "assunto", "alternativa_marcada"])
         wb.save(ARQ_HISTORICO)
 
 
@@ -1533,14 +1538,27 @@ def registrar_resposta():
         # 'resultado' será "Acertou" ou "Errou"
         resultado = 1 if data.get("acertou") else 0
 
+        # CÓDIGO EXCLUÍDO
+        # resultado = 1 if data.get("acertou") else 0
+        # ws.append([
+        #     proximo_id,
+        #     data_atual,
+        #     data.get("questao_id"),
+        #     data.get("disciplina"),
+        #     data.get("assunto"),
+        #     resultado
+        # ])
+
+        # CÓDIGO INSERIDO
         ws.append([
             proximo_id,
             data_atual,
             data.get("questao_id"),
             data.get("disciplina"),
             data.get("assunto"),
-            resultado
+            data.get("alternativa_marcada"),
         ])
+
         wb.save(ARQ_HISTORICO)
         return jsonify({"status": "Resposta logada!", "id": proximo_id}), 201
     except PermissionError:
@@ -1552,20 +1570,54 @@ def registrar_resposta():
 def listar_historico():
     verificar_historico()
     try:
+
+        # CÓDIGO INSERIDO: Carrega as questões para cruzar o gabarito
+        questoes_db = carregar_questoes()
+        # Cria um dicionário rápido para buscar o gabarito pelo ID da questão
+        mapa_gabaritos = {str(q['id']): str(q['gabarito']).strip().upper() for q in questoes_db if q['id'] is not None}
+
         # data_only=True para ler o valor 0/1 sem erros
         wb = load_workbook(ARQ_HISTORICO, data_only=True)
         ws = wb.active
         logs = []
         for r in ws.iter_rows(min_row=2, values_only=True):
             if r[0] is not None:
+                # O ID da questão está na coluna 2 (índice 2)
+                questao_id = str(r[2]) if r[2] is not None else ""
+                # Captura os dados novos, com segurança caso as colunas estejam vazias
+                alt_marcada = str(r[5]) if len(r) > 5 and r[5] is not None else ""
+
+                # CÓDIGO INSERIDO: Cruza com o mapa criado
+                gabarito = mapa_gabaritos.get(questao_id, "")
+
+                # Camada de compatibilidade com o formato antigo (onde r[5] era 0 ou 1)
+                if alt_marcada in ['0', '1']:
+                    resultado_int = int(alt_marcada)
+                else:
+                    # Calcula o resultado (1 ou 0) na hora comparando a alternativa e o gabarito
+                    resultado_int = 1 if alt_marcada.upper() == gabarito.upper() and gabarito != "" else 0
+
+                # CÓDIGO EXCLUÍDO
+                # logs.append({
+                #     "id": r[0],
+                #     "data": r[1],
+                #     "q_id": r[2],
+                #     "disciplina": r[3],
+                #     "assunto": r[4],
+                #     "resultado": int(r[5]) # 0 ou 1
+                # })
+
+                # CÓDIGO INSERIDO
                 logs.append({
                     "id": r[0],
                     "data": r[1],
                     "q_id": r[2],
                     "disciplina": r[3],
                     "assunto": r[4],
-                    "resultado": int(r[5]) # 0 ou 1
+                    "alternativa_marcada": alt_marcada,
+                    "resultado": resultado_int
                 })
+
         return jsonify(logs)
     except Exception as e:
         return jsonify({"erro": str(e)}), 500

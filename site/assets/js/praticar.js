@@ -509,8 +509,12 @@ async function confirmarRespostaPratica() {
     const acertou = opt.value === q.gabarito;
     if (acertou) sessaoAtiva.acertos++;
 
-    // Salva no histórico
-    await salvarProgressoQuestao(q, acertou);
+    // CÓDIGO EXCLUÍDO
+    // await salvarProgressoQuestao(q, acertou);
+    
+    // CÓDIGO INSERIDO
+    // Passa a alternativa marcada para ser salva
+    await salvarProgressoQuestao(q, acertou, opt.value);
 
     if (sessaoAtiva.modo === 'praticar') {
         const f = el("sessao-feedback");
@@ -697,11 +701,18 @@ async function confirmarRespostaSessao() {
     if (!escolhida) return alert("Selecione uma alternativa.");
 
     const q = sessaoAtual.questoes[sessaoAtual.indice];
-    const acertou = escolhida.value.toUpperCase() === q.gabarito.toUpperCase();
 
-    // 1. REGISTRO NO HISTÓRICO (O que estava faltando no simulado)
-    // Chama sua função já existente que grava no Excel de histórico e atualiza acumulados
-    await salvarProgressoQuestao(q, acertou);
+    // CÓDIGO INSERIDO
+    const alternativa_marcada = escolhida.value.toUpperCase();
+    
+    // CÓDIGO MODIFICADO
+    const acertou = alternativa_marcada === q.gabarito.toUpperCase();
+
+    // CÓDIGO EXCLUÍDO
+    // await salvarProgressoQuestao(q, acertou);
+    
+    // CÓDIGO INSERIDO
+    await salvarProgressoQuestao(q, acertou, alternativa_marcada);
 
     if (sessaoAtual.config.mostrarFeedback) {
         exibirFeedbackVisual(acertou, q.gabarito, q.comentarios);
@@ -769,7 +780,9 @@ async function enviarParaCaderno() {
 let cacheAnotacoes = [];
 
 
-function salvarProgressoQuestao(q, acertou) {
+// CÓDIGO MODIFICADO
+// Adicionado o parâmetro 'alternativa_marcada'
+function salvarProgressoQuestao(q, acertou, alternativa_marcada) {
   // Busca a referência original para atualizar no banco
   let qOriginal = db.find((d) => d.id === q.id);
 
@@ -784,7 +797,19 @@ function salvarProgressoQuestao(q, acertou) {
           body: JSON.stringify(qOriginal),
       });
 
-      // 2. Registra o log individual no histórico cronológico
+      // CÓDIGO EXCLUÍDO
+      // fetch(`${API}/historico`, {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({
+      //     questao_id: q.id,
+      //     disciplina: q.disciplina,
+      //     assunto: q.assunto,
+      //     acertou: acertou
+      //   }),
+      // }).catch(err => console.error("Erro ao registrar no histórico:", err));
+
+      // CÓDIGO INSERIDO
       fetch(`${API}/historico`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -792,12 +817,12 @@ function salvarProgressoQuestao(q, acertou) {
           questao_id: q.id,
           disciplina: q.disciplina,
           assunto: q.assunto,
-          acertou: acertou
+          alternativa_marcada: alternativa_marcada,
+
         }),
       }).catch(err => console.error("Erro ao registrar no histórico:", err));
   }
 };
-
 
 // Lógica de Comentários
 let questaoAtualComent = null;
