@@ -83,7 +83,7 @@ el("fc-form").onsubmit = async (e) => {
 
 function iniciarEstudoFC() {
   let disc = el("fc-estudo-disc").value;
-  // [CÓDIGO INSERIDO] Captura os assuntos selecionados nos checkboxes múltiplos
+  // Captura os assuntos selecionados nos checkboxes múltiplos
   const assuntosMarcados = Array.from(document.querySelectorAll(".chk-fc-assunto-filtro:checked"))
                                 .map(chk => normStr(chk.value));
 
@@ -100,7 +100,6 @@ function iniciarEstudoFC() {
 
   // Mostra a área
   el("fc-area-jogo").style.display = "block";
-  el("fc-botoes").classList.add("ocultar-botoes-globais"); // Esconde os botões de baixo
 
   // Renderiza a Grade
   renderGrid();
@@ -276,4 +275,107 @@ function abrirCriadorFlashcard(elementoBotao) {
 
   // 3. Inicializa o arraste (Drag)
   arrastarElemento(document.getElementById("modal-janela"));
+}
+
+// [CÓDIGO INSERIDO] - Função de renderização para impressão/PDF de Resumos
+// [CÓDIGO MODIFICADO] - Função de renderização para impressão/PDF de Resumos
+function imprimirResumoFC() {
+    let disc = el("fc-estudo-disc").value;
+    const assuntosMarcados = Array.from(document.querySelectorAll(".chk-fc-assunto-filtro:checked"))
+                                  .map(chk => normStr(chk.value));
+
+    let filtrados = flashDb.filter((f) => {
+        const matchDisc = (disc === "" || normStr(f.disciplina) === normStr(disc));
+        const matchAssunto = (assuntosMarcados.length === 0 || assuntosMarcados.includes(normStr(f.assunto)));
+        return matchDisc && matchAssunto;
+    });
+
+    if (filtrados.length === 0) return alert("Nenhum resumo encontrado para os filtros selecionados.");
+
+    // 1. Lógica de Agrupamento por Assunto
+    let agrupados = {};
+    filtrados.forEach(f => {
+        let assunto = f.assunto || "Geral";
+        if (!agrupados[assunto]) {
+            agrupados[assunto] = [];
+        }
+        agrupados[assunto].push(f);
+    });
+
+    // 2. Montagem do HTML Base e Estilos
+    let html = `
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <title>Resumo - ${disc ? disc : 'Geral'}</title>
+        <script>
+            window.MathJax = {
+                tex: { inlineMath: [['$', '$'], ['\\\\(', '\\\\)']], displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']], processEscapes: true },
+                /* [CORREÇÃO] Retornando ao padrão: o MathJax DEVE processar listas e parágrafos */
+                options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'], ignoreHtmlClass: 'mathjax-ignore' }
+            };
+        </script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; line-height: 1.6; color: #333; }
+            h1 { text-align: center; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 30px; }
+            
+            .assunto-header { color: #2c3e50; border-bottom: 2px solid #27ae60; padding-bottom: 5px; margin-top: 40px; margin-bottom: 20px; text-transform: uppercase; page-break-after: avoid; }
+            .resumo-item { margin-bottom: 25px; padding: 15px; border: 1px solid #ecf0f1; border-radius: 8px; page-break-inside: avoid; background-color: #f9f9f9; }
+            .frente-titulo { font-size: 1.15em; font-weight: bold; margin-bottom: 15px; color: #2980b9; border-bottom: 1px dashed #bdc3c7; padding-bottom: 8px; }
+            .frente-titulo p { margin: 0; } 
+            .verso-corpo { color: #2c3e50; padding-left: 10px; border-left: 3px solid #3498db; }
+            
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #bdc3c7; padding: 8px; text-align: left; }
+            th { background-color: #ecf0f1; }
+            
+            @media print {
+                body { margin: 0; background: white; }
+                .resumo-item { border: 1px solid #ccc; background-color: transparent; margin-bottom: 15px; }
+                .assunto-header { margin-top: 25px; }
+                @page { margin: 1.5cm; }
+                
+                /* [CORREÇÃO] Esconde os textos brutos que o leitor de tela do navegador sobrepõe às fórmulas */
+                mjx-assistive-mml, .MathJax_Preview, .MathJax_Hover_Frame { display: none !important; }
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Resumo de Estudo ${disc ? '- ' + disc : ''}</h1>
+    `;
+
+    // 3. Iteração pelos Assuntos Agrupados
+    for (let assunto in agrupados) {
+        html += `<h2 class="assunto-header">${assunto}</h2>`;
+
+        agrupados[assunto].forEach(f => {
+            let frenteHtml = f.frente;
+            let versoHtml = f.verso;
+
+            html += `
+                <div class="resumo-item">
+                    <div class="frente-titulo">${frenteHtml}</div>
+                    <div class="verso-corpo">${versoHtml}</div>
+                </div>
+            `;
+        });
+    }
+
+    html += `
+        <script>
+            window.onload = function() {
+                setTimeout(() => {
+                    window.print();
+                }, 1500); 
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    let printWindow = window.open('', '_blank');
+    printWindow.document.write(html);
+    printWindow.document.close();
 }

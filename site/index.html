@@ -377,7 +377,15 @@
                     
                     <div id="fc-assuntos-filtros"></div>
 
+                    <!-- [CÓDIGO EXCLUÍDO]
                     <button class="btn-acao" style="margin:5px 0" onclick="iniciarEstudoFC()">Iniciar Revisão</button>
+                    -->
+                    
+                    <!-- [CÓDIGO MODIFICADO] - Adição do botão de Gerar PDF / Imprimir lado a lado com o Iniciar Revisão -->
+                    <div style="display: flex; gap: 10px; width: 100%; margin-top: 10px;">
+                        <button class="btn-acao" style="margin:5px 0; flex: 1;" onclick="iniciarEstudoFC()">Iniciar Revisão</button>
+                        <button class="btn-acao" style="margin:5px 0; flex: 1; background: var(--purple);" onclick="imprimirResumoFC()">🖨️ Gerar PDF / Imprimir</button>
+                    </div>
                 </div>
                 <div id="fc-area-jogo" style="display:none; text-align:center">
                     <h3 id="fc-progresso"></h3>
