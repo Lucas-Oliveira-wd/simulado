@@ -271,7 +271,15 @@ function calcularHorasTotaisDisponiveis() {
             const [h2, m2] = int.fim.split(':').map(Number);
             const minInicio = h1 * 60 + m1;
             const minFim = h2 * 60 + m2;
-            if (minFim > minInicio) totalMinutos += (minFim - minInicio) + 30;
+            /* [CÓDIGO EXCLUÍDO]
+            // if (minFim > minInicio) totalMinutos += (minFim - minInicio) + 30;
+            */
+
+            // [CÓDIGO MODIFICADO] - Remoção do acréscimo indevido de 30 minutos para refletir a carga real
+            if (minFim > minInicio) {
+                totalMinutos += (minFim - minInicio);
+            }
+
         });
     });
 
