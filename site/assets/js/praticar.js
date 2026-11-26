@@ -436,6 +436,15 @@ async function iniciarSessaoExecucao(lista, modo, segundos) {
 function renderizarQuestaoPratica() {
     let q = sessaoAtiva.pool[sessaoAtiva.idx];
     el("sessao-progresso").innerText = `Questão ${sessaoAtiva.idx + 1} de ${sessaoAtiva.pool.length}`;
+
+    // [CÓDIGO INSERIDO] - Diagnóstico do vínculo e do cache de textos
+    console.log("=== DIAGNÓSTICO TEXTO DE APOIO ===");
+    console.log("1. Questão ID:", q.id, "| texto_apoio:", JSON.stringify(q.texto_apoio));
+    console.log("2. Dados hidratados pelo backend (q.texto_titulo / q.texto_conteudo):", q.texto_titulo, Boolean(q.texto_conteudo));
+    console.log("3. Estado de cacheTextos:", typeof cacheTextos, Array.isArray(cacheTextos) ? cacheTextos.length : cacheTextos);
+    if (Array.isArray(cacheTextos) && cacheTextos.length > 0) {
+        console.log("4. Match encontrado no cache:", cacheTextos.find(t => String(t.id).trim() === String(q.texto_apoio).trim()));
+    }
     
     // Busca texto de apoio no cache global
     const txt = cacheTextos.find(t => String(t.id) === String(q.texto_apoio));
